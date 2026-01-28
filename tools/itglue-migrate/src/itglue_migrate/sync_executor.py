@@ -204,6 +204,7 @@ class SyncExecutor:
         reporter: ProgressReporter | SimpleProgressReporter | None = None,
         doc_processor: DocumentProcessor | None = None,
         export_path: Path | None = None,
+        skip_attachments: bool = False,
     ) -> None:
         """Initialize the sync executor.
 
@@ -216,6 +217,7 @@ class SyncExecutor:
             reporter: Optional progress reporter for live progress display.
             doc_processor: Optional document processor for HTML cleaning and image uploads.
             export_path: Optional path to IT Glue export directory (for document processing).
+            skip_attachments: If True, skip attachment uploads for faster testing.
         """
         self.client = client
         self.org_id = org_id
@@ -225,6 +227,7 @@ class SyncExecutor:
         self.reporter = reporter
         self.doc_processor = doc_processor
         self.export_path = export_path
+        self.skip_attachments = skip_attachments
 
     async def _upload_entity_attachments(
         self,
@@ -242,6 +245,9 @@ class SyncExecutor:
         Returns:
             Count of successfully uploaded attachments.
         """
+        if self.skip_attachments:
+            return 0
+
         if not self.doc_processor or not self.export_path:
             return 0
 
@@ -931,8 +937,20 @@ class SyncExecutor:
                 )
 
                 itglue_id = str(entity.get("id", ""))
-                if itglue_id and response.get("id"):
-                    result.id_map[itglue_id] = response["id"]
+                new_type_id = response.get("id", "")
+
+                if itglue_id and new_type_id:
+                    result.id_map[itglue_id] = new_type_id
+
+                # UPDATE STATE for subsequent custom asset lookups
+                if self.state and new_type_id:
+                    name_lower = name.lower()
+                    self.state.custom_asset_type_by_name[name_lower] = new_type_id
+                    self.state.custom_asset_types[new_type_id] = {
+                        "id": new_type_id,
+                        "name": name,
+                        "fields": fields,
+                    }
 
                 result.created["custom_asset_types"] = (
                     result.created.get("custom_asset_types", 0) + 1

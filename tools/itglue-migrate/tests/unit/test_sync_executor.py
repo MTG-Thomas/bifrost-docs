@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from itglue_migrate.sync_differ import SyncPlan
+from itglue_migrate.sync_differ import EntityPlan, SyncPlan
 from itglue_migrate.sync_executor import (
     SyncExecutor,
     SyncResult,
@@ -1304,6 +1304,94 @@ class TestSyncExecutorEmptyValueSkipping:
         assert result.created.get("passwords", 0) == 1
         assert result.skipped.get("passwords", 0) == 0
         mock_client.create_password.assert_called_once()
+
+
+class TestCustomAssetTypeStateUpdate:
+    """Tests for state update after custom asset type creation."""
+
+    @pytest.mark.asyncio
+    async def test_state_updated_after_type_creation(self) -> None:
+        """State should be updated with new type after creation."""
+        mock_client = AsyncMock()
+        mock_client.create_custom_asset_type = AsyncMock(return_value={
+            "id": "new-type-uuid",
+            "name": "Active Directory",
+            "fields": [{"key": "field1", "name": "Field 1", "type": "text"}],
+        })
+
+        from itglue_migrate.state_fetcher import ExistingState
+        state = ExistingState()
+        # State starts empty
+        assert state.custom_asset_type_by_name == {}
+
+        executor = SyncExecutor(
+            client=mock_client,
+            org_id="org-uuid",
+            dry_run=False,
+            state=state,
+        )
+
+        plan = SyncPlan(
+            custom_asset_types=EntityPlan(
+                to_create=[{
+                    "id": "itglue-type-123",
+                    "name": "Active Directory",
+                    "fields": [{"key": "field1", "name": "Field 1", "type": "text"}],
+                }],
+            )
+        )
+
+        await executor.execute(plan)
+
+        # State should now have the new type
+        assert "active directory" in state.custom_asset_type_by_name
+        assert state.custom_asset_type_by_name["active directory"] == "new-type-uuid"
+        assert "new-type-uuid" in state.custom_asset_types
+
+    @pytest.mark.asyncio
+    async def test_custom_asset_can_find_type_created_in_same_run(self) -> None:
+        """Custom asset should find type created earlier in same sync run."""
+        mock_client = AsyncMock()
+        mock_client.create_custom_asset_type = AsyncMock(return_value={
+            "id": "new-type-uuid",
+            "name": "SSL Certificates",
+            "fields": [{"key": "domain", "name": "Domain", "type": "text"}],
+        })
+        mock_client.create_custom_asset = AsyncMock(return_value={"id": "new-asset-uuid"})
+
+        from itglue_migrate.state_fetcher import ExistingState
+        state = ExistingState()
+
+        executor = SyncExecutor(
+            client=mock_client,
+            org_id="org-uuid",
+            dry_run=False,
+            state=state,
+        )
+
+        plan = SyncPlan(
+            custom_asset_types=EntityPlan(
+                to_create=[{
+                    "id": "type-itglue-id",
+                    "name": "SSL Certificates",
+                    "fields": [{"key": "domain", "name": "Domain", "type": "text"}],
+                }],
+            ),
+            custom_assets=EntityPlan(
+                to_create=[{
+                    "id": "asset-itglue-id",
+                    "asset_type": "ssl-certificates",
+                    "fields": {"domain": "example.com"},
+                }],
+            ),
+        )
+
+        result = await executor.execute(plan)
+
+        # Custom asset should have been created (not skipped)
+        assert result.created.get("custom_asset_types", 0) == 1
+        assert result.created.get("custom_assets", 0) == 1
+        assert result.skipped.get("custom_assets", 0) == 0
 
 
 class TestSyncExecutorAttachmentUpload:
