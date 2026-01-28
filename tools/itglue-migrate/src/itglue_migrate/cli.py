@@ -32,7 +32,7 @@ from itglue_migrate.org_matcher import OrgMatcher
 from itglue_migrate.progress import Phase, create_progress_reporter
 from itglue_migrate.state import MigrationState, MigrationStateError
 from itglue_migrate.warnings import ParsedData, Warning, WarningDetector, summarize
-from itglue_migrate.state_fetcher import StateFetcher
+from itglue_migrate.state_fetcher import ExistingState, StateFetcher
 from itglue_migrate.sync_differ import SyncDiffer, SyncPlan
 from itglue_migrate.sync_executor import SyncExecutor, SyncResult
 
@@ -2637,14 +2637,21 @@ async def _run_sync(
                 org_uuid = all_orgs_state.org_by_name.get(org_name.lower())
 
             if not org_uuid:
-                # This should only happen if org creation failed above
-                console.print("  [red]Organization not found in API (creation may have failed), skipping[/red]")
-                console.print()
-                continue
-
-            # Fetch existing state for this org
-            console.print(f"  Fetching existing state...")
-            state = await fetcher.fetch_for_org(org_uuid)
+                if dry_run:
+                    # In dry-run mode, use a placeholder UUID for new orgs
+                    org_uuid = f"dry-run-{org_itglue_id}"
+                    console.print("  [yellow]Organization is new (will be created)[/yellow]")
+                    # Create empty state since nothing exists yet
+                    state = ExistingState()
+                else:
+                    # This should only happen if org creation failed above
+                    console.print("  [red]Organization not found in API (creation may have failed), skipping[/red]")
+                    console.print()
+                    continue
+            else:
+                # Fetch existing state for this org
+                console.print(f"  Fetching existing state...")
+                state = await fetcher.fetch_for_org(org_uuid)
 
             # Debug: show state summary
             console.print(f"  [dim]API state:[/dim]")
