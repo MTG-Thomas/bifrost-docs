@@ -752,12 +752,8 @@ class DocumentProcessor:
         # Tier 2: Check known custom asset types
         elif known_custom_asset_types and entity_type in known_custom_asset_types:
             target_entity_type = "custom_asset"
-        # Tier 3: Unknown type - warn and map to custom_asset
+        # Tier 3: Unknown type - assume custom_asset (this is expected for custom asset types)
         else:
-            logger.warning(
-                f"Unknown entity type '{entity_type}' - treating as custom_asset. "
-                f"If this is incorrect, add it to the standard mapping or custom asset types."
-            )
             target_entity_type = "custom_asset"
 
         # Get attachment files from export
