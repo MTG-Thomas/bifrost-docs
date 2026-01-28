@@ -619,8 +619,16 @@ class SyncExecutor:
             if self.reporter:
                 self.reporter.set_current_item(f"Document: {doc_name}")
 
-            # Check for empty content
+            # FIRST: Get content - try CSV, then load from filesystem
             raw_content = entity.get("content", "")
+
+            # If CSV content is empty and we have a doc_processor, try loading from file
+            if not raw_content and self.doc_processor:
+                loaded_content = self.doc_processor.load_document_content(itglue_id)
+                if loaded_content:
+                    raw_content = loaded_content
+
+            # SECOND: Check for empty content (after attempting to load from file)
             if _is_content_empty(raw_content):
                 result.skipped["documents"] = result.skipped.get("documents", 0) + 1
                 logger.warning(f"Skipping document '{doc_name}': empty content")
@@ -638,10 +646,16 @@ class SyncExecutor:
                         self.reporter.update_progress(succeeded=1)
                     continue
 
-                # Get content - process through DocumentProcessor if available
-                content = entity.get("content", "")
+                # Get folder path from document_folder_map, fallback to CSV path/locator
                 path = entity.get("path") or entity.get("locator") or "/"
+                if self.doc_processor:
+                    folder_info = self.doc_processor.document_folder_map.get(itglue_id)
+                    if folder_info:
+                        folder_path, _ = folder_info
+                        path = folder_path
 
+                # Process content through DocumentProcessor if available
+                content = raw_content
                 if self.doc_processor and content:
                     # Process HTML: clean, extract images, convert to markdown
                     processed_content, warnings = await self.doc_processor.process_document(

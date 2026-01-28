@@ -1235,6 +1235,131 @@ class TestCustomAssetFieldFiltering:
         assert isinstance(values["active"], bool)
 
 
+class TestExecuteDocumentsLoadOrder:
+    """Tests for document content loading from filesystem."""
+
+    @pytest.mark.asyncio
+    async def test_loads_html_when_csv_content_empty(self) -> None:
+        """Should load HTML from filesystem when CSV content is empty."""
+        mock_client = AsyncMock()
+        mock_client.create_document = AsyncMock(return_value={"id": "new-doc-uuid"})
+
+        mock_doc_processor = MagicMock()
+        mock_doc_processor.load_document_content = MagicMock(return_value="<html>Loaded from file</html>")
+        mock_doc_processor.document_folder_map = {"123": ("/", None)}
+        mock_doc_processor.process_document = AsyncMock(return_value=("Processed content", []))
+
+        executor = SyncExecutor(
+            client=mock_client,
+            org_id="org-uuid",
+            dry_run=False,
+            doc_processor=mock_doc_processor,
+        )
+
+        plan = SyncPlan(
+            documents=EntityPlan(
+                to_create=[{"id": "123", "name": "Test Doc", "content": ""}],  # Empty CSV content
+            )
+        )
+
+        result = await executor.execute(plan)
+
+        # Should have loaded content from filesystem
+        mock_doc_processor.load_document_content.assert_called_once_with("123")
+        # Should have created the document (not skipped)
+        assert result.created.get("documents", 0) == 1
+        assert result.skipped.get("documents", 0) == 0
+
+    @pytest.mark.asyncio
+    async def test_skips_document_when_both_csv_and_file_empty(self) -> None:
+        """Should skip document when CSV is empty AND file content is empty."""
+        mock_client = AsyncMock()
+
+        mock_doc_processor = MagicMock()
+        mock_doc_processor.load_document_content = MagicMock(return_value="")  # Empty file too
+        mock_doc_processor.document_folder_map = {"456": ("/", None)}
+
+        executor = SyncExecutor(
+            client=mock_client,
+            org_id="org-uuid",
+            dry_run=False,
+            doc_processor=mock_doc_processor,
+        )
+
+        plan = SyncPlan(
+            documents=EntityPlan(
+                to_create=[{"id": "456", "name": "Empty Doc", "content": ""}],
+            )
+        )
+
+        result = await executor.execute(plan)
+
+        # Should be skipped as empty
+        assert result.skipped.get("documents", 0) == 1
+        assert result.created.get("documents", 0) == 0
+
+    @pytest.mark.asyncio
+    async def test_uses_csv_content_when_present(self) -> None:
+        """Should use CSV content directly when it's not empty."""
+        mock_client = AsyncMock()
+        mock_client.create_document = AsyncMock(return_value={"id": "new-doc-uuid"})
+
+        mock_doc_processor = MagicMock()
+        mock_doc_processor.load_document_content = MagicMock()  # Should not be called
+        mock_doc_processor.document_folder_map = {}
+        mock_doc_processor.process_document = AsyncMock(return_value=("Processed", []))
+
+        executor = SyncExecutor(
+            client=mock_client,
+            org_id="org-uuid",
+            dry_run=False,
+            doc_processor=mock_doc_processor,
+        )
+
+        plan = SyncPlan(
+            documents=EntityPlan(
+                to_create=[{"id": "789", "name": "Has Content", "content": "<html>CSV content</html>"}],
+            )
+        )
+
+        result = await executor.execute(plan)
+
+        # Should NOT have called load_document_content since CSV had content
+        mock_doc_processor.load_document_content.assert_not_called()
+        assert result.created.get("documents", 0) == 1
+
+    @pytest.mark.asyncio
+    async def test_uses_folder_path_from_map(self) -> None:
+        """Should use folder path from document_folder_map."""
+        mock_client = AsyncMock()
+        mock_client.create_document = AsyncMock(return_value={"id": "new-doc-uuid"})
+
+        mock_doc_processor = MagicMock()
+        mock_doc_processor.load_document_content = MagicMock(return_value="<html>content</html>")
+        mock_doc_processor.document_folder_map = {"999": ("/_Archive/Projects", None)}
+        mock_doc_processor.process_document = AsyncMock(return_value=("Processed", []))
+
+        executor = SyncExecutor(
+            client=mock_client,
+            org_id="org-uuid",
+            dry_run=False,
+            doc_processor=mock_doc_processor,
+        )
+
+        plan = SyncPlan(
+            documents=EntityPlan(
+                to_create=[{"id": "999", "name": "Archived Doc", "content": ""}],
+            )
+        )
+
+        await executor.execute(plan)
+
+        # Check that create_document was called with the correct path
+        mock_client.create_document.assert_called_once()
+        call_kwargs = mock_client.create_document.call_args.kwargs
+        assert call_kwargs["path"] == "/_Archive/Projects"
+
+
 class TestSyncExecutorEmptyValueSkipping:
     """Tests for empty value validation."""
 
@@ -1402,6 +1527,8 @@ class TestSyncExecutorAttachmentUpload:
         """Create a mock DocumentProcessor."""
         processor = MagicMock()
         processor.upload_entity_attachments = AsyncMock(return_value=3)
+        processor.document_folder_map = {}  # Empty dict for tests that don't need folder mapping
+        processor.load_document_content = MagicMock(return_value=None)  # No file content by default
         return processor
 
     @pytest.mark.asyncio
