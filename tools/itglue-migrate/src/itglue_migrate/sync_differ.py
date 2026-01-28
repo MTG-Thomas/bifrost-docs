@@ -62,6 +62,7 @@ class EntityPlan:
     to_create: list[dict[str, Any]] = field(default_factory=list)
     to_update: list[dict[str, Any]] = field(default_factory=list)
     existing: list[dict[str, Any]] = field(default_factory=list)
+    skipped: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -163,9 +164,11 @@ class SyncDiffer:
                      'id' (ITGlue org ID) and 'name' fields.
 
         Returns:
-            EntityPlan with to_create and existing lists populated.
+            EntityPlan with to_create, existing, and skipped lists populated.
+            Duplicate names (case-insensitive) are added to skipped.
         """
         plan = EntityPlan()
+        seen_names: set[str] = set()
 
         for org in csv_orgs:
             org_name = org.get("name", "")
@@ -173,6 +176,17 @@ class SyncDiffer:
 
             if not org_name:
                 continue
+
+            # Check for duplicates (case-insensitive)
+            name_lower = org_name.lower()
+            if name_lower in seen_names:
+                plan.skipped.append({
+                    "name": org_name,
+                    "itglue_id": itglue_id,
+                    "reason": "duplicate_name",
+                })
+                continue
+            seen_names.add(name_lower)
 
             # Check if org exists by itglue_id in metadata
             existing_uuid = self.state.org_by_itglue_id.get(itglue_id)
@@ -279,14 +293,33 @@ class SyncDiffer:
             csv_documents: List of document dicts from CSV export.
 
         Returns:
-            EntityPlan with to_create, to_update, and existing lists populated.
+            EntityPlan with to_create, to_update, existing, and skipped lists populated.
+            Duplicate names within the same organization are added to skipped.
         """
         plan = EntityPlan()
+        # Track seen doc names per organization: org_id -> set of doc names (lowercase)
+        seen_docs: dict[str, set[str]] = {}
 
         for doc in csv_documents:
             itglue_id = str(doc.get("id", ""))
             if not itglue_id:
                 continue
+
+            doc_name = doc.get("name", "")
+            org_id = str(doc.get("organization_id", ""))
+
+            # Check for duplicates within same organization (case-insensitive)
+            if doc_name:
+                doc_name_lower = doc_name.lower()
+                if org_id in seen_docs and doc_name_lower in seen_docs[org_id]:
+                    plan.skipped.append({
+                        "name": doc_name,
+                        "itglue_id": itglue_id,
+                        "organization_id": org_id,
+                        "reason": "duplicate_name",
+                    })
+                    continue
+                seen_docs.setdefault(org_id, set()).add(doc_name_lower)
 
             if itglue_id in self.state.document_by_itglue_id:
                 # Entity exists - check if it needs updating

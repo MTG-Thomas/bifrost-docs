@@ -20,6 +20,7 @@ class TestEntityPlan:
         assert plan.to_create == []
         assert plan.to_update == []
         assert plan.existing == []
+        assert plan.skipped == []
 
     def test_init_with_data(self) -> None:
         """EntityPlan should accept data on init."""
@@ -27,11 +28,13 @@ class TestEntityPlan:
             to_create=[{"id": "1"}],
             to_update=[{"id": "2"}],
             existing=[{"id": "3"}],
+            skipped=[{"id": "4"}],
         )
 
         assert len(plan.to_create) == 1
         assert len(plan.to_update) == 1
         assert len(plan.existing) == 1
+        assert len(plan.skipped) == 1
 
 
 class TestRelationshipPlan:
@@ -846,3 +849,149 @@ class TestSyncDifferUpdateDetection:
         # Both normalize to empty string, so no update
         assert len(plan.to_update) == 0
         assert len(plan.existing) == 1
+
+
+class TestSyncDifferDuplicateDetection:
+    """Tests for duplicate detection in SyncDiffer."""
+
+    def test_diff_organizations_skips_duplicates(self) -> None:
+        """Duplicate org names are skipped (case-insensitive)."""
+        state = ExistingState()
+
+        csv_orgs = [
+            {"id": "1", "name": "Acme Inc"},
+            {"id": "2", "name": "ACME INC"},  # Duplicate (case-insensitive)
+            {"id": "3", "name": "Other Corp"},
+        ]
+
+        differ = SyncDiffer(state)
+        plan = differ.diff_organizations(csv_orgs)
+
+        assert len(plan.to_create) == 2
+        assert len(plan.skipped) == 1
+        assert plan.skipped[0]["name"] == "ACME INC"
+        assert plan.skipped[0]["itglue_id"] == "2"
+        assert plan.skipped[0]["reason"] == "duplicate_name"
+
+    def test_diff_organizations_skips_multiple_duplicates(self) -> None:
+        """Multiple duplicates of the same name are all skipped."""
+        state = ExistingState()
+
+        csv_orgs = [
+            {"id": "1", "name": "Acme Inc"},
+            {"id": "2", "name": "ACME INC"},
+            {"id": "3", "name": "acme inc"},  # Third duplicate
+        ]
+
+        differ = SyncDiffer(state)
+        plan = differ.diff_organizations(csv_orgs)
+
+        assert len(plan.to_create) == 1
+        assert plan.to_create[0]["name"] == "Acme Inc"
+        assert len(plan.skipped) == 2
+
+    def test_diff_organizations_keeps_first_existing_match(self) -> None:
+        """First org goes to existing if it matches, duplicates skipped."""
+        state = ExistingState()
+        state.org_by_itglue_id["1"] = "uuid-1"
+
+        csv_orgs = [
+            {"id": "1", "name": "Acme Inc"},  # Existing
+            {"id": "2", "name": "acme inc"},  # Duplicate - skipped
+        ]
+
+        differ = SyncDiffer(state)
+        plan = differ.diff_organizations(csv_orgs)
+
+        assert len(plan.existing) == 1
+        assert len(plan.to_create) == 0
+        assert len(plan.skipped) == 1
+        assert plan.skipped[0]["itglue_id"] == "2"
+
+    def test_diff_documents_skips_duplicates_within_same_org(self) -> None:
+        """Duplicate doc names within same org are skipped."""
+        state = ExistingState()
+
+        csv_docs = [
+            {"id": "1", "name": "Network Diagram", "organization_id": "org-1"},
+            {"id": "2", "name": "NETWORK DIAGRAM", "organization_id": "org-1"},  # Duplicate
+            {"id": "3", "name": "Network Diagram", "organization_id": "org-2"},  # Different org - OK
+        ]
+
+        differ = SyncDiffer(state)
+        plan = differ.diff_documents(csv_docs)
+
+        assert len(plan.to_create) == 2
+        assert len(plan.skipped) == 1
+        assert plan.skipped[0]["name"] == "NETWORK DIAGRAM"
+        assert plan.skipped[0]["itglue_id"] == "2"
+        assert plan.skipped[0]["organization_id"] == "org-1"
+        assert plan.skipped[0]["reason"] == "duplicate_name"
+
+    def test_diff_documents_allows_same_name_different_orgs(self) -> None:
+        """Same doc name in different orgs is not a duplicate."""
+        state = ExistingState()
+
+        csv_docs = [
+            {"id": "1", "name": "Runbook", "organization_id": "org-1"},
+            {"id": "2", "name": "Runbook", "organization_id": "org-2"},
+            {"id": "3", "name": "Runbook", "organization_id": "org-3"},
+        ]
+
+        differ = SyncDiffer(state)
+        plan = differ.diff_documents(csv_docs)
+
+        assert len(plan.to_create) == 3
+        assert len(plan.skipped) == 0
+
+    def test_diff_documents_keeps_first_existing_skips_duplicate(self) -> None:
+        """First doc goes to existing/update, duplicate skipped."""
+        state = ExistingState()
+        state.document_by_itglue_id["1"] = "doc-uuid-1"
+        state.documents["doc-uuid-1"] = {"name": "Runbook", "content": "old content"}
+
+        csv_docs = [
+            {"id": "1", "name": "Runbook", "organization_id": "org-1", "content": "old content"},
+            {"id": "2", "name": "RUNBOOK", "organization_id": "org-1", "content": "other"},  # Duplicate
+        ]
+
+        differ = SyncDiffer(state)
+        plan = differ.diff_documents(csv_docs)
+
+        assert len(plan.existing) == 1
+        assert len(plan.to_create) == 0
+        assert len(plan.skipped) == 1
+        assert plan.skipped[0]["itglue_id"] == "2"
+
+    def test_diff_documents_handles_empty_org_id(self) -> None:
+        """Documents with empty org_id are tracked separately."""
+        state = ExistingState()
+
+        csv_docs = [
+            {"id": "1", "name": "Global Doc", "organization_id": ""},
+            {"id": "2", "name": "GLOBAL DOC", "organization_id": ""},  # Duplicate in empty org
+            {"id": "3", "name": "Global Doc", "organization_id": "org-1"},  # Different org - OK
+        ]
+
+        differ = SyncDiffer(state)
+        plan = differ.diff_documents(csv_docs)
+
+        assert len(plan.to_create) == 2
+        assert len(plan.skipped) == 1
+        assert plan.skipped[0]["itglue_id"] == "2"
+
+    def test_diff_documents_handles_missing_name(self) -> None:
+        """Documents without names are processed (no duplicate check)."""
+        state = ExistingState()
+
+        csv_docs = [
+            {"id": "1", "name": "", "organization_id": "org-1"},
+            {"id": "2", "name": "", "organization_id": "org-1"},  # Both empty - processed
+        ]
+
+        differ = SyncDiffer(state)
+        plan = differ.diff_documents(csv_docs)
+
+        # Both are processed (empty names are tracked but both go to to_create)
+        assert len(plan.to_create) == 2
+        assert len(plan.skipped) == 0
