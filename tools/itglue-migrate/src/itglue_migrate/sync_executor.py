@@ -8,6 +8,7 @@ relationships. Supports dry-run mode for previewing changes.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
@@ -20,6 +21,21 @@ if TYPE_CHECKING:
     from itglue_migrate.sync_differ import SyncPlan
 
 logger = logging.getLogger(__name__)
+
+
+def _is_content_empty(html_content: str) -> bool:
+    """Check if HTML content is empty after stripping tags.
+
+    Args:
+        html_content: HTML string to check.
+
+    Returns:
+        True if content is empty or whitespace-only after stripping HTML.
+    """
+    if not html_content:
+        return True
+    text = re.sub(r"<[^>]+>", "", html_content)
+    return not text.strip()
 
 
 class APIClientProtocol(Protocol):
@@ -522,6 +538,16 @@ class SyncExecutor:
             if self.reporter:
                 self.reporter.set_current_item(f"Document: {doc_name}")
 
+            # Check for empty content
+            raw_content = entity.get("content", "")
+            if _is_content_empty(raw_content):
+                result.skipped["documents"] = result.skipped.get("documents", 0) + 1
+                logger.warning(f"Skipping document '{doc_name}': empty content")
+                if self.reporter:
+                    self.reporter.update_progress(skipped=1)
+                    self.reporter.warning(f"Document '{doc_name}' has empty content")
+                continue
+
             try:
                 if self.dry_run:
                     result.created["documents"] = (
@@ -597,6 +623,16 @@ class SyncExecutor:
 
             if self.reporter:
                 self.reporter.set_current_item(f"Password: {name}")
+
+            # Check for empty password value
+            password_value = entity.get("password", "")
+            if not password_value:
+                result.skipped["passwords"] = result.skipped.get("passwords", 0) + 1
+                logger.warning(f"Skipping password '{name}': empty password value")
+                if self.reporter:
+                    self.reporter.update_progress(skipped=1)
+                    self.reporter.warning(f"Password '{name}' has empty password value")
+                continue
 
             try:
                 itglue_id = str(entity.get("id", ""))
