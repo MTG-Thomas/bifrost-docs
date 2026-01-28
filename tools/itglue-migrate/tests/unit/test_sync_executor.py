@@ -1304,3 +1304,263 @@ class TestSyncExecutorEmptyValueSkipping:
         assert result.created.get("passwords", 0) == 1
         assert result.skipped.get("passwords", 0) == 0
         mock_client.create_password.assert_called_once()
+
+
+class TestSyncExecutorAttachmentUpload:
+    """Tests for attachment upload functionality."""
+
+    @pytest.fixture
+    def mock_doc_processor(self) -> MagicMock:
+        """Create a mock DocumentProcessor."""
+        processor = MagicMock()
+        processor.upload_entity_attachments = AsyncMock(return_value=3)
+        return processor
+
+    @pytest.mark.asyncio
+    async def test_upload_attachments_after_configuration_create(
+        self, mock_client: MagicMock, mock_doc_processor: MagicMock, tmp_path: MagicMock
+    ) -> None:
+        """Attachments are uploaded after configuration creation."""
+        mock_client.create_configuration = AsyncMock(return_value={"id": "new-config-uuid"})
+
+        plan = SyncPlan()
+        plan.configurations.to_create = [
+            {"id": "itglue-123", "name": "Server"}
+        ]
+
+        executor = SyncExecutor(
+            mock_client,
+            org_id="org-uuid",
+            dry_run=False,
+            doc_processor=mock_doc_processor,
+            export_path=tmp_path,
+        )
+        result = await executor.execute(plan)
+
+        assert result.created.get("configurations", 0) == 1
+        mock_doc_processor.upload_entity_attachments.assert_called_once_with(
+            entity_type="configurations",
+            entity_id="itglue-123",
+            org_uuid="org-uuid",
+            our_entity_id="new-config-uuid",
+        )
+
+    @pytest.mark.asyncio
+    async def test_upload_attachments_after_location_create(
+        self, mock_client: MagicMock, mock_doc_processor: MagicMock, tmp_path: MagicMock
+    ) -> None:
+        """Attachments are uploaded after location creation."""
+        mock_client.create_location = AsyncMock(return_value={"id": "new-loc-uuid"})
+
+        plan = SyncPlan()
+        plan.locations.to_create = [
+            {"id": "itglue-456", "name": "Main Office"}
+        ]
+
+        executor = SyncExecutor(
+            mock_client,
+            org_id="org-uuid",
+            dry_run=False,
+            doc_processor=mock_doc_processor,
+            export_path=tmp_path,
+        )
+        result = await executor.execute(plan)
+
+        assert result.created.get("locations", 0) == 1
+        mock_doc_processor.upload_entity_attachments.assert_called_once_with(
+            entity_type="locations",
+            entity_id="itglue-456",
+            org_uuid="org-uuid",
+            our_entity_id="new-loc-uuid",
+        )
+
+    @pytest.mark.asyncio
+    async def test_upload_attachments_after_document_create(
+        self, mock_client: MagicMock, mock_doc_processor: MagicMock, tmp_path: MagicMock
+    ) -> None:
+        """Attachments are uploaded after document creation."""
+        mock_client.create_document = AsyncMock(return_value={"id": "new-doc-uuid"})
+        mock_doc_processor.process_document = AsyncMock(return_value=("Processed content", []))
+
+        plan = SyncPlan()
+        plan.documents.to_create = [
+            {"id": "itglue-789", "name": "Runbook", "content": "# Guide"}
+        ]
+
+        executor = SyncExecutor(
+            mock_client,
+            org_id="org-uuid",
+            dry_run=False,
+            doc_processor=mock_doc_processor,
+            export_path=tmp_path,
+        )
+        result = await executor.execute(plan)
+
+        assert result.created.get("documents", 0) == 1
+        mock_doc_processor.upload_entity_attachments.assert_called_once_with(
+            entity_type="documents",
+            entity_id="itglue-789",
+            org_uuid="org-uuid",
+            our_entity_id="new-doc-uuid",
+        )
+
+    @pytest.mark.asyncio
+    async def test_upload_attachments_after_password_create(
+        self, mock_client: MagicMock, mock_doc_processor: MagicMock, tmp_path: MagicMock
+    ) -> None:
+        """Attachments are uploaded after password creation."""
+        mock_client.create_password = AsyncMock(return_value={"id": "new-pwd-uuid"})
+
+        plan = SyncPlan()
+        plan.passwords.to_create = [
+            {"id": "itglue-pwd-1", "name": "Admin", "password": "secret123"}
+        ]
+
+        executor = SyncExecutor(
+            mock_client,
+            org_id="org-uuid",
+            dry_run=False,
+            doc_processor=mock_doc_processor,
+            export_path=tmp_path,
+        )
+        result = await executor.execute(plan)
+
+        assert result.created.get("passwords", 0) == 1
+        mock_doc_processor.upload_entity_attachments.assert_called_once_with(
+            entity_type="passwords",
+            entity_id="itglue-pwd-1",
+            org_uuid="org-uuid",
+            our_entity_id="new-pwd-uuid",
+        )
+
+    @pytest.mark.asyncio
+    async def test_upload_attachments_after_custom_asset_create(
+        self, mock_client: MagicMock, mock_doc_processor: MagicMock, tmp_path: MagicMock
+    ) -> None:
+        """Attachments are uploaded after custom asset creation with type slug."""
+        mock_client.create_custom_asset = AsyncMock(return_value={"id": "new-asset-uuid"})
+
+        plan = SyncPlan()
+        plan.custom_assets.to_create = [
+            {
+                "id": "itglue-asset-1",
+                "asset_type": "ssl-certificates",
+                "type_id": "type-uuid",
+                "values": {"name": "Cert"}
+            }
+        ]
+
+        executor = SyncExecutor(
+            mock_client,
+            org_id="org-uuid",
+            dry_run=False,
+            doc_processor=mock_doc_processor,
+            export_path=tmp_path,
+        )
+        result = await executor.execute(plan)
+
+        assert result.created.get("custom_assets", 0) == 1
+        mock_doc_processor.upload_entity_attachments.assert_called_once_with(
+            entity_type="ssl-certificates",
+            entity_id="itglue-asset-1",
+            org_uuid="org-uuid",
+            our_entity_id="new-asset-uuid",
+        )
+
+    @pytest.mark.asyncio
+    async def test_no_attachment_upload_without_doc_processor(
+        self, mock_client: MagicMock, tmp_path: MagicMock
+    ) -> None:
+        """No attachments uploaded when doc_processor is not provided."""
+        mock_client.create_configuration = AsyncMock(return_value={"id": "new-config-uuid"})
+
+        plan = SyncPlan()
+        plan.configurations.to_create = [
+            {"id": "itglue-123", "name": "Server"}
+        ]
+
+        # No doc_processor
+        executor = SyncExecutor(
+            mock_client,
+            org_id="org-uuid",
+            dry_run=False,
+            export_path=tmp_path,
+        )
+        result = await executor.execute(plan)
+
+        assert result.created.get("configurations", 0) == 1
+
+    @pytest.mark.asyncio
+    async def test_no_attachment_upload_without_export_path(
+        self, mock_client: MagicMock, mock_doc_processor: MagicMock
+    ) -> None:
+        """No attachments uploaded when export_path is not provided."""
+        mock_client.create_configuration = AsyncMock(return_value={"id": "new-config-uuid"})
+
+        plan = SyncPlan()
+        plan.configurations.to_create = [
+            {"id": "itglue-123", "name": "Server"}
+        ]
+
+        # No export_path
+        executor = SyncExecutor(
+            mock_client,
+            org_id="org-uuid",
+            dry_run=False,
+            doc_processor=mock_doc_processor,
+        )
+        result = await executor.execute(plan)
+
+        assert result.created.get("configurations", 0) == 1
+        mock_doc_processor.upload_entity_attachments.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_no_attachment_upload_in_dry_run(
+        self, mock_client: MagicMock, mock_doc_processor: MagicMock, tmp_path: MagicMock
+    ) -> None:
+        """No attachments uploaded in dry run mode."""
+        plan = SyncPlan()
+        plan.configurations.to_create = [
+            {"id": "itglue-123", "name": "Server"}
+        ]
+
+        executor = SyncExecutor(
+            mock_client,
+            org_id="org-uuid",
+            dry_run=True,
+            doc_processor=mock_doc_processor,
+            export_path=tmp_path,
+        )
+        result = await executor.execute(plan)
+
+        assert result.created.get("configurations", 0) == 1
+        mock_doc_processor.upload_entity_attachments.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_attachment_upload_error_handled_gracefully(
+        self, mock_client: MagicMock, mock_doc_processor: MagicMock, tmp_path: MagicMock
+    ) -> None:
+        """Attachment upload errors don't prevent entity creation from succeeding."""
+        mock_client.create_configuration = AsyncMock(return_value={"id": "new-config-uuid"})
+        mock_doc_processor.upload_entity_attachments = AsyncMock(
+            side_effect=Exception("Upload failed")
+        )
+
+        plan = SyncPlan()
+        plan.configurations.to_create = [
+            {"id": "itglue-123", "name": "Server"}
+        ]
+
+        executor = SyncExecutor(
+            mock_client,
+            org_id="org-uuid",
+            dry_run=False,
+            doc_processor=mock_doc_processor,
+            export_path=tmp_path,
+        )
+        result = await executor.execute(plan)
+
+        # Configuration creation should still succeed
+        assert result.created.get("configurations", 0) == 1
+        assert "itglue-123" in result.id_map
+        assert result.id_map["itglue-123"] == "new-config-uuid"

@@ -226,6 +226,37 @@ class SyncExecutor:
         self.doc_processor = doc_processor
         self.export_path = export_path
 
+    async def _upload_entity_attachments(
+        self,
+        entity_type: str,
+        itglue_id: str,
+        our_entity_id: str,
+    ) -> int:
+        """Upload attachments for an entity if doc_processor is available.
+
+        Args:
+            entity_type: IT Glue entity type (e.g., "configurations", "locations").
+            itglue_id: IT Glue entity ID.
+            our_entity_id: Our BifrostDocs entity UUID.
+
+        Returns:
+            Count of successfully uploaded attachments.
+        """
+        if not self.doc_processor or not self.export_path:
+            return 0
+
+        try:
+            count = await self.doc_processor.upload_entity_attachments(
+                entity_type=entity_type,
+                entity_id=itglue_id,
+                org_uuid=self.org_id,
+                our_entity_id=our_entity_id,
+            )
+            return count
+        except Exception as e:
+            logger.warning(f"Failed to upload attachments for {entity_type}/{itglue_id}: {e}")
+            return 0
+
     async def execute(self, plan: SyncPlan) -> SyncResult:
         """Execute a sync plan.
 
@@ -474,8 +505,16 @@ class SyncExecutor:
                     interfaces=interfaces,
                 )
 
-                if itglue_id and response.get("id"):
-                    result.id_map[itglue_id] = response["id"]
+                if bifrost_id := response.get("id"):
+                    result.id_map[itglue_id] = bifrost_id
+
+                    # Upload attachments
+                    if self.doc_processor and self.export_path:
+                        attachment_count = await self._upload_entity_attachments(
+                            "configurations", itglue_id, bifrost_id
+                        )
+                        if attachment_count > 0 and self.reporter:
+                            self.reporter.info(f"Uploaded {attachment_count} attachments")
 
                 result.created["configurations"] = (
                     result.created.get("configurations", 0) + 1
@@ -536,8 +575,16 @@ class SyncExecutor:
                     phone=entity.get("phone"),
                 )
 
-                if itglue_id and response.get("id"):
-                    result.id_map[itglue_id] = response["id"]
+                if bifrost_id := response.get("id"):
+                    result.id_map[itglue_id] = bifrost_id
+
+                    # Upload attachments
+                    if self.doc_processor and self.export_path:
+                        attachment_count = await self._upload_entity_attachments(
+                            "locations", itglue_id, bifrost_id
+                        )
+                        if attachment_count > 0 and self.reporter:
+                            self.reporter.info(f"Uploaded {attachment_count} attachments")
 
                 result.created["locations"] = result.created.get("locations", 0) + 1
                 if self.reporter:
@@ -624,8 +671,16 @@ class SyncExecutor:
                     is_enabled=is_enabled,
                 )
 
-                if itglue_id and response.get("id"):
-                    result.id_map[itglue_id] = response["id"]
+                if bifrost_id := response.get("id"):
+                    result.id_map[itglue_id] = bifrost_id
+
+                    # Upload attachments
+                    if self.doc_processor and self.export_path:
+                        attachment_count = await self._upload_entity_attachments(
+                            "documents", itglue_id, bifrost_id
+                        )
+                        if attachment_count > 0 and self.reporter:
+                            self.reporter.info(f"Uploaded {attachment_count} attachments")
 
                 result.created["documents"] = result.created.get("documents", 0) + 1
                 if self.reporter:
@@ -699,8 +754,16 @@ class SyncExecutor:
                     is_enabled=is_enabled,
                 )
 
-                if itglue_id and response.get("id"):
-                    result.id_map[itglue_id] = response["id"]
+                if bifrost_id := response.get("id"):
+                    result.id_map[itglue_id] = bifrost_id
+
+                    # Upload attachments
+                    if self.doc_processor and self.export_path:
+                        attachment_count = await self._upload_entity_attachments(
+                            "passwords", itglue_id, bifrost_id
+                        )
+                        if attachment_count > 0 and self.reporter:
+                            self.reporter.info(f"Uploaded {attachment_count} attachments")
 
                 result.created["passwords"] = result.created.get("passwords", 0) + 1
                 if self.reporter:
@@ -1084,10 +1147,21 @@ class SyncExecutor:
                     is_enabled=is_enabled,
                 )
 
-                if itglue_id and response.get("id"):
-                    result.id_map[itglue_id] = response["id"]
+                if bifrost_id := response.get("id"):
+                    result.id_map[itglue_id] = bifrost_id
                     # Track type_id for cell writes
                     result.asset_type_map[itglue_id] = type_id
+
+                    # Upload attachments
+                    # For custom assets, use the asset_type slug as entity_type
+                    if self.doc_processor and self.export_path:
+                        asset_type_slug = entity.get("asset_type") or entity.get("_type_slug", "")
+                        if asset_type_slug:
+                            attachment_count = await self._upload_entity_attachments(
+                                asset_type_slug, itglue_id, bifrost_id
+                            )
+                            if attachment_count > 0 and self.reporter:
+                                self.reporter.info(f"Uploaded {attachment_count} attachments")
 
                 result.created["custom_assets"] = (
                     result.created.get("custom_assets", 0) + 1
