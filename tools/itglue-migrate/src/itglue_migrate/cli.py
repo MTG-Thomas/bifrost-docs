@@ -2698,6 +2698,16 @@ async def _run_sync(
             # Create differ and generate plan
             differ = SyncDiffer(state)
 
+            # Validate data quality and display warnings
+            warnings = differ.validate_data_quality(
+                orgs_to_sync, org_documents, org_passwords
+            )
+            if warnings:
+                console.print("[yellow]Data Quality Warnings:[/yellow]")
+                for warning in warnings:
+                    console.print(f"  [yellow]⚠️  {warning}[/yellow]")
+                console.print()
+
             # Debug: show custom asset type names being compared
             csv_cat_names = set()
             for asset in org_custom_assets:
