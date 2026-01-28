@@ -2742,7 +2742,21 @@ async def _run_sync(
                 # Create progress reporter for live updates
                 reporter = create_progress_reporter(console=console, verbose=False)
 
-                executor = SyncExecutor(client, org_id=org_uuid, dry_run=False, state=state, update_existing=update_existing, reporter=reporter)  # type: ignore[arg-type]
+                # Create document processor for HTML processing and attachments
+                doc_processor: DocumentProcessor | None = None
+                if export_path:
+                    doc_processor = DocumentProcessor(client, export_path)
+
+                executor = SyncExecutor(
+                    client,  # type: ignore[arg-type]
+                    org_id=org_uuid,
+                    dry_run=False,
+                    state=state,
+                    update_existing=update_existing,
+                    reporter=reporter,
+                    doc_processor=doc_processor,
+                    export_path=export_path,
+                )
 
                 # Use context manager to start/stop the live display
                 with reporter:
