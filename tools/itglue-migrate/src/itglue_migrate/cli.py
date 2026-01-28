@@ -490,6 +490,7 @@ def preview(
             "--api-url",
             "-u",
             help="BifrostDocs API URL (e.g., https://api.example.com)",
+            envvar="BIFROST_API_URL",
         ),
     ],
     token: Annotated[
@@ -2138,6 +2139,7 @@ def run(
             "--api-url",
             "-u",
             help="BifrostDocs API URL (overrides plan file)",
+            envvar="BIFROST_API_URL",
         ),
     ] = None,
     token: Annotated[
@@ -2265,7 +2267,7 @@ def run(
     effective_api_url = api_url or plan_data.get("api_url")
     if not effective_api_url:
         error_console.print(
-            "[red]Error:[/red] No API URL specified. Use --api-url or ensure plan file has api_url."
+            "[red]Error:[/red] No API URL specified. Use --api-url, set BIFROST_API_URL, or ensure plan file has api_url."
         )
         raise typer.Exit(1)
 
@@ -2815,6 +2817,7 @@ def sync(
             "--api-url",
             "-u",
             help="BifrostDocs API URL (e.g., https://api.example.com)",
+            envvar="BIFROST_API_URL",
         ),
     ],
     token: Annotated[
