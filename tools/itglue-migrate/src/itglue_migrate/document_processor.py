@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 import mimetypes
 import re
+from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -34,6 +35,9 @@ logger = logging.getLogger(__name__)
 IMG_SRC_PATTERN = re.compile(
     r'<img\s+[^>]*src=["\']([^"\']+)["\'][^>]*>', re.IGNORECASE
 )
+
+# Pattern for extracting doc_id from DOC folder names (captures only doc_id)
+DOC_FOLDER_MAP_PATTERN = re.compile(r"^DOC-\d+-(\d+)\s")
 
 # Common image MIME types by extension or content
 IMAGE_MIME_TYPES = {
@@ -159,6 +163,63 @@ class DocumentProcessor:
         self.export_path = export_path
         self.scanner = AttachmentScanner()
         self._image_url_cache: dict[str, str] = {}  # local path -> uploaded URL
+
+    @cached_property
+    def document_folder_map(self) -> dict[str, tuple[str, Path | None]]:
+        """Build map of document IDs to (folder_path, html_file).
+
+        Scans the documents/ directory in the export for DOC-{org}-{id} folders
+        and extracts the folder path based on nesting level.
+
+        Returns:
+            Dict mapping doc_id (string) to tuple of (folder_path, html_file_path).
+            folder_path is "/" for root level, "/_Archive" for nested, etc.
+            html_file_path is Path to HTML file or None if not found.
+        """
+        result: dict[str, tuple[str, Path | None]] = {}
+        documents_path = self.export_path / "documents"
+
+        if not documents_path.exists():
+            return result
+
+        for item in documents_path.rglob("*"):
+            if not item.is_dir():
+                continue
+
+            match = DOC_FOLDER_MAP_PATTERN.match(item.name)
+            if not match:
+                continue
+
+            doc_id = match.group(1)
+
+            # Determine folder path from relative position
+            rel_path = item.relative_to(documents_path)
+            parts = rel_path.parts
+
+            if len(parts) == 1:
+                # Root level: documents/DOC-xxx-123 Name/
+                folder_path = "/"
+            else:
+                # Nested: documents/FolderName/DOC-xxx-123 Name/
+                folder_parts = parts[:-1]
+                folder_path = "/" + "/".join(folder_parts)
+
+            # Find HTML file - prefer index.html
+            html_files = list(item.glob("*.html"))
+            if not html_files:
+                html_files = list(item.glob("*.htm"))
+
+            html_file: Path | None = None
+            for f in html_files:
+                if f.name.lower() in ("index.html", "index.htm"):
+                    html_file = f
+                    break
+            if html_file is None and html_files:
+                html_file = html_files[0]
+
+            result[doc_id] = (folder_path, html_file)
+
+        return result
 
     async def process_document(
         self, doc: dict, org_uuid: str
@@ -807,3 +868,32 @@ class DocumentProcessor:
     def cache_size(self) -> int:
         """Get the number of cached image URLs."""
         return len(self._image_url_cache)
+
+    def load_document_content(self, doc_id: str) -> str | None:
+        """Load HTML content for a document from the export folder.
+
+        Args:
+            doc_id: The IT Glue document ID (numeric string).
+
+        Returns:
+            HTML content as string, or None if document not found or no HTML file.
+        """
+        folder_info = self.document_folder_map.get(doc_id)
+        if folder_info is None:
+            return None
+
+        _folder_path, html_file = folder_info
+        if html_file is None or not html_file.exists():
+            return None
+
+        try:
+            return html_file.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            try:
+                return html_file.read_text(encoding="latin-1")
+            except Exception as e:
+                logger.warning(f"Failed to read HTML file {html_file}: {e}")
+                return None
+        except Exception as e:
+            logger.warning(f"Failed to read HTML file {html_file}: {e}")
+            return None

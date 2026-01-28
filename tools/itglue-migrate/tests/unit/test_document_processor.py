@@ -6,7 +6,7 @@ import tempfile
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
 
@@ -62,6 +62,96 @@ def mock_client() -> Any:
 def processor(mock_client: Any, temp_dir: Path) -> DocumentProcessor:
     """Create a document processor instance."""
     return DocumentProcessor(mock_client, temp_dir)
+
+
+class TestDocumentFolderMap:
+    """Tests for _build_document_folder_map functionality."""
+
+    def test_build_folder_map_root_level_document(self, tmp_path: Path) -> None:
+        """Document at root level should have path '/'."""
+        # Create export structure: documents/DOC-123-456 My Document/index.html
+        docs_dir = tmp_path / "documents"
+        doc_folder = docs_dir / "DOC-123-456 My Document"
+        doc_folder.mkdir(parents=True)
+        (doc_folder / "index.html").write_text("<html>content</html>")
+
+        mock_client = Mock()
+        processor = DocumentProcessor(mock_client, tmp_path)
+
+        folder_map = processor.document_folder_map
+
+        assert "456" in folder_map
+        folder_path, html_file = folder_map["456"]
+        assert folder_path == "/"
+        assert html_file is not None
+        assert html_file.name == "index.html"
+
+    def test_build_folder_map_nested_document(self, tmp_path: Path) -> None:
+        """Document in subfolder should have correct nested path."""
+        # Create: documents/_Archive/DOC-123-789 Archived Doc/doc.html
+        docs_dir = tmp_path / "documents" / "_Archive"
+        doc_folder = docs_dir / "DOC-123-789 Archived Doc"
+        doc_folder.mkdir(parents=True)
+        (doc_folder / "doc.html").write_text("<html>archived</html>")
+
+        mock_client = Mock()
+        processor = DocumentProcessor(mock_client, tmp_path)
+
+        folder_map = processor.document_folder_map
+
+        assert "789" in folder_map
+        folder_path, html_file = folder_map["789"]
+        assert folder_path == "/_Archive"
+
+    def test_build_folder_map_deeply_nested_document(self, tmp_path: Path) -> None:
+        """Document in deep subfolder should have full path."""
+        # Create: documents/_Archive/Projects/2024/DOC-1-999 Deep Doc/index.html
+        docs_dir = tmp_path / "documents" / "_Archive" / "Projects" / "2024"
+        doc_folder = docs_dir / "DOC-1-999 Deep Doc"
+        doc_folder.mkdir(parents=True)
+        (doc_folder / "index.html").write_text("<html>deep</html>")
+
+        mock_client = Mock()
+        processor = DocumentProcessor(mock_client, tmp_path)
+
+        folder_map = processor.document_folder_map
+
+        assert "999" in folder_map
+        folder_path, _ = folder_map["999"]
+        assert folder_path == "/_Archive/Projects/2024"
+
+    def test_build_folder_map_no_html_file(self, tmp_path: Path) -> None:
+        """Document folder without HTML returns None for html_file."""
+        docs_dir = tmp_path / "documents"
+        doc_folder = docs_dir / "DOC-123-111 No HTML"
+        doc_folder.mkdir(parents=True)
+        # No HTML file created
+
+        mock_client = Mock()
+        processor = DocumentProcessor(mock_client, tmp_path)
+
+        folder_map = processor.document_folder_map
+
+        assert "111" in folder_map
+        folder_path, html_file = folder_map["111"]
+        assert folder_path == "/"
+        assert html_file is None
+
+    def test_build_folder_map_empty_documents_dir(self, tmp_path: Path) -> None:
+        """Empty documents directory returns empty map."""
+        (tmp_path / "documents").mkdir()
+
+        mock_client = Mock()
+        processor = DocumentProcessor(mock_client, tmp_path)
+
+        assert processor.document_folder_map == {}
+
+    def test_build_folder_map_no_documents_dir(self, tmp_path: Path) -> None:
+        """Missing documents directory returns empty map."""
+        mock_client = Mock()
+        processor = DocumentProcessor(mock_client, tmp_path)
+
+        assert processor.document_folder_map == {}
 
 
 class TestGuessMimeType:
@@ -1036,6 +1126,83 @@ class TestUploadEntityAttachments:
         )
 
         assert count == 0
+
+
+class TestLoadDocumentContent:
+    """Tests for load_document_content functionality."""
+
+    def test_load_content_from_html_file(self, tmp_path: Path) -> None:
+        """Should load HTML content from document folder."""
+        docs_dir = tmp_path / "documents"
+        doc_folder = docs_dir / "DOC-123-456 Test Doc"
+        doc_folder.mkdir(parents=True)
+        html_content = "<html><body><p>Test content</p></body></html>"
+        (doc_folder / "index.html").write_text(html_content)
+
+        mock_client = MagicMock()
+        processor = DocumentProcessor(mock_client, tmp_path)
+
+        content = processor.load_document_content("456")
+
+        assert content == html_content
+
+    def test_load_content_document_not_found(self, tmp_path: Path) -> None:
+        """Should return None if document ID not in folder map."""
+        (tmp_path / "documents").mkdir()
+
+        mock_client = MagicMock()
+        processor = DocumentProcessor(mock_client, tmp_path)
+
+        content = processor.load_document_content("nonexistent")
+
+        assert content is None
+
+    def test_load_content_no_html_file(self, tmp_path: Path) -> None:
+        """Should return None if document folder has no HTML file."""
+        docs_dir = tmp_path / "documents"
+        doc_folder = docs_dir / "DOC-123-789 No HTML"
+        doc_folder.mkdir(parents=True)
+        # No HTML file
+
+        mock_client = MagicMock()
+        processor = DocumentProcessor(mock_client, tmp_path)
+
+        content = processor.load_document_content("789")
+
+        assert content is None
+
+    def test_load_content_utf8_encoding(self, tmp_path: Path) -> None:
+        """Should handle UTF-8 encoded content."""
+        docs_dir = tmp_path / "documents"
+        doc_folder = docs_dir / "DOC-1-100 Unicode Doc"
+        doc_folder.mkdir(parents=True)
+        html_content = "<html><body>Café ☃ ❤</body></html>"
+        (doc_folder / "index.html").write_text(html_content, encoding="utf-8")
+
+        mock_client = MagicMock()
+        processor = DocumentProcessor(mock_client, tmp_path)
+
+        content = processor.load_document_content("100")
+
+        assert "Café" in content
+        assert "☃" in content
+
+    def test_load_content_latin1_fallback(self, tmp_path: Path) -> None:
+        """Should fall back to latin-1 if UTF-8 fails."""
+        docs_dir = tmp_path / "documents"
+        doc_folder = docs_dir / "DOC-1-200 Latin Doc"
+        doc_folder.mkdir(parents=True)
+        # Write with latin-1 encoding (has bytes invalid in UTF-8)
+        html_content = "<html><body>Café</body></html>"
+        (doc_folder / "index.html").write_bytes(html_content.encode("latin-1"))
+
+        mock_client = MagicMock()
+        processor = DocumentProcessor(mock_client, tmp_path)
+
+        content = processor.load_document_content("200")
+
+        assert content is not None
+        assert "Café" in content
 
 
 class TestUploadEntityAttachmentsWithState:
