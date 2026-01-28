@@ -1184,6 +1184,7 @@ class TestLoadDocumentContent:
 
         content = processor.load_document_content("100")
 
+        assert content is not None
         assert "Café" in content
         assert "☃" in content
 
