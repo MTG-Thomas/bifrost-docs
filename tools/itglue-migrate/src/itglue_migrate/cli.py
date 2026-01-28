@@ -33,7 +33,7 @@ from itglue_migrate.progress import Phase, create_progress_reporter
 from itglue_migrate.state import MigrationState, MigrationStateError
 from itglue_migrate.warnings import ParsedData, Warning, WarningDetector, summarize
 from itglue_migrate.state_fetcher import ExistingState, StateFetcher
-from itglue_migrate.sync_differ import SyncDiffer, SyncPlan
+from itglue_migrate.sync_differ import EntityPlan, SyncDiffer, SyncPlan
 from itglue_migrate.sync_executor import SyncExecutor, SyncResult
 
 # Create Typer app
@@ -2733,7 +2733,15 @@ async def _run_sync(
             if missing_in_api:
                 console.print(f"  [dim]CSV types NOT in API (will create): {sorted(missing_in_api)}[/dim]")
 
+            # Build organization plan for this specific org
+            this_org_plan = EntityPlan()
+            if any(o.get("name") == org_name for o in org_plan.to_create):
+                this_org_plan.to_create = [org]
+            elif any(o.get("name") == org_name for o in org_plan.existing):
+                this_org_plan.existing = [org]
+
             plan = SyncPlan(
+                organizations=this_org_plan,
                 config_types=differ.diff_config_types(org_configs),
                 config_statuses=differ.diff_config_statuses(org_configs),
                 custom_asset_types=differ.diff_custom_asset_types(
