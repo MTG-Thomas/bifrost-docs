@@ -1,5 +1,7 @@
 """Unit tests for sync_differ module."""
 
+import pytest
+
 from itglue_migrate.state_fetcher import ExistingState
 from itglue_migrate.sync_differ import (
     EntityPlan,
@@ -101,6 +103,13 @@ class TestSyncPlan:
         assert isinstance(plan.documents, EntityPlan)
         assert isinstance(plan.passwords, PasswordPlan)
         assert isinstance(plan.relationships, RelationshipPlan)
+        assert plan.validation_warnings == []
+
+    def test_init_with_validation_warnings(self) -> None:
+        """SyncPlan should accept validation_warnings on init."""
+        plan = SyncPlan(validation_warnings=["Test warning"])
+
+        assert plan.validation_warnings == ["Test warning"]
 
 
 class TestSyncDifferOrganizations:
@@ -995,3 +1004,141 @@ class TestSyncDifferDuplicateDetection:
         # Both are processed (empty names are tracked but both go to to_create)
         assert len(plan.to_create) == 2
         assert len(plan.skipped) == 0
+
+
+class TestSyncDifferValidation:
+    """Tests for data quality validation."""
+
+    @pytest.fixture
+    def mock_state(self) -> ExistingState:
+        """Create an empty ExistingState for testing."""
+        return ExistingState()
+
+    def test_validate_detects_duplicate_orgs(self, mock_state: ExistingState) -> None:
+        """Duplicate org names are detected (case-insensitive)."""
+        differ = SyncDiffer(mock_state)
+        orgs = [{"name": "Acme"}, {"name": "ACME"}]
+        warnings = differ.validate_data_quality(orgs, [], [])
+
+        assert len(warnings) == 1
+        assert any("duplicate" in w.lower() for w in warnings)
+
+    def test_validate_detects_multiple_duplicate_org_names(
+        self, mock_state: ExistingState
+    ) -> None:
+        """Multiple different duplicate org names are counted correctly."""
+        differ = SyncDiffer(mock_state)
+        orgs = [
+            {"name": "Acme"},
+            {"name": "ACME"},
+            {"name": "Beta Corp"},
+            {"name": "BETA CORP"},
+        ]
+        warnings = differ.validate_data_quality(orgs, [], [])
+
+        assert len(warnings) == 1
+        assert "2 duplicate" in warnings[0]
+
+    def test_validate_no_duplicates_returns_empty(
+        self, mock_state: ExistingState
+    ) -> None:
+        """No warnings when no duplicates exist."""
+        differ = SyncDiffer(mock_state)
+        orgs = [{"name": "Acme"}, {"name": "Beta"}]
+        warnings = differ.validate_data_quality(orgs, [], [])
+
+        assert len(warnings) == 0
+
+    def test_validate_detects_empty_passwords(self, mock_state: ExistingState) -> None:
+        """Empty password values are detected."""
+        differ = SyncDiffer(mock_state)
+        passwords = [{"name": "test", "password": ""}]
+        warnings = differ.validate_data_quality([], [], passwords)
+
+        assert len(warnings) == 1
+        assert any("empty" in w.lower() for w in warnings)
+        assert "1 passwords" in warnings[0]
+
+    def test_validate_detects_multiple_empty_passwords(
+        self, mock_state: ExistingState
+    ) -> None:
+        """Multiple empty passwords are counted."""
+        differ = SyncDiffer(mock_state)
+        passwords = [
+            {"name": "test1", "password": ""},
+            {"name": "test2", "password": None},
+            {"name": "test3", "password": "secret"},  # Not empty
+        ]
+        warnings = differ.validate_data_quality([], [], passwords)
+
+        assert len(warnings) == 1
+        assert "2 passwords" in warnings[0]
+
+    def test_validate_detects_empty_documents(self, mock_state: ExistingState) -> None:
+        """Documents with empty content are detected."""
+        differ = SyncDiffer(mock_state)
+        docs = [{"name": "Empty Doc", "content": ""}]
+        warnings = differ.validate_data_quality([], docs, [])
+
+        assert len(warnings) == 1
+        assert any("empty content" in w.lower() for w in warnings)
+
+    def test_validate_detects_html_only_documents(
+        self, mock_state: ExistingState
+    ) -> None:
+        """Documents with HTML tags but no text content are detected."""
+        differ = SyncDiffer(mock_state)
+        docs = [
+            {"name": "HTML Only", "content": "<p></p>"},
+            {"name": "Whitespace Only", "content": "<div>   </div>"},
+        ]
+        warnings = differ.validate_data_quality([], docs, [])
+
+        assert len(warnings) == 1
+        assert "2 documents" in warnings[0]
+
+    def test_validate_ignores_non_empty_documents(
+        self, mock_state: ExistingState
+    ) -> None:
+        """Documents with actual content are not flagged."""
+        differ = SyncDiffer(mock_state)
+        docs = [
+            {"name": "Real Doc", "content": "<p>Hello world</p>"},
+            {"name": "Plain Doc", "content": "Just text"},
+        ]
+        warnings = differ.validate_data_quality([], docs, [])
+
+        assert len(warnings) == 0
+
+    def test_validate_returns_all_warnings(self, mock_state: ExistingState) -> None:
+        """All validation issues are returned together."""
+        differ = SyncDiffer(mock_state)
+        orgs = [{"name": "Acme"}, {"name": "ACME"}]
+        docs = [{"name": "Empty", "content": ""}]
+        passwords = [{"name": "test", "password": ""}]
+
+        warnings = differ.validate_data_quality(orgs, docs, passwords)
+
+        assert len(warnings) == 3
+        assert any("duplicate" in w.lower() for w in warnings)
+        assert any("empty content" in w.lower() for w in warnings)
+        assert any("passwords" in w.lower() for w in warnings)
+
+    def test_validate_handles_empty_inputs(self, mock_state: ExistingState) -> None:
+        """Empty input lists return no warnings."""
+        differ = SyncDiffer(mock_state)
+        warnings = differ.validate_data_quality([], [], [])
+
+        assert len(warnings) == 0
+
+    def test_validate_handles_missing_fields(self, mock_state: ExistingState) -> None:
+        """Missing fields are handled gracefully."""
+        differ = SyncDiffer(mock_state)
+        orgs = [{}]  # No name field
+        docs = [{"name": "No Content"}]  # No content field
+        passwords = [{"name": "No Password"}]  # No password field
+
+        warnings = differ.validate_data_quality(orgs, docs, passwords)
+
+        # Empty password should be detected, empty doc content should be detected
+        assert len(warnings) == 2

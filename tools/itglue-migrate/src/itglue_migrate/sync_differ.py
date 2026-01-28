@@ -6,6 +6,7 @@ to represent sync plans.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -99,6 +100,7 @@ class SyncPlan:
     documents: EntityPlan = field(default_factory=EntityPlan)
     passwords: PasswordPlan = field(default_factory=PasswordPlan)
     relationships: RelationshipPlan = field(default_factory=RelationshipPlan)
+    validation_warnings: list[str] = field(default_factory=list)
 
 
 def _normalize_value(value: Any) -> str:
@@ -631,3 +633,52 @@ class SyncDiffer:
                 })
 
         return plan
+
+    def validate_data_quality(
+        self,
+        csv_orgs: list[dict[str, Any]],
+        csv_docs: list[dict[str, Any]],
+        csv_passwords: list[dict[str, Any]],
+    ) -> list[str]:
+        """Check data quality and return warnings.
+
+        This method performs pre-sync validation to detect common data quality
+        issues that may affect the import. It does not prevent the sync, but
+        provides warnings to help users understand potential problems.
+
+        Args:
+            csv_orgs: List of organization dicts from CSV export.
+            csv_docs: List of document dicts from CSV export.
+            csv_passwords: List of password dicts from CSV export.
+
+        Returns:
+            List of warning messages describing data quality issues found.
+        """
+        warnings: list[str] = []
+
+        # Check for duplicate org names (case-insensitive)
+        org_names = [o.get("name", "").lower() for o in csv_orgs if o.get("name")]
+        duplicates = [n for n in org_names if org_names.count(n) > 1]
+        if duplicates:
+            warnings.append(
+                f"Found {len(set(duplicates))} duplicate organization names"
+            )
+
+        # Check for empty passwords
+        empty_pwds = [p for p in csv_passwords if not p.get("password")]
+        if empty_pwds:
+            warnings.append(f"Found {len(empty_pwds)} passwords with empty values")
+
+        # Check for empty documents (HTML content that strips to empty)
+        def is_empty_content(content: str | None) -> bool:
+            if not content:
+                return True
+            # Strip HTML tags and check if remaining text is empty
+            text = re.sub(r"<[^>]+>", "", content)
+            return not text.strip()
+
+        empty_docs = [d for d in csv_docs if is_empty_content(d.get("content"))]
+        if empty_docs:
+            warnings.append(f"Found {len(empty_docs)} documents with empty content")
+
+        return warnings
