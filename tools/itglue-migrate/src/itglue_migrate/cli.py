@@ -32,6 +32,9 @@ from itglue_migrate.org_matcher import OrgMatcher
 from itglue_migrate.progress import Phase, create_progress_reporter
 from itglue_migrate.state import MigrationState, MigrationStateError
 from itglue_migrate.warnings import ParsedData, Warning, WarningDetector, summarize
+from itglue_migrate.state_fetcher import StateFetcher
+from itglue_migrate.sync_differ import SyncDiffer, SyncPlan
+from itglue_migrate.sync_executor import SyncExecutor, SyncResult
 
 # Create Typer app
 app = typer.Typer(
@@ -2405,6 +2408,514 @@ def run(
             Panel(
                 f"[yellow]Migration completed with {total_failed} failures.[/yellow]\n\n"
                 f"Review the errors above and use --state-file with --clear-failures to retry.",
+                title="Warning",
+                border_style="yellow",
+            )
+        )
+
+    sys.exit(exit_code)
+
+
+def _display_sync_plan_summary(
+    org_name: str,
+    plan: SyncPlan,
+) -> None:
+    """Display a summary of the sync plan to the console.
+
+    Args:
+        org_name: Organization name being synced.
+        plan: The sync plan to summarize.
+    """
+    console.print()
+    console.print(f"[bold]Sync Plan for '{org_name}':[/bold]")
+    console.print()
+
+    # Build summary table
+    table = Table(show_header=True, header_style="bold cyan")
+    table.add_column("Entity Type")
+    table.add_column("To Create", justify="right")
+    table.add_column("To Update", justify="right")
+    table.add_column("Existing", justify="right")
+
+    # Count entities (name, to_create, to_update, existing)
+    entity_counts = [
+        ("Organizations", len(plan.organizations.to_create), len(plan.organizations.to_update), len(plan.organizations.existing)),
+        ("Configuration Types", len(plan.config_types.to_create), len(plan.config_types.to_update), len(plan.config_types.existing)),
+        ("Configuration Statuses", len(plan.config_statuses.to_create), len(plan.config_statuses.to_update), len(plan.config_statuses.existing)),
+        ("Custom Asset Types", len(plan.custom_asset_types.to_create), len(plan.custom_asset_types.to_update), len(plan.custom_asset_types.existing)),
+        ("Locations", len(plan.locations.to_create), len(plan.locations.to_update), len(plan.locations.existing)),
+        ("Configurations", len(plan.configurations.to_create), len(plan.configurations.to_update), len(plan.configurations.existing)),
+        ("Custom Assets", len(plan.custom_assets.to_create), len(plan.custom_assets.to_update), len(plan.custom_assets.existing)),
+        ("Documents", len(plan.documents.to_create), len(plan.documents.to_update), len(plan.documents.existing)),
+        ("Passwords", len(plan.passwords.to_create), len(plan.passwords.to_update), len(plan.passwords.existing)),
+        ("Relationships", len(plan.relationships.to_create), 0, len(plan.relationships.existing)),  # Relationships don't have to_update
+    ]
+
+    for name, to_create, to_update, existing in entity_counts:
+        create_style = "green" if to_create > 0 else ""
+        update_style = "yellow" if to_update > 0 else ""
+        table.add_row(
+            name,
+            f"[{create_style}]{to_create}[/{create_style}]" if to_create > 0 else str(to_create),
+            f"[{update_style}]{to_update}[/{update_style}]" if to_update > 0 else str(to_update),
+            str(existing),
+        )
+
+    console.print(table)
+
+
+def _display_sync_result(result: SyncResult) -> None:
+    """Display sync execution results.
+
+    Args:
+        result: The sync result to display.
+    """
+    console.print()
+    console.print("[bold]Sync Results:[/bold]")
+    console.print()
+
+    # Build results table
+    table = Table(show_header=True, header_style="bold cyan")
+    table.add_column("Entity Type")
+    table.add_column("Created", justify="right")
+    table.add_column("Skipped", justify="right")
+    table.add_column("Failed", justify="right")
+
+    entity_types = [
+        "config_types",
+        "config_statuses",
+        "custom_asset_types",
+        "locations",
+        "configurations",
+        "custom_assets",
+        "documents",
+        "passwords",
+        "relationships",
+    ]
+
+    for entity_type in entity_types:
+        created = result.created.get(entity_type, 0)
+        skipped = result.skipped.get(entity_type, 0)
+        failed = result.failed.get(entity_type, 0)
+
+        # Format with colors
+        created_str = f"[green]{created}[/green]" if created > 0 else str(created)
+        failed_str = f"[red]{failed}[/red]" if failed > 0 else str(failed)
+
+        # Convert snake_case to Title Case
+        display_name = entity_type.replace("_", " ").title()
+        table.add_row(display_name, created_str, str(skipped), failed_str)
+
+    console.print(table)
+
+    # Display errors if any
+    if result.errors:
+        console.print()
+        console.print("[bold red]Errors:[/bold red]")
+        for error in result.errors[:10]:  # Limit to first 10 errors
+            console.print(f"  - {error}")
+        if len(result.errors) > 10:
+            console.print(f"  ... and {len(result.errors) - 10} more errors")
+
+
+async def _run_sync(
+    export_path: Path,
+    api_url: str,
+    token: str,
+    target_org: str | None,
+    _all_orgs: bool,  # Unused - if target_org is None, we sync all
+    dry_run: bool,
+    update_existing: bool,
+) -> int:
+    """Run the sync operation.
+
+    Args:
+        export_path: Path to IT Glue export directory.
+        api_url: BifrostDocs API URL.
+        token: API authentication token.
+        target_org: Organization name to sync (if not all).
+        all_orgs: Whether to sync all organizations.
+        dry_run: Preview changes without making them.
+        update_existing: Update entities that already exist.
+
+    Returns:
+        Exit code (0 for success, non-zero for failures).
+    """
+    # Validate export path
+    validation = _validate_export_path(export_path)
+
+    # Parse all CSV files
+    parser = CSVParser()
+    console.print("[bold]Parsing CSV files...[/bold]")
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Parsing...", total=None)
+        parsed = _parse_all_csv_files(parser, export_path, validation, progress, task)
+
+    console.print(f"  [green]Parsed {len(parsed.organizations)} organizations[/green]")
+    console.print()
+
+    # Determine which organizations to sync
+    if target_org:
+        orgs_to_sync = [o for o in parsed.organizations if o.get("name") == target_org]
+        if not orgs_to_sync:
+            error_console.print(f"[red]Error:[/red] Organization '{target_org}' not found in export")
+            return 1
+    else:
+        orgs_to_sync = parsed.organizations
+
+    console.print(f"[bold]Syncing {len(orgs_to_sync)} organization(s)...[/bold]")
+    console.print()
+
+    total_result = SyncResult()
+
+    async with BifrostDocsClient(base_url=api_url, api_key=token) as client:
+        fetcher = StateFetcher(client)
+
+        # First, get all organizations to resolve org name -> UUID mapping
+        console.print("Fetching existing organizations...")
+        all_orgs_state = await fetcher.fetch_all_orgs()
+        console.print(f"  [green]Found {len(all_orgs_state.org_by_name)} organizations[/green]")
+        console.print()
+
+        # Diff organizations to find which need to be created
+        org_differ = SyncDiffer(all_orgs_state)
+        org_plan = org_differ.diff_organizations(orgs_to_sync)
+
+        # Display org plan if any need to be created
+        if org_plan.to_create:
+            console.print(f"[bold]Organizations to create: {len(org_plan.to_create)}[/bold]")
+            for org_to_create in org_plan.to_create:
+                console.print(f"  [green]+ {org_to_create.get('name')}[/green]")
+            console.print(f"[dim]Organizations already exist: {len(org_plan.existing)}[/dim]")
+            console.print()
+
+            if not dry_run:
+                # Create missing organizations first
+                console.print("Creating missing organizations...")
+                org_sync_plan = SyncPlan(organizations=org_plan)
+                org_executor = SyncExecutor(client, org_id="", dry_run=False)  # type: ignore[arg-type]
+                org_result = await org_executor.execute(org_sync_plan)
+
+                # Merge org creation results into total
+                for key, value in org_result.created.items():
+                    total_result.created[key] = total_result.created.get(key, 0) + value
+                for key, value in org_result.failed.items():
+                    total_result.failed[key] = total_result.failed.get(key, 0) + value
+                total_result.errors.extend(org_result.errors)
+
+                if org_result.created.get("organizations", 0) > 0:
+                    console.print(f"  [green]Created {org_result.created.get('organizations', 0)} organization(s)[/green]")
+
+                if org_result.failed.get("organizations", 0) > 0:
+                    console.print(f"  [red]Failed {org_result.failed.get('organizations', 0)} organization(s)[/red]")
+
+                # Refresh org state after creating new organizations
+                console.print("Refreshing organization state...")
+                all_orgs_state = await fetcher.fetch_all_orgs()
+                console.print(f"  [green]Found {len(all_orgs_state.org_by_name)} organizations[/green]")
+                console.print()
+
+        for org in orgs_to_sync:
+            org_name = org.get("name", "")
+            org_itglue_id = str(org.get("id", ""))
+
+            console.print(f"[bold cyan]Processing organization: {org_name}[/bold cyan]")
+            console.print(f"  [dim]ITGlue org ID: {org_itglue_id}[/dim]")
+
+            # Resolve org to UUID
+            org_uuid = all_orgs_state.org_by_itglue_id.get(org_itglue_id)
+            if not org_uuid:
+                org_uuid = all_orgs_state.org_by_name.get(org_name.lower())
+
+            if not org_uuid:
+                # This should only happen if org creation failed above
+                console.print("  [red]Organization not found in API (creation may have failed), skipping[/red]")
+                console.print()
+                continue
+
+            # Fetch existing state for this org
+            console.print(f"  Fetching existing state...")
+            state = await fetcher.fetch_for_org(org_uuid)
+
+            # Debug: show state summary
+            console.print(f"  [dim]API state:[/dim]")
+            console.print(f"    [dim]Config types: {len(state.config_type_by_name)}[/dim]")
+            console.print(f"    [dim]Config statuses: {len(state.config_status_by_name)}[/dim]")
+            console.print(f"    [dim]Custom asset types: {len(state.custom_asset_type_by_name)}[/dim]")
+            console.print(f"    [dim]Locations by itglue_id: {len(state.location_by_itglue_id)}[/dim]")
+            console.print(f"    [dim]Documents by itglue_id: {len(state.document_by_itglue_id)}[/dim]")
+            console.print(f"    [dim]Configs by itglue_id: {len(state.config_by_itglue_id)}[/dim]")
+            console.print(f"    [dim]Passwords by itglue_id: {len(state.password_by_itglue_id)}[/dim]")
+            console.print(f"    [dim]Custom assets by itglue_id: {len(state.custom_asset_by_itglue_id)}[/dim]")
+
+            # Debug: show sample itglue_ids
+            if state.document_by_itglue_id:
+                sample_api_doc_ids = list(state.document_by_itglue_id.keys())[:5]
+                console.print(f"    [dim]Sample API document itglue_ids: {sample_api_doc_ids}[/dim]")
+
+            # Filter CSV data to this org (CSV may have org ID or org name in organization_id field)
+            def matches_org(item: dict) -> bool:
+                csv_org_id = str(item.get("organization_id", ""))
+                return csv_org_id == org_itglue_id or csv_org_id == org_name
+
+            org_configs = [c for c in parsed.configurations if matches_org(c)]
+            org_locations = [loc for loc in parsed.locations if matches_org(loc)]
+            org_documents = [d for d in parsed.documents if matches_org(d)]
+            org_passwords = [p for p in parsed.passwords if matches_org(p)]
+
+            # Debug: show filter results
+            console.print(f"  [dim]CSV items for org (matching '{org_itglue_id}' or '{org_name}'):[/dim]")
+            console.print(f"    [dim]Configurations: {len(org_configs)} / {len(parsed.configurations)}[/dim]")
+            console.print(f"    [dim]Locations: {len(org_locations)} / {len(parsed.locations)}[/dim]")
+            console.print(f"    [dim]Documents: {len(org_documents)} / {len(parsed.documents)}[/dim]")
+            console.print(f"    [dim]Passwords: {len(org_passwords)} / {len(parsed.passwords)}[/dim]")
+
+            # Show sample organization_id values from documents to debug filtering
+            if parsed.documents:
+                sample_org_ids = set(str(d.get("organization_id", "")) for d in parsed.documents[:20])
+                console.print(f"    [dim]Sample organization_id values in documents.csv: {sample_org_ids}[/dim]")
+
+            # Debug: show sample CSV document IDs for comparison
+            if org_documents:
+                sample_csv_doc_ids = [str(d.get("id", "")) for d in org_documents[:5]]
+                console.print(f"    [dim]Sample CSV document ids: {sample_csv_doc_ids}[/dim]")
+
+            # Flatten custom assets for this org
+            org_custom_assets = []
+            for type_slug, assets in parsed.custom_assets.items():
+                for asset in assets:
+                    if matches_org(asset):
+                        asset["_type_slug"] = type_slug
+                        org_custom_assets.append(asset)
+
+            # Create differ and generate plan
+            differ = SyncDiffer(state)
+
+            # Debug: show custom asset type names being compared
+            csv_cat_names = set()
+            for asset in org_custom_assets:
+                type_slug = asset.get("asset_type") or asset.get("_type_slug")
+                if type_slug:
+                    # Convert slug to display name for comparison
+                    display_name = slugify_to_display_name(type_slug)
+                    csv_cat_names.add(display_name)
+            api_cat_names = set(state.custom_asset_type_by_name.keys())
+            console.print(f"  [dim]Custom asset types in CSV (as display names): {sorted(csv_cat_names)}[/dim]")
+            console.print(f"  [dim]Custom asset types in API: {sorted(api_cat_names)}[/dim]")
+            # Show which CSV types are NOT in API
+            missing_in_api = {name for name in csv_cat_names if name.lower() not in api_cat_names}
+            if missing_in_api:
+                console.print(f"  [dim]CSV types NOT in API (will create): {sorted(missing_in_api)}[/dim]")
+
+            plan = SyncPlan(
+                config_types=differ.diff_config_types(org_configs),
+                config_statuses=differ.diff_config_statuses(org_configs),
+                custom_asset_types=differ.diff_custom_asset_types(
+                    org_custom_assets, parsed.field_definitions
+                ),
+                locations=differ.diff_locations(org_locations),
+                configurations=differ.diff_configurations(org_configs),
+                custom_assets=differ.diff_custom_assets(org_custom_assets),
+                documents=differ.diff_documents(org_documents),
+                passwords=differ.diff_passwords(org_passwords),
+                relationships=differ.diff_relationships(org_passwords),
+            )
+
+            # Display plan summary
+            _display_sync_plan_summary(org_name, plan)
+
+            # Execute if not dry-run
+            if dry_run:
+                console.print()
+                console.print("[yellow]DRY RUN - No changes made[/yellow]")
+            else:
+                console.print()
+                console.print("Executing sync...")
+
+                # Create progress reporter for live updates
+                reporter = create_progress_reporter(console=console, verbose=False)
+
+                executor = SyncExecutor(client, org_id=org_uuid, dry_run=False, state=state, update_existing=update_existing, reporter=reporter)  # type: ignore[arg-type]
+
+                # Use context manager to start/stop the live display
+                with reporter:
+                    result = await executor.execute(plan)
+
+                # Merge results
+                for key, value in result.created.items():
+                    total_result.created[key] = total_result.created.get(key, 0) + value
+                for key, value in result.skipped.items():
+                    total_result.skipped[key] = total_result.skipped.get(key, 0) + value
+                for key, value in result.failed.items():
+                    total_result.failed[key] = total_result.failed.get(key, 0) + value
+                total_result.errors.extend(result.errors)
+
+                _display_sync_result(result)
+
+            console.print()
+
+    # Display total results if multiple orgs
+    if len(orgs_to_sync) > 1 and not dry_run:
+        console.print("[bold]Total Results Across All Organizations:[/bold]")
+        _display_sync_result(total_result)
+
+    # Determine exit code
+    total_failed = sum(total_result.failed.values())
+    return 1 if total_failed > 0 else 0
+
+
+@app.command()
+def sync(
+    export_path: Annotated[
+        Path,
+        typer.Option(
+            "--export-path",
+            "-e",
+            help="Path to the IT Glue export directory",
+            exists=False,
+            file_okay=False,
+            dir_okay=True,
+            resolve_path=True,
+        ),
+    ],
+    api_url: Annotated[
+        str,
+        typer.Option(
+            "--api-url",
+            "-u",
+            help="BifrostDocs API URL (e.g., https://api.example.com)",
+        ),
+    ],
+    token: Annotated[
+        str,
+        typer.Option(
+            "--token",
+            "-t",
+            help="BifrostDocs API authentication token",
+            envvar="BIFROST_API_TOKEN",
+        ),
+    ],
+    org: Annotated[
+        str | None,
+        typer.Option(
+            "--org",
+            "-o",
+            help="Sync a single organization by name",
+        ),
+    ] = None,
+    all_orgs: Annotated[
+        bool,
+        typer.Option(
+            "--all",
+            help="Sync all organizations",
+        ),
+    ] = False,
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run",
+            "-n",
+            help="Preview changes without making them",
+        ),
+    ] = False,
+    update_existing: Annotated[
+        bool,
+        typer.Option(
+            "--update-existing",
+            help="Update entities that already exist",
+        ),
+    ] = False,
+) -> None:
+    """Sync IT Glue export data with existing BifrostDocs data.
+
+    This command compares the IT Glue export with existing data in BifrostDocs
+    and creates only the missing entities. Unlike the 'run' command which uses
+    a plan file and state tracking, 'sync' fetches current state from the API
+    and diffs against the CSV export.
+
+    Use --org to sync a single organization or --all to sync all organizations
+    in the export.
+
+    Use --dry-run to preview what would be created without making changes.
+    """
+    console.print(Panel("IT Glue Migration - Sync", style="bold blue"))
+    console.print()
+
+    # Validate inputs
+    if not org and not all_orgs:
+        error_console.print(
+            "[red]Error:[/red] You must specify either --org <name> or --all"
+        )
+        raise typer.Exit(1)
+
+    if org and all_orgs:
+        error_console.print(
+            "[red]Error:[/red] Cannot specify both --org and --all"
+        )
+        raise typer.Exit(1)
+
+    # Display configuration
+    console.print(f"[bold]Export path:[/bold] {export_path}")
+    console.print(f"[bold]API URL:[/bold] {api_url}")
+
+    if org:
+        console.print(f"[bold]Target:[/bold] Single organization: {org}")
+    else:
+        console.print("[bold]Target:[/bold] All organizations")
+
+    if dry_run:
+        console.print("[bold]Mode:[/bold] [yellow]DRY RUN[/yellow]")
+
+    if update_existing:
+        console.print("[bold]Update existing:[/bold] Yes")
+
+    console.print()
+
+    # Run the sync
+    exit_code = asyncio.run(
+        _run_sync(
+            export_path=export_path,
+            api_url=api_url,
+            token=token,
+            target_org=org,
+            _all_orgs=all_orgs,
+            dry_run=dry_run,
+            update_existing=update_existing,
+        )
+    )
+
+    # Display completion message
+    console.print()
+    if exit_code == 0:
+        if dry_run:
+            console.print(
+                Panel(
+                    "[green]Dry run complete![/green]\n\n"
+                    "No changes were made. Run without --dry-run to execute the sync.",
+                    title="Done",
+                    border_style="green",
+                )
+            )
+        else:
+            console.print(
+                Panel(
+                    "[green]Sync complete![/green]",
+                    title="Done",
+                    border_style="green",
+                )
+            )
+    else:
+        console.print(
+            Panel(
+                "[yellow]Sync completed with failures.[/yellow]\n\n"
+                "Review the errors above.",
                 title="Warning",
                 border_style="yellow",
             )

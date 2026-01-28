@@ -398,26 +398,20 @@ class EntityImporter:
                     )
                     continue
 
-                # Build notes from address fields using HTML formatting
-                html_notes = format_location_notes_html(location)
-
-                # Add phone if present
-                if location.get("phone"):
-                    if html_notes:
-                        html_notes += "<br><strong>Phone:</strong> " + location["phone"]
-                    else:
-                        html_notes = f'<strong>Phone:</strong> {location["phone"]}'
-
-                # Wrap in paragraph tags for tiptap compatibility
-                notes = f"<p>{html_notes}</p>" if html_notes else None
-
-                # Create location via API
+                # Create location via API with address fields passed directly
                 metadata = {"itglue_id": itglue_id}
 
                 result = await self.client.create_location(
                     org_id=org_uuid,
                     name=location_name,
-                    notes=notes,
+                    address_1=location.get("address_1"),
+                    address_2=location.get("address_2"),
+                    city=location.get("city"),
+                    region=location.get("region"),
+                    postal_code=location.get("postal_code"),
+                    country=location.get("country"),
+                    phone=location.get("phone"),
+                    notes=None,  # No longer stuffing address into notes
                     metadata=metadata,
                 )
 

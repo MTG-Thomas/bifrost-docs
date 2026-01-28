@@ -491,7 +491,9 @@ class CSVParser:
             List of FieldDefinition objects.
         """
         # Skip standard metadata columns
-        skip_columns = {"id", "organization", "organization_id", "created_at", "updated_at"}
+        # Note: "archived" is excluded because it maps to is_enabled at entity level,
+        # not as a custom field value
+        skip_columns = {"id", "organization", "organization_id", "created_at", "updated_at", "archived"}
 
         definitions = []
         for header in headers:

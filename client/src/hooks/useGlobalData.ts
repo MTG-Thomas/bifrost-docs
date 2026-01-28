@@ -60,6 +60,13 @@ export interface GlobalLocation {
   organization_name: string;
   name: string;
   notes: string | null;
+  address_1: string | null;
+  address_2: string | null;
+  city: string | null;
+  region: string | null;
+  postal_code: string | null;
+  country: string | null;
+  phone: string | null;
   created_at: string;
   updated_at: string;
 }

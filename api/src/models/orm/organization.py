@@ -48,10 +48,16 @@ class Organization(Base):
         "metadata", JSONB, nullable=False, default=dict, server_default="{}"
     )
 
-    # Relationships
-    custom_assets: Mapped[list["CustomAsset"]] = relationship(back_populates="organization")
-    documents: Mapped[list["Document"]] = relationship(back_populates="organization")
-    locations: Mapped[list["Location"]] = relationship(back_populates="organization")
+    # Relationships - passive_deletes=True lets DB CASCADE handle child deletion
+    custom_assets: Mapped[list["CustomAsset"]] = relationship(
+        back_populates="organization", passive_deletes=True
+    )
+    documents: Mapped[list["Document"]] = relationship(
+        back_populates="organization", passive_deletes=True
+    )
+    locations: Mapped[list["Location"]] = relationship(
+        back_populates="organization", passive_deletes=True
+    )
     updated_by_user: Mapped["User | None"] = relationship()
 
     __table_args__ = (Index("ix_organizations_name", "name"),)

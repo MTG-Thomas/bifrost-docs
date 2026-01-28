@@ -10,7 +10,9 @@
       "Bash(.venv/bin/ruff check src/routers/search.py)",
       "Bash(.venv/bin/ruff check src/core/pubsub.py src/routers/search.py src/services/ai_chat.py)",
       "WebFetch(domain:tiptap.dev)",
-      "mcp__context7__query-docs"
+      "mcp__context7__query-docs",
+      "Bash(pyright:*)",
+      "Bash(pytest:*)"
     ],
     "deny": [],
     "ask": []

@@ -26,7 +26,9 @@ class Password(Base):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true", default=True)
-    organization_id: Mapped[UUID] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    organization_id: Mapped[UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     username: Mapped[str | None] = mapped_column(String(255), nullable=True)
     password_encrypted: Mapped[str] = mapped_column(Text, nullable=False)

@@ -38,6 +38,13 @@ export interface Location {
   name: string;
   notes: string | null;
   is_enabled: boolean;
+  address_1: string | null;
+  address_2: string | null;
+  city: string | null;
+  region: string | null;
+  postal_code: string | null;
+  country: string | null;
+  phone: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -46,12 +53,26 @@ export interface LocationCreate {
   name: string;
   notes?: string;
   is_enabled?: boolean;
+  address_1?: string;
+  address_2?: string;
+  city?: string;
+  region?: string;
+  postal_code?: string;
+  country?: string;
+  phone?: string;
 }
 
 export interface LocationUpdate {
   name?: string;
   notes?: string;
   is_enabled?: boolean;
+  address_1?: string | null;
+  address_2?: string | null;
+  city?: string | null;
+  region?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+  phone?: string | null;
 }
 
 // =============================================================================

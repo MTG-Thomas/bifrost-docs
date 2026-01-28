@@ -7,6 +7,7 @@ relationships. Supports dry-run mode for previewing changes.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from dataclasses import dataclass, field
@@ -429,6 +430,14 @@ class SyncExecutor:
                     archived_str = str(archived).lower()
                     is_enabled = archived_str not in ("true", "1", "yes")
 
+                # Parse configuration_interfaces from JSON string if present
+                interfaces = entity.get("configuration_interfaces")
+                if isinstance(interfaces, str):
+                    try:
+                        interfaces = json.loads(interfaces)
+                    except json.JSONDecodeError:
+                        interfaces = None
+
                 # Extract fields - handle both CSV names (serial, ip, mac) and API names
                 response = await self.client.create_configuration(
                     org_id=self.org_id,
@@ -444,6 +453,7 @@ class SyncExecutor:
                     notes=entity.get("notes"),
                     metadata=metadata,
                     is_enabled=is_enabled,
+                    interfaces=interfaces,
                 )
 
                 if itglue_id and response.get("id"):

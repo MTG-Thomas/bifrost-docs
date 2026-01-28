@@ -52,6 +52,13 @@ def _to_public(location: Location) -> LocationPublic:
         updated_at=location.updated_at,
         updated_by_user_id=str(location.updated_by_user_id) if location.updated_by_user_id else None,
         updated_by_user_name=location.updated_by_user.email if location.updated_by_user else None,
+        address_1=location.address_1,
+        address_2=location.address_2,
+        city=location.city,
+        region=location.region,
+        postal_code=location.postal_code,
+        country=location.country,
+        phone=location.phone,
     )
 
 
@@ -134,6 +141,13 @@ async def create_location(
         notes=location_data.notes,
         metadata_=location_data.metadata,
         is_enabled=location_data.is_enabled if location_data.is_enabled is not None else True,
+        address_1=location_data.address_1,
+        address_2=location_data.address_2,
+        city=location_data.city,
+        region=location_data.region,
+        postal_code=location_data.postal_code,
+        country=location_data.country,
+        phone=location_data.phone,
     )
     location = await location_repo.create(location)
 
@@ -243,19 +257,33 @@ async def get_location_preview(
     # Build preview content
     content_parts = [f"# {location.name}"]
 
-    # Check metadata for address and contact info
+    # Build address from actual fields
+    if location.address_1:
+        content_parts.append(f"\n**Address:** {location.address_1}")
+        if location.address_2:
+            content_parts.append(f"  {location.address_2}")
+    if location.city or location.region or location.postal_code:
+        city_region_postal = ""
+        if location.city:
+            city_region_postal = location.city
+        if location.region:
+            if city_region_postal:
+                city_region_postal += f", {location.region}"
+            else:
+                city_region_postal = location.region
+        if location.postal_code:
+            if city_region_postal:
+                city_region_postal += f" {location.postal_code}"
+            else:
+                city_region_postal = location.postal_code
+        content_parts.append(f"\n**City:** {city_region_postal}")
+    if location.country:
+        content_parts.append(f"\n**Country:** {location.country}")
+    if location.phone:
+        content_parts.append(f"\n**Phone:** {location.phone}")
+
+    # Fall back to metadata for email (if still stored there)
     metadata = location.metadata_ if isinstance(location.metadata_, dict) else {}
-    if metadata.get("address"):
-        content_parts.append(f"\n**Address:** {metadata['address']}")
-    if metadata.get("city"):
-        city_state = metadata.get("city", "")
-        if metadata.get("state"):
-            city_state += f", {metadata['state']}"
-        if metadata.get("zip"):
-            city_state += f" {metadata['zip']}"
-        content_parts.append(f"\n**City:** {city_state}")
-    if metadata.get("phone"):
-        content_parts.append(f"\n**Phone:** {metadata['phone']}")
     if metadata.get("email"):
         content_parts.append(f"\n**Email:** {metadata['email']}")
     if location.notes:
@@ -312,6 +340,20 @@ async def update_location(
         location.metadata_ = location_data.metadata
     if location_data.is_enabled is not None:
         location.is_enabled = location_data.is_enabled
+    if location_data.address_1 is not None:
+        location.address_1 = location_data.address_1
+    if location_data.address_2 is not None:
+        location.address_2 = location_data.address_2
+    if location_data.city is not None:
+        location.city = location_data.city
+    if location_data.region is not None:
+        location.region = location_data.region
+    if location_data.postal_code is not None:
+        location.postal_code = location_data.postal_code
+    if location_data.country is not None:
+        location.country = location_data.country
+    if location_data.phone is not None:
+        location.phone = location_data.phone
 
     # Track who updated
     location.updated_by_user_id = current_user.user_id

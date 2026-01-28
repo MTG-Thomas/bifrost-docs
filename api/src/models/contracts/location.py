@@ -14,6 +14,13 @@ class LocationCreate(BaseModel):
     notes: str | None = None
     metadata: dict | None = None
     is_enabled: bool | None = None  # Defaults to True if not provided
+    address_1: str | None = Field(None, max_length=255)
+    address_2: str | None = Field(None, max_length=255)
+    city: str | None = Field(None, max_length=100)
+    region: str | None = Field(None, max_length=100)
+    postal_code: str | None = Field(None, max_length=20)
+    country: str | None = Field(None, max_length=100)
+    phone: str | None = Field(None, max_length=50)
 
 
 class LocationUpdate(BaseModel):
@@ -23,6 +30,13 @@ class LocationUpdate(BaseModel):
     notes: str | None = None
     metadata: dict | None = None
     is_enabled: bool | None = None  # Don't change if not provided
+    address_1: str | None = Field(None, max_length=255)
+    address_2: str | None = Field(None, max_length=255)
+    city: str | None = Field(None, max_length=100)
+    region: str | None = Field(None, max_length=100)
+    postal_code: str | None = Field(None, max_length=20)
+    country: str | None = Field(None, max_length=100)
+    phone: str | None = Field(None, max_length=50)
 
 
 class LocationPublic(BaseModel):
@@ -36,6 +50,13 @@ class LocationPublic(BaseModel):
     notes: str | None
     metadata: dict = Field(default_factory=dict)
     is_enabled: bool = True
+    address_1: str | None = None
+    address_2: str | None = None
+    city: str | None = None
+    region: str | None = None
+    postal_code: str | None = None
+    country: str | None = None
+    phone: str | None = None
     created_at: datetime
     updated_at: datetime
     updated_by_user_id: str | None = None

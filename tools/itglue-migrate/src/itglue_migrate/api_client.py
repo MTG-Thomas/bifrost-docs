@@ -387,6 +387,7 @@ class BifrostDocsClient:
         configuration_status_id: str | UUID | None = None,
         limit: int = 100,
         offset: int = 0,
+        show_disabled: bool = False,
     ) -> dict[str, Any]:
         """
         List configurations for an organization.
@@ -397,6 +398,7 @@ class BifrostDocsClient:
             configuration_status_id: Filter by configuration status
             limit: Maximum results per page
             offset: Number of results to skip
+            show_disabled: Include disabled configurations
 
         Returns:
             Paginated response with items, total, limit, offset
@@ -406,6 +408,8 @@ class BifrostDocsClient:
             params["configuration_type_id"] = str(configuration_type_id)
         if configuration_status_id is not None:
             params["configuration_status_id"] = str(configuration_status_id)
+        if show_disabled:
+            params["show_disabled"] = "true"
 
         return await self._request(
             "GET",
@@ -507,6 +511,82 @@ class BifrostDocsClient:
             f"/api/organizations/{org_id}/configurations/{config_id}",
         )
 
+    async def update_configuration(
+        self,
+        org_id: str | UUID,
+        config_id: str | UUID,
+        name: str | None = None,
+        configuration_type_id: str | UUID | None = None,
+        configuration_status_id: str | UUID | None = None,
+        serial_number: str | None = None,
+        asset_tag: str | None = None,
+        manufacturer: str | None = None,
+        model: str | None = None,
+        ip_address: str | None = None,
+        mac_address: str | None = None,
+        notes: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        interfaces: list[dict[str, Any]] | None = None,
+        is_enabled: bool | None = None,
+    ) -> dict[str, Any]:
+        """
+        Update an existing configuration.
+
+        Args:
+            org_id: Organization UUID
+            config_id: Configuration UUID
+            name: Configuration name
+            configuration_type_id: Configuration type UUID
+            configuration_status_id: Configuration status UUID
+            serial_number: Serial number
+            asset_tag: Asset tag
+            manufacturer: Manufacturer name
+            model: Model name
+            ip_address: IP address
+            mac_address: MAC address
+            notes: Notes (markdown)
+            metadata: External system metadata
+            interfaces: Network interfaces
+            is_enabled: Whether the configuration is enabled
+
+        Returns:
+            Updated configuration object
+        """
+        payload: dict[str, Any] = {}
+
+        if name is not None:
+            payload["name"] = name
+        if configuration_type_id is not None:
+            payload["configuration_type_id"] = str(configuration_type_id)
+        if configuration_status_id is not None:
+            payload["configuration_status_id"] = str(configuration_status_id)
+        if serial_number is not None:
+            payload["serial_number"] = serial_number
+        if asset_tag is not None:
+            payload["asset_tag"] = asset_tag
+        if manufacturer is not None:
+            payload["manufacturer"] = manufacturer
+        if model is not None:
+            payload["model"] = model
+        if ip_address is not None:
+            payload["ip_address"] = ip_address
+        if mac_address is not None:
+            payload["mac_address"] = mac_address
+        if notes is not None:
+            payload["notes"] = notes
+        if metadata is not None:
+            payload["metadata"] = metadata
+        if interfaces is not None:
+            payload["interfaces"] = interfaces
+        if is_enabled is not None:
+            payload["is_enabled"] = is_enabled
+
+        return await self._request(
+            "PUT",
+            f"/api/organizations/{org_id}/configurations/{config_id}",
+            json=payload,
+        )
+
     # =========================================================================
     # Locations (Organization-scoped)
     # =========================================================================
@@ -516,6 +596,7 @@ class BifrostDocsClient:
         org_id: str | UUID,
         limit: int = 100,
         offset: int = 0,
+        show_disabled: bool = False,
     ) -> dict[str, Any]:
         """
         List locations for an organization.
@@ -524,14 +605,19 @@ class BifrostDocsClient:
             org_id: Organization UUID
             limit: Maximum results per page
             offset: Number of results to skip
+            show_disabled: Include disabled locations
 
         Returns:
             Paginated response with items, total, limit, offset
         """
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if show_disabled:
+            params["show_disabled"] = "true"
+
         return await self._request(
             "GET",
             f"/api/organizations/{org_id}/locations",
-            params={"limit": limit, "offset": offset},
+            params=params,
         )
 
     async def create_location(
@@ -540,6 +626,13 @@ class BifrostDocsClient:
         name: str,
         notes: str | None = None,
         metadata: dict[str, Any] | None = None,
+        address_1: str | None = None,
+        address_2: str | None = None,
+        city: str | None = None,
+        region: str | None = None,
+        postal_code: str | None = None,
+        country: str | None = None,
+        phone: str | None = None,
     ) -> dict[str, Any]:
         """
         Create a new location.
@@ -549,6 +642,13 @@ class BifrostDocsClient:
             name: Location name
             notes: Notes (markdown)
             metadata: External system metadata
+            address_1: Primary street address
+            address_2: Secondary address (suite, unit, etc.)
+            city: City name
+            region: State, province, or region
+            postal_code: Postal or ZIP code
+            country: Country name or code
+            phone: Phone number
 
         Returns:
             Created location object
@@ -558,6 +658,20 @@ class BifrostDocsClient:
             payload["notes"] = notes
         if metadata is not None:
             payload["metadata"] = metadata
+        if address_1 is not None:
+            payload["address_1"] = address_1
+        if address_2 is not None:
+            payload["address_2"] = address_2
+        if city is not None:
+            payload["city"] = city
+        if region is not None:
+            payload["region"] = region
+        if postal_code is not None:
+            payload["postal_code"] = postal_code
+        if country is not None:
+            payload["country"] = country
+        if phone is not None:
+            payload["phone"] = phone
 
         return await self._request(
             "POST",
@@ -585,6 +699,70 @@ class BifrostDocsClient:
             f"/api/organizations/{org_id}/locations/{location_id}",
         )
 
+    async def update_location(
+        self,
+        org_id: str | UUID,
+        location_id: str | UUID,
+        name: str | None = None,
+        notes: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        address_1: str | None = None,
+        address_2: str | None = None,
+        city: str | None = None,
+        region: str | None = None,
+        postal_code: str | None = None,
+        country: str | None = None,
+        phone: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Update an existing location.
+
+        Args:
+            org_id: Organization UUID
+            location_id: Location UUID
+            name: Location name
+            notes: Notes (markdown)
+            metadata: External system metadata
+            address_1: Primary street address
+            address_2: Secondary address (suite, unit, etc.)
+            city: City name
+            region: State, province, or region
+            postal_code: Postal or ZIP code
+            country: Country name or code
+            phone: Phone number
+
+        Returns:
+            Updated location object
+        """
+        payload: dict[str, Any] = {}
+
+        if name is not None:
+            payload["name"] = name
+        if notes is not None:
+            payload["notes"] = notes
+        if metadata is not None:
+            payload["metadata"] = metadata
+        if address_1 is not None:
+            payload["address_1"] = address_1
+        if address_2 is not None:
+            payload["address_2"] = address_2
+        if city is not None:
+            payload["city"] = city
+        if region is not None:
+            payload["region"] = region
+        if postal_code is not None:
+            payload["postal_code"] = postal_code
+        if country is not None:
+            payload["country"] = country
+        if phone is not None:
+            payload["phone"] = phone
+
+        return await self._request(
+            "PUT",
+            f"/api/organizations/{org_id}/locations/{location_id}",
+            json=payload,
+        )
+
     # =========================================================================
     # Documents (Organization-scoped)
     # =========================================================================
@@ -595,6 +773,7 @@ class BifrostDocsClient:
         path: str | None = None,
         limit: int = 100,
         offset: int = 0,
+        show_disabled: bool = False,
     ) -> dict[str, Any]:
         """
         List documents for an organization.
@@ -604,6 +783,7 @@ class BifrostDocsClient:
             path: Filter by folder path
             limit: Maximum results per page
             offset: Number of results to skip
+            show_disabled: Include disabled documents
 
         Returns:
             Paginated response with items, total, limit, offset
@@ -611,6 +791,8 @@ class BifrostDocsClient:
         params: dict[str, Any] = {"limit": limit, "offset": offset}
         if path is not None:
             params["path"] = path
+        if show_disabled:
+            params["show_disabled"] = "true"
 
         return await self._request(
             "GET",
@@ -676,6 +858,50 @@ class BifrostDocsClient:
             f"/api/organizations/{org_id}/documents/{doc_id}",
         )
 
+    async def update_document(
+        self,
+        org_id: str | UUID,
+        doc_id: str | UUID,
+        path: str | None = None,
+        name: str | None = None,
+        content: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        is_enabled: bool | None = None,
+    ) -> dict[str, Any]:
+        """
+        Update an existing document.
+
+        Args:
+            org_id: Organization UUID
+            doc_id: Document UUID
+            path: Virtual folder path
+            name: Document title
+            content: Markdown content
+            metadata: External system metadata
+            is_enabled: Whether the document is enabled
+
+        Returns:
+            Updated document object
+        """
+        payload: dict[str, Any] = {}
+
+        if path is not None:
+            payload["path"] = path
+        if name is not None:
+            payload["name"] = name
+        if content is not None:
+            payload["content"] = content
+        if metadata is not None:
+            payload["metadata"] = metadata
+        if is_enabled is not None:
+            payload["is_enabled"] = is_enabled
+
+        return await self._request(
+            "PUT",
+            f"/api/organizations/{org_id}/documents/{doc_id}",
+            json=payload,
+        )
+
     # =========================================================================
     # Passwords (Organization-scoped)
     # =========================================================================
@@ -685,6 +911,7 @@ class BifrostDocsClient:
         org_id: str | UUID,
         limit: int = 100,
         offset: int = 0,
+        show_disabled: bool = False,
     ) -> dict[str, Any]:
         """
         List passwords for an organization.
@@ -693,14 +920,19 @@ class BifrostDocsClient:
             org_id: Organization UUID
             limit: Maximum results per page
             offset: Number of results to skip
+            show_disabled: Include disabled passwords
 
         Returns:
             Paginated response with items, total, limit, offset
         """
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if show_disabled:
+            params["show_disabled"] = "true"
+
         return await self._request(
             "GET",
             f"/api/organizations/{org_id}/passwords",
-            params={"limit": limit, "offset": offset},
+            params=params,
         )
 
     async def create_password(
@@ -774,6 +1006,62 @@ class BifrostDocsClient:
             f"/api/organizations/{org_id}/passwords/{password_id}",
         )
 
+    async def update_password(
+        self,
+        org_id: str | UUID,
+        password_id: str | UUID,
+        name: str | None = None,
+        password: str | None = None,
+        username: str | None = None,
+        totp_secret: str | None = None,
+        url: str | None = None,
+        notes: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        is_enabled: bool | None = None,
+    ) -> dict[str, Any]:
+        """
+        Update an existing password entry.
+
+        Args:
+            org_id: Organization UUID
+            password_id: Password UUID
+            name: Password name/title
+            password: Password value
+            username: Associated username
+            totp_secret: TOTP secret for 2FA
+            url: Associated URL
+            notes: Notes (markdown)
+            metadata: External system metadata
+            is_enabled: Whether the password is enabled
+
+        Returns:
+            Updated password object (password value not returned)
+        """
+        payload: dict[str, Any] = {}
+
+        if name is not None:
+            payload["name"] = name
+        if password is not None:
+            payload["password"] = password
+        if username is not None:
+            payload["username"] = username
+        if totp_secret is not None:
+            payload["totp_secret"] = totp_secret
+        if url is not None:
+            payload["url"] = url
+        if notes is not None:
+            payload["notes"] = notes
+        if metadata is not None:
+            payload["metadata"] = metadata
+        if is_enabled is not None:
+            payload["is_enabled"] = is_enabled
+
+        return await self._request(
+            "PUT",
+            f"/api/organizations/{org_id}/passwords/{password_id}",
+            json=payload,
+        )
+
     # =========================================================================
     # Custom Assets (Organization-scoped, Type-scoped)
     # =========================================================================
@@ -784,6 +1072,7 @@ class BifrostDocsClient:
         type_id: str | UUID,
         limit: int = 100,
         offset: int = 0,
+        show_disabled: bool = False,
     ) -> dict[str, Any]:
         """
         List custom assets for a type within an organization.
@@ -793,14 +1082,19 @@ class BifrostDocsClient:
             type_id: Custom asset type UUID
             limit: Maximum results per page
             offset: Number of results to skip
+            show_disabled: Include disabled custom assets
 
         Returns:
             Paginated response with items, total, limit, offset
         """
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if show_disabled:
+            params["show_disabled"] = "true"
+
         return await self._request(
             "GET",
             f"/api/organizations/{org_id}/custom-asset-types/{type_id}/assets",
-            params={"limit": limit, "offset": offset},
+            params=params,
         )
 
     async def create_custom_asset(
@@ -857,6 +1151,41 @@ class BifrostDocsClient:
         return await self._request(
             "GET",
             f"/api/organizations/{org_id}/custom-asset-types/{type_id}/assets/{asset_id}",
+        )
+
+    async def update_custom_asset(
+        self,
+        org_id: str | UUID,
+        type_id: str | UUID,
+        asset_id: str | UUID,
+        values: dict[str, Any],
+        metadata: dict[str, Any] | None = None,
+        is_enabled: bool | None = None,
+    ) -> dict[str, Any]:
+        """
+        Update a custom asset's field values.
+
+        Args:
+            org_id: Organization UUID
+            type_id: Custom asset type UUID
+            asset_id: Custom asset UUID
+            values: Field values to update (keys must match type's field definitions)
+            metadata: External system metadata to update
+            is_enabled: Whether the custom asset is enabled
+
+        Returns:
+            Updated custom asset object (password fields filtered)
+        """
+        payload: dict[str, Any] = {"values": values}
+        if metadata is not None:
+            payload["metadata"] = metadata
+        if is_enabled is not None:
+            payload["is_enabled"] = is_enabled
+
+        return await self._request(
+            "PUT",
+            f"/api/organizations/{org_id}/custom-asset-types/{type_id}/assets/{asset_id}",
+            json=payload,
         )
 
     # =========================================================================

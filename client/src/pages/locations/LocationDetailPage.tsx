@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod/v4";
-import { MapPin, ArrowLeft, Trash2, FileText } from "lucide-react";
+import { MapPin, ArrowLeft, Trash2, FileText, Phone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,6 +20,7 @@ import {
   useLocation,
   useUpdateLocation,
   useDeleteLocation,
+  type Location,
   type LocationUpdate,
 } from "@/hooks/useLocations";
 import { toast } from "sonner";
@@ -28,6 +29,13 @@ import { cn } from "@/lib/utils";
 const locationSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
   notes: z.string().optional(),
+  address_1: z.string().max(255).optional().or(z.literal("")),
+  address_2: z.string().max(255).optional().or(z.literal("")),
+  city: z.string().max(100).optional().or(z.literal("")),
+  region: z.string().max(100).optional().or(z.literal("")),
+  postal_code: z.string().max(20).optional().or(z.literal("")),
+  country: z.string().max(100).optional().or(z.literal("")),
+  phone: z.string().max(50).optional().or(z.literal("")),
 });
 
 type LocationFormValues = z.infer<typeof locationSchema>;
@@ -50,11 +58,25 @@ export function LocationDetailPage() {
       return {
         name: "",
         notes: "",
+        address_1: "",
+        address_2: "",
+        city: "",
+        region: "",
+        postal_code: "",
+        country: "",
+        phone: "",
       };
     }
     return {
       name: location.name,
       notes: location.notes ?? "",
+      address_1: location.address_1 ?? "",
+      address_2: location.address_2 ?? "",
+      city: location.city ?? "",
+      region: location.region ?? "",
+      postal_code: location.postal_code ?? "",
+      country: location.country ?? "",
+      phone: location.phone ?? "",
     };
   }, [location]);
 
@@ -72,6 +94,14 @@ export function LocationDetailPage() {
     onSave: async (data) => {
       const updateData: LocationUpdate = {
         name: data.name,
+        // Use null to clear values, empty strings shouldn't be sent
+        address_1: data.address_1 || null,
+        address_2: data.address_2 || null,
+        city: data.city || null,
+        region: data.region || null,
+        postal_code: data.postal_code || null,
+        country: data.country || null,
+        phone: data.phone || null,
       };
       if (data.notes) updateData.notes = data.notes;
       await updateLocation.mutateAsync(updateData);
@@ -241,6 +271,150 @@ export function LocationDetailPage() {
           </Alert>
         )}
 
+        {/* Address */}
+        <Card className={cn(isEditing && "ring-2 ring-primary/20")}>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Address
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isEditing ? (
+              <div className="space-y-3">
+                <Controller
+                  control={form.control}
+                  name="address_1"
+                  render={({ field, fieldState }) => (
+                    <div>
+                      <label className="text-sm font-medium">Address Line 1</label>
+                      <Input
+                        {...field}
+                        placeholder="Street address"
+                        className="mt-1"
+                      />
+                      {fieldState.error && (
+                        <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>
+                      )}
+                    </div>
+                  )}
+                />
+                <Controller
+                  control={form.control}
+                  name="address_2"
+                  render={({ field, fieldState }) => (
+                    <div>
+                      <label className="text-sm font-medium">Address Line 2</label>
+                      <Input
+                        {...field}
+                        placeholder="Suite, unit, floor, etc."
+                        className="mt-1"
+                      />
+                      {fieldState.error && (
+                        <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>
+                      )}
+                    </div>
+                  )}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <Controller
+                    control={form.control}
+                    name="city"
+                    render={({ field, fieldState }) => (
+                      <div>
+                        <label className="text-sm font-medium">City</label>
+                        <Input
+                          {...field}
+                          placeholder="City"
+                          className="mt-1"
+                        />
+                        {fieldState.error && (
+                          <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>
+                        )}
+                      </div>
+                    )}
+                  />
+                  <Controller
+                    control={form.control}
+                    name="region"
+                    render={({ field, fieldState }) => (
+                      <div>
+                        <label className="text-sm font-medium">State / Province</label>
+                        <Input
+                          {...field}
+                          placeholder="State or Province"
+                          className="mt-1"
+                        />
+                        {fieldState.error && (
+                          <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>
+                        )}
+                      </div>
+                    )}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Controller
+                    control={form.control}
+                    name="postal_code"
+                    render={({ field, fieldState }) => (
+                      <div>
+                        <label className="text-sm font-medium">Postal / ZIP Code</label>
+                        <Input
+                          {...field}
+                          placeholder="Postal code"
+                          className="mt-1"
+                        />
+                        {fieldState.error && (
+                          <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>
+                        )}
+                      </div>
+                    )}
+                  />
+                  <Controller
+                    control={form.control}
+                    name="country"
+                    render={({ field, fieldState }) => (
+                      <div>
+                        <label className="text-sm font-medium">Country</label>
+                        <Input
+                          {...field}
+                          placeholder="Country"
+                          className="mt-1"
+                        />
+                        {fieldState.error && (
+                          <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>
+                        )}
+                      </div>
+                    )}
+                  />
+                </div>
+                <Controller
+                  control={form.control}
+                  name="phone"
+                  render={({ field, fieldState }) => (
+                    <div>
+                      <label className="text-sm font-medium flex items-center gap-1">
+                        <Phone className="h-3 w-3" />
+                        Phone
+                      </label>
+                      <Input
+                        {...field}
+                        placeholder="Phone number"
+                        className="mt-1"
+                      />
+                      {fieldState.error && (
+                        <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>
+                      )}
+                    </div>
+                  )}
+                />
+              </div>
+            ) : (
+              <AddressDisplay location={location} />
+            )}
+          </CardContent>
+        </Card>
+
         {/* Notes */}
         <Card className={cn(isEditing && "ring-2 ring-primary/20")}>
           <CardHeader>
@@ -293,6 +467,49 @@ export function LocationDetailPage() {
         onConfirm={handleDelete}
         loading={deleteLocation.isPending}
       />
+    </div>
+  );
+}
+
+// Helper component to display formatted address
+function AddressDisplay({ location }: { location: Location }) {
+  const hasAddress = location.address_1 || location.address_2 || location.city ||
+    location.region || location.postal_code || location.country;
+  const hasPhone = location.phone;
+
+  if (!hasAddress && !hasPhone) {
+    return <p className="text-sm text-muted-foreground italic">No address information</p>;
+  }
+
+  // Build city/state/zip line
+  const cityLine: string[] = [];
+  if (location.city) cityLine.push(location.city);
+  if (location.region) cityLine.push(location.region);
+  if (location.postal_code) {
+    if (cityLine.length > 0) {
+      // Add postal code to the region or city
+      cityLine[cityLine.length - 1] += ` ${location.postal_code}`;
+    } else {
+      cityLine.push(location.postal_code);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      {hasAddress && (
+        <address className="not-italic text-sm">
+          {location.address_1 && <div>{location.address_1}</div>}
+          {location.address_2 && <div>{location.address_2}</div>}
+          {cityLine.length > 0 && <div>{cityLine.join(", ")}</div>}
+          {location.country && <div>{location.country}</div>}
+        </address>
+      )}
+      {hasPhone && (
+        <div className="flex items-center gap-2 text-sm">
+          <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+          <span>{location.phone}</span>
+        </div>
+      )}
     </div>
   );
 }
