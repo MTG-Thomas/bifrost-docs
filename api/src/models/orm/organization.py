@@ -60,4 +60,4 @@ class Organization(Base):
     )
     updated_by_user: Mapped["User | None"] = relationship()
 
-    __table_args__ = (Index("ix_organizations_name", "name"),)
+    __table_args__ = (Index("ix_organizations_name", "name", unique=True),)
