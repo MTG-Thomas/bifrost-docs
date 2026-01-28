@@ -93,8 +93,19 @@ async def create_organization(
 
     Returns:
         Created organization
+
+    Raises:
+        HTTPException: 409 if organization name already exists
     """
     org_repo = OrganizationRepository(db)
+
+    # Check for duplicate name
+    existing = await org_repo.get_by_name(org_data.name)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Organization with name '{org_data.name}' already exists",
+        )
 
     # Create organization (default is_enabled to True if not provided)
     org = Organization(
