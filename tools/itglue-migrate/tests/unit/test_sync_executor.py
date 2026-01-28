@@ -7,7 +7,11 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from itglue_migrate.sync_differ import SyncPlan
-from itglue_migrate.sync_executor import SyncExecutor, SyncResult
+from itglue_migrate.sync_executor import (
+    SyncExecutor,
+    SyncResult,
+    _map_org_status_to_is_enabled,
+)
 
 
 @pytest.fixture
@@ -230,6 +234,36 @@ class TestSyncExecutorExecutePasswords:
         mock_client.create_password.assert_called_once()
 
 
+class TestMapOrgStatusToIsEnabled:
+    """Tests for _map_org_status_to_is_enabled function."""
+
+    def test_active_status_returns_true(self) -> None:
+        """Active status should return True (enabled)."""
+        assert _map_org_status_to_is_enabled("Active") is True
+        assert _map_org_status_to_is_enabled("active") is True
+        assert _map_org_status_to_is_enabled("ACTIVE") is True
+
+    def test_inactive_status_returns_false(self) -> None:
+        """Inactive or other status should return False (disabled)."""
+        assert _map_org_status_to_is_enabled("Inactive") is False
+        assert _map_org_status_to_is_enabled("inactive") is False
+        assert _map_org_status_to_is_enabled("INACTIVE") is False
+
+    def test_other_status_returns_false(self) -> None:
+        """Any status other than Active returns False."""
+        assert _map_org_status_to_is_enabled("Suspended") is False
+        assert _map_org_status_to_is_enabled("Archived") is False
+        assert _map_org_status_to_is_enabled("Pending") is False
+
+    def test_empty_string_returns_true(self) -> None:
+        """Empty string defaults to True (enabled) like None."""
+        assert _map_org_status_to_is_enabled("") is True
+
+    def test_none_returns_true(self) -> None:
+        """None status defaults to True (enabled)."""
+        assert _map_org_status_to_is_enabled(None) is True
+
+
 class TestSyncExecutorExecuteOrganizations:
     """Tests for executing organization sync."""
 
@@ -278,6 +312,69 @@ class TestSyncExecutorExecuteOrganizations:
 
         assert result.created.get("organizations", 0) == 2
         mock_client.create_organization.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_execute_org_with_active_status(self, mock_client: MagicMock) -> None:
+        """Organization with Active status is created with is_enabled=True."""
+        plan = SyncPlan()
+        plan.organizations.to_create = [
+            {
+                "name": "Active Org",
+                "organization_status": "Active",
+                "metadata": {"itglue_id": "org-1"},
+            }
+        ]
+
+        executor = SyncExecutor(mock_client, org_id="", dry_run=False)
+        await executor.execute(plan)
+
+        mock_client.create_organization.assert_called_once_with(
+            name="Active Org",
+            is_enabled=True,
+            metadata={"itglue_id": "org-1"},
+        )
+
+    @pytest.mark.asyncio
+    async def test_execute_org_with_inactive_status(
+        self, mock_client: MagicMock
+    ) -> None:
+        """Organization with Inactive status is created with is_enabled=False."""
+        plan = SyncPlan()
+        plan.organizations.to_create = [
+            {
+                "name": "Inactive Org",
+                "organization_status": "Inactive",
+                "metadata": {"itglue_id": "org-2"},
+            }
+        ]
+
+        executor = SyncExecutor(mock_client, org_id="", dry_run=False)
+        await executor.execute(plan)
+
+        mock_client.create_organization.assert_called_once_with(
+            name="Inactive Org",
+            is_enabled=False,
+            metadata={"itglue_id": "org-2"},
+        )
+
+    @pytest.mark.asyncio
+    async def test_execute_org_without_status_defaults_to_enabled(
+        self, mock_client: MagicMock
+    ) -> None:
+        """Organization without status defaults to is_enabled=True."""
+        plan = SyncPlan()
+        plan.organizations.to_create = [
+            {"name": "No Status Org", "metadata": {"itglue_id": "org-3"}}
+        ]
+
+        executor = SyncExecutor(mock_client, org_id="", dry_run=False)
+        await executor.execute(plan)
+
+        mock_client.create_organization.assert_called_once_with(
+            name="No Status Org",
+            is_enabled=True,
+            metadata={"itglue_id": "org-3"},
+        )
 
 
 class TestSyncExecutorExecuteConfigTypes:

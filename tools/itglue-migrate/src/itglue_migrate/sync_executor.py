@@ -39,6 +39,20 @@ def _is_content_empty(html_content: str) -> bool:
     return not text.strip()
 
 
+def _map_org_status_to_is_enabled(status: str | None) -> bool:
+    """Convert IT Glue organization_status to is_enabled boolean.
+
+    Args:
+        status: "Active" or other status from IT Glue export
+
+    Returns:
+        True if Active, False otherwise
+    """
+    if not status:
+        return True
+    return str(status).lower() == "active"
+
+
 class APIClientProtocol(Protocol):
     """Protocol defining the API client interface used by SyncExecutor."""
 
@@ -357,9 +371,13 @@ class SyncExecutor:
                 name = entity.get("name", "Unnamed")
                 metadata = entity.get("metadata")
 
+                # Get organization_status and map to is_enabled
+                org_status = entity.get("organization_status")
+                is_enabled = _map_org_status_to_is_enabled(org_status)
+
                 response = await self.client.create_organization(
                     name=name,
-                    is_enabled=True,
+                    is_enabled=is_enabled,
                     metadata=metadata,
                 )
 
