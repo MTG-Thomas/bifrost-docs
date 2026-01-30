@@ -285,12 +285,43 @@ class TestStateFetcherRelationships:
             "total": 1,
         })
         mock_client.list_relationships = AsyncMock(return_value=[
-            {"target_type": "configuration", "target_id": "cfg-1"},
+            {
+                "source_type": "password",
+                "source_id": "pwd-1",
+                "target_type": "configuration",
+                "target_id": "cfg-1",
+            },
         ])
 
         fetcher = StateFetcher(mock_client)
         state = await fetcher.fetch_for_org("uuid-1")
 
+        expected_key = "password:pwd-1:configuration:cfg-1"
+        assert expected_key in state.relationships
+
+    @pytest.mark.asyncio
+    async def test_fetch_relationships_normalizes_reversed_direction(self, mock_client):
+        """fetch_for_org normalizes relationships where password is target."""
+        mock_client.list_passwords = AsyncMock(return_value={
+            "items": [
+                {"id": "pwd-1", "name": "Admin Password", "metadata": {"itglue_id": "pwd-123"}},
+            ],
+            "total": 1,
+        })
+        # Relationship stored as config -> password (password is target)
+        mock_client.list_relationships = AsyncMock(return_value=[
+            {
+                "source_type": "configuration",
+                "source_id": "cfg-1",
+                "target_type": "password",
+                "target_id": "pwd-1",
+            },
+        ])
+
+        fetcher = StateFetcher(mock_client)
+        state = await fetcher.fetch_for_org("uuid-1")
+
+        # Should be normalized to password:X:type:Y format
         expected_key = "password:pwd-1:configuration:cfg-1"
         assert expected_key in state.relationships
 

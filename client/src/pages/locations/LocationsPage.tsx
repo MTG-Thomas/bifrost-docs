@@ -46,6 +46,27 @@ const columns: ColumnDef<Location>[] = [
     size: 200,
   },
   {
+    accessorKey: "address",
+    header: ({ column }) => (
+      <SortableHeader column={column}>Address</SortableHeader>
+    ),
+    cell: ({ row }) => {
+      const location = row.original;
+      const parts = [
+        location.address_1,
+        location.city,
+        location.region,
+        location.postal_code,
+      ].filter(Boolean);
+      const address = parts.join(", ");
+      return (
+        <span className="text-muted-foreground max-w-md truncate block">
+          {address || "-"}
+        </span>
+      );
+    },
+  },
+  {
     accessorKey: "notes",
     header: ({ column }) => (
       <SortableHeader column={column}>Notes</SortableHeader>
@@ -78,7 +99,7 @@ const columns: ColumnDef<Location>[] = [
 const pinnedColumns = ["select", "name"];
 
 // All column IDs for preferences
-const allColumnIds = ["name", "notes", "updated_at"];
+const allColumnIds = ["name", "address", "notes", "updated_at"];
 
 export function LocationsPage() {
   const { orgId } = useParams<{ orgId: string }>();

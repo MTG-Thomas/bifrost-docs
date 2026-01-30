@@ -450,7 +450,7 @@ export function PasswordDetailPage() {
       </div>
 
       {/* Sidebar */}
-      <aside className="w-80 shrink-0 hidden lg:block space-y-4">
+      <aside className="w-[360px] shrink-0 hidden lg:block space-y-4">
         <RelatedItemsSidebar
           orgId={orgId}
           entityType="password"

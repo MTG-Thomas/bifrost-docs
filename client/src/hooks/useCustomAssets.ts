@@ -1,13 +1,30 @@
-import {
-  keepPreviousData,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+/**
+ * React Query hooks for custom asset types and instances
+ */
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api-client";
+import type { components } from "@/lib/v1";
 
 // =============================================================================
-// Pagination Types
+// Re-export types from OpenAPI spec for component convenience
+// =============================================================================
+
+export type FieldDefinition = components["schemas"]["FieldDefinition"];
+export type FieldType = FieldDefinition["type"];
+export type CustomAssetType = components["schemas"]["CustomAssetTypePublic"];
+export type CustomAssetTypeCreate = components["schemas"]["CustomAssetTypeCreate"];
+export type CustomAssetTypeUpdate = components["schemas"]["CustomAssetTypeUpdate"];
+export type CustomAsset = components["schemas"]["CustomAssetPublic"];
+export type CustomAssetReveal = components["schemas"]["CustomAssetReveal"];
+export type CustomAssetCreate = components["schemas"]["CustomAssetCreate"];
+export type CustomAssetUpdate = components["schemas"]["CustomAssetUpdate"];
+
+// API response types
+type CustomAssetListResponse = components["schemas"]["CustomAssetListResponse"];
+
+// =============================================================================
+// Pagination Types (client-side utilities)
 // =============================================================================
 
 export interface PaginatedResponse<T> {
@@ -29,70 +46,19 @@ export interface CustomAssetsParams {
 }
 
 // =============================================================================
-// Field Definition Types
-// =============================================================================
-
-export type FieldType =
-  | "text"
-  | "textbox"
-  | "number"
-  | "date"
-  | "checkbox"
-  | "select"
-  | "header"
-  | "password"
-  | "totp";
-
-export interface FieldDefinition {
-  key: string;
-  name: string;
-  type: FieldType;
-  required: boolean;
-  show_in_list: boolean;
-  hint: string | null;
-  default_value: string | null;
-  options: string[] | null;
-}
-
-// =============================================================================
-// Custom Asset Type Types
-// =============================================================================
-
-export interface CustomAssetType {
-  id: string;
-  name: string;
-  fields: FieldDefinition[];
-  sort_order: number;
-  display_field_key: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  asset_count: number;
-}
-
-export interface CustomAssetTypeCreate {
-  name: string;
-  fields: FieldDefinition[];
-  display_field_key?: string | null;
-}
-
-export interface CustomAssetTypeUpdate {
-  name?: string;
-  fields?: FieldDefinition[];
-  display_field_key?: string | null;
-}
-
-// =============================================================================
-// Custom Asset Types Hooks (Global - not org-scoped)
+// Custom Asset Type Hooks (Global - not org-scoped)
 // =============================================================================
 
 export function useCustomAssetTypes(options?: { includeInactive?: boolean }) {
   return useQuery({
     queryKey: ["custom-asset-types", options?.includeInactive],
     queryFn: async () => {
+      const params = new URLSearchParams();
+      if (options?.includeInactive) {
+        params.set("include_inactive", "true");
+      }
       const response = await api.get<CustomAssetType[]>(
-        `/api/custom-asset-types`,
-        { params: { include_inactive: options?.includeInactive ?? false } }
+        `/api/custom-asset-types${params.toString() ? `?${params}` : ""}`
       );
       return response.data;
     },
@@ -101,7 +67,7 @@ export function useCustomAssetTypes(options?: { includeInactive?: boolean }) {
 
 export function useCustomAssetType(typeId: string) {
   return useQuery({
-    queryKey: ["custom-asset-types", typeId],
+    queryKey: ["custom-asset-type", typeId],
     queryFn: async () => {
       const response = await api.get<CustomAssetType>(
         `/api/custom-asset-types/${typeId}`
@@ -118,7 +84,7 @@ export function useCreateCustomAssetType() {
   return useMutation({
     mutationFn: async (data: CustomAssetTypeCreate) => {
       const response = await api.post<CustomAssetType>(
-        `/api/custom-asset-types`,
+        "/api/custom-asset-types",
         data
       );
       return response.data;
@@ -134,17 +100,28 @@ export function useUpdateCustomAssetType() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: CustomAssetTypeUpdate }) => {
+    mutationFn: async ({
+      typeId,
+      id,
+      data,
+    }: {
+      typeId?: string;
+      id?: string;
+      data: CustomAssetTypeUpdate;
+    }) => {
+      const actualId = typeId ?? id;
+      if (!actualId) throw new Error("typeId or id is required");
       const response = await api.put<CustomAssetType>(
-        `/api/custom-asset-types/${id}`,
+        `/api/custom-asset-types/${actualId}`,
         data
       );
       return response.data;
     },
-    onSuccess: (_, { id }) => {
+    onSuccess: (_, variables) => {
+      const actualId = variables.typeId ?? variables.id;
       queryClient.invalidateQueries({ queryKey: ["custom-asset-types"] });
       queryClient.invalidateQueries({
-        queryKey: ["custom-asset-types", id],
+        queryKey: ["custom-asset-type", actualId],
       });
       queryClient.invalidateQueries({ queryKey: ["sidebar"] });
     },
@@ -199,76 +176,45 @@ export function useActivateCustomAssetType() {
   });
 }
 
-
 export function useReorderCustomAssetTypes() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (ids: string[]) => {
-      await api.patch("/api/custom-asset-types/reorder", { ids });
+      const response = await api.patch<CustomAssetType[]>(
+        "/api/custom-asset-types/reorder",
+        { ids }
+      );
+      return response.data;
     },
-    onMutate: async (ids) => {
-      // Cancel outgoing queries
+    onMutate: async (newOrder) => {
       await queryClient.cancelQueries({ queryKey: ["custom-asset-types"] });
       await queryClient.cancelQueries({ queryKey: ["sidebar"] });
 
-      // Snapshot previous value
       const previousTypes = queryClient.getQueryData<CustomAssetType[]>([
         "custom-asset-types",
       ]);
 
-      // Optimistically update
       queryClient.setQueryData<CustomAssetType[]>(
         ["custom-asset-types"],
         (old) => {
           if (!old) return old;
-          return ids.map((id) => old.find((t) => t.id === id)!).filter(Boolean);
+          return newOrder.map((id) => old.find((t) => t.id === id)!).filter(Boolean);
         }
       );
 
       return { previousTypes };
     },
-    onError: (_err, _ids, context) => {
-      // Rollback on error
+    onError: (_err, _variables, context) => {
       if (context?.previousTypes) {
         queryClient.setQueryData(["custom-asset-types"], context.previousTypes);
       }
     },
     onSettled: () => {
-      // Refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["custom-asset-types"] });
       queryClient.invalidateQueries({ queryKey: ["sidebar"] });
     },
   });
-}
-
-// =============================================================================
-// Custom Asset Instance Types
-// =============================================================================
-
-export interface CustomAsset {
-  id: string;
-  organization_id: string;
-  custom_asset_type_id: string;
-  values: Record<string, unknown>;
-  is_enabled: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export type CustomAssetReveal = CustomAsset & {
-  /** values includes decrypted password fields */
-  values: Record<string, unknown>;
-}
-
-export interface CustomAssetCreate {
-  values: Record<string, unknown>;
-  is_enabled?: boolean;
-}
-
-export interface CustomAssetUpdate {
-  values?: Record<string, unknown>;
-  is_enabled?: boolean;
 }
 
 // =============================================================================
@@ -283,26 +229,32 @@ export function useCustomAssets(
   return useQuery({
     queryKey: ["custom-assets", orgId, typeId, options],
     queryFn: async () => {
-      const params: Record<string, string | number | boolean> = {};
-      if (options?.pagination?.limit !== undefined) params.limit = options.pagination.limit;
-      if (options?.pagination?.offset !== undefined) params.offset = options.pagination.offset;
-      if (options?.search) params.search = options.search;
-      if (options?.showDisabled) params.show_disabled = true;
-
-      const response = await api.get<PaginatedResponse<CustomAsset>>(
-        `/api/organizations/${orgId}/custom-asset-types/${typeId}/assets`,
-        { params }
+      const params = new URLSearchParams();
+      if (options?.pagination?.limit !== undefined) {
+        params.set("limit", String(options.pagination.limit));
+      }
+      if (options?.pagination?.offset !== undefined) {
+        params.set("offset", String(options.pagination.offset));
+      }
+      if (options?.search) {
+        params.set("search", options.search);
+      }
+      if (options?.showDisabled) {
+        params.set("show_disabled", "true");
+      }
+      const response = await api.get<CustomAssetListResponse>(
+        `/api/organizations/${orgId}/custom-asset-types/${typeId}/assets${params.toString() ? `?${params}` : ""}`
       );
       return response.data;
     },
     enabled: !!orgId && !!typeId,
-    placeholderData: keepPreviousData,
+    placeholderData: (prev) => prev,
   });
 }
 
 export function useCustomAsset(orgId: string, typeId: string, assetId: string) {
   return useQuery({
-    queryKey: ["custom-assets", orgId, typeId, assetId],
+    queryKey: ["custom-asset", orgId, typeId, assetId],
     queryFn: async () => {
       const response = await api.get<CustomAsset>(
         `/api/organizations/${orgId}/custom-asset-types/${typeId}/assets/${assetId}`
@@ -313,21 +265,21 @@ export function useCustomAsset(orgId: string, typeId: string, assetId: string) {
   });
 }
 
-export function useRevealCustomAsset(
+/**
+ * Fetch revealed custom asset secrets.
+ * Returns a function to fetch secrets on demand - no caching.
+ * Secrets should never be cached in React Query.
+ */
+export function fetchCustomAssetSecrets(
   orgId: string,
   typeId: string,
   assetId: string
-) {
-  return useQuery({
-    queryKey: ["custom-assets", orgId, typeId, assetId, "reveal"],
-    queryFn: async () => {
-      const response = await api.get<CustomAssetReveal>(
-        `/api/organizations/${orgId}/custom-asset-types/${typeId}/assets/${assetId}/reveal`
-      );
-      return response.data;
-    },
-    enabled: false, // Only fetch when explicitly requested
-  });
+): Promise<CustomAssetReveal> {
+  return api
+    .get<CustomAssetReveal>(
+      `/api/organizations/${orgId}/custom-asset-types/${typeId}/assets/${assetId}/reveal`
+    )
+    .then((response) => response.data);
 }
 
 export function useCreateCustomAsset(orgId: string, typeId: string) {
@@ -369,13 +321,17 @@ export function useUpdateCustomAsset(
         queryKey: ["custom-assets", orgId, typeId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["custom-assets", orgId, typeId, assetId],
+        queryKey: ["custom-asset", orgId, typeId, assetId],
       });
     },
   });
 }
 
-export function useDeleteCustomAsset(orgId: string, typeId: string, onDeleted?: (id: string) => void) {
+export function useDeleteCustomAsset(
+  orgId: string,
+  typeId: string,
+  onDeleted?: (id: string) => void
+) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -385,27 +341,20 @@ export function useDeleteCustomAsset(orgId: string, typeId: string, onDeleted?: 
       );
       return assetId;
     },
-    onSuccess: (_data, assetId) => {
+    onSuccess: (assetId) => {
       // Navigate FIRST (if callback provided) to unmount detail page before cache removal
-      // This prevents the detail page query from refetching a deleted resource
       onDeleted?.(assetId);
 
       // Remove detail query from cache
       queryClient.removeQueries({
-        queryKey: ["custom-assets", orgId, typeId, assetId],
+        queryKey: ["custom-asset", orgId, typeId, assetId],
       });
-      // Invalidate ONLY list queries (4th element is object), not detail queries (4th element is string)
+
+      // Invalidate list queries
       queryClient.invalidateQueries({
-        predicate: (query) => {
-          const key = query.queryKey;
-          return (
-            key[0] === "custom-assets" &&
-            key[1] === orgId &&
-            key[2] === typeId &&
-            (key.length === 3 || typeof key[3] === "object")
-          );
-        },
+        queryKey: ["custom-assets", orgId, typeId],
       });
+
       // Invalidate sidebar to update counts
       queryClient.invalidateQueries({ queryKey: ["sidebar", orgId] });
     },
@@ -416,10 +365,19 @@ export function useBatchToggleCustomAssets(orgId: string, typeId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ ids, isEnabled }: { ids: string[]; isEnabled: boolean }) => {
-      const response = await api.patch<{ updated_count: number }>(
+    mutationFn: async ({
+      ids,
+      is_enabled,
+      isEnabled,
+    }: {
+      ids: string[];
+      is_enabled?: boolean;
+      isEnabled?: boolean;
+    }) => {
+      const enabled = is_enabled ?? isEnabled;
+      const response = await api.patch(
         `/api/organizations/${orgId}/custom-asset-types/${typeId}/assets/batch/toggle`,
-        { ids, is_enabled: isEnabled }
+        { ids, is_enabled: enabled }
       );
       return response.data;
     },

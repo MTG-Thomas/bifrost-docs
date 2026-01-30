@@ -294,6 +294,19 @@ const DraggableColumnItem = React.memo(function DraggableColumnItem({
   const [isDraggedOver, setIsDraggedOver] = React.useState(false);
   const [dropPosition, setDropPosition] = React.useState<"none" | "before" | "after">("none");
 
+  // Local state for immediate checkbox feedback
+  const [localVisible, setLocalVisible] = React.useState(isVisible);
+
+  // Sync local state when external state changes (e.g., on refresh)
+  React.useEffect(() => {
+    setLocalVisible(isVisible);
+  }, [isVisible]);
+
+  const handleVisibilityChange = (checked: boolean) => {
+    setLocalVisible(checked); // Immediate UI update
+    onVisibilityChange(checked); // Propagate to parent
+  };
+
   React.useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -349,8 +362,8 @@ const DraggableColumnItem = React.memo(function DraggableColumnItem({
         <label className="flex items-center gap-2 flex-1 cursor-pointer select-none">
           <input
             type="checkbox"
-            checked={isVisible}
-            onChange={(e) => onVisibilityChange(e.target.checked)}
+            checked={localVisible}
+            onChange={(e) => handleVisibilityChange(e.target.checked)}
             className="h-4 w-4 rounded border-input"
           />
           <span className="capitalize text-sm">{columnLabel}</span>
@@ -396,7 +409,7 @@ const ColumnVisibilityToggle = React.memo(function ColumnVisibilityToggle<TData>
       if (bIndex === -1) return -1;
       return aIndex - bIndex;
     });
-  }, [sortableColumns, currentOrder]);
+  }, [sortableColumns, currentOrder, table.getState().columnVisibility]);
 
   // Set up drop zone for reordering
   React.useEffect(() => {

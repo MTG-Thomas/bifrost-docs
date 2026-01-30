@@ -39,6 +39,7 @@ class RelationshipPublic(BaseModel):
 class RelatedEntity(BaseModel):
     """Resolved entity info for display."""
 
+    relationship_id: str
     entity_type: str
     entity_id: str
     name: str

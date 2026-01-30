@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "tsc": "tsc -b",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate:types": "npx openapi-typescript http://localhost:8080/openapi.json -o src/lib/v1.d.ts",
+    "generate:types:docker": "npx openapi-typescript http://api:8000/openapi.json -o src/lib/v1.d.ts"
   },
   "dependencies": {
     "@atlaskit/pragmatic-drag-and-drop": "^1.7.7",
@@ -56,6 +58,9 @@
     "cmdk": "^1.1.1",
     "framer-motion": "^12.26.1",
     "lucide-react": "^0.562.0",
+    "openapi-fetch": "^0.15.0",
+    "openapi-react-query": "^0.5.1",
+    "openapi-typescript-helpers": "^0.0.15",
     "otpauth": "^9.4.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -83,6 +88,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "openapi-typescript": "^7.10.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",

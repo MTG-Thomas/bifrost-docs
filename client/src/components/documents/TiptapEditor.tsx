@@ -1,8 +1,8 @@
 import { useEffect, useCallback } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
+import { ImageExtension } from "./ImageExtension";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "@tiptap/markdown";
 import { Table } from "@tiptap/extension-table";
@@ -39,12 +39,9 @@ export function TiptapEditor({
         },
       }),
       Markdown,
-      Image.configure({
+      ImageExtension.configure({
         inline: false,
         allowBase64: false,
-        HTMLAttributes: {
-          class: "rounded-md max-w-full",
-        },
       }),
       Link.configure({
         openOnClick: false,

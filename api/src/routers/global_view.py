@@ -27,7 +27,7 @@ from src.repositories.custom_asset_type import CustomAssetTypeRepository
 from src.repositories.document import DocumentRepository
 from src.repositories.location import LocationRepository
 from src.repositories.password import PasswordRepository
-from src.services.custom_asset_validation import filter_password_fields
+from src.services.custom_asset_validation import values_id_to_key
 
 logger = logging.getLogger(__name__)
 
@@ -561,7 +561,7 @@ async def list_global_custom_assets(
             organization_id=str(asset.organization_id),
             organization_name=asset.organization.name if asset.organization else "Unknown",
             custom_asset_type_id=str(asset.custom_asset_type_id),
-            values=filter_password_fields(type_fields, asset.values),
+            values=values_id_to_key(type_fields, asset.values, filter_secrets=True),
             is_enabled=asset.is_enabled,
             created_at=asset.created_at.isoformat(),
             updated_at=asset.updated_at.isoformat(),
@@ -597,14 +597,20 @@ async def get_global_sidebar_data(
     Returns:
         Sidebar data with aggregated counts
     """
-    # Get aggregated core entity counts
-    password_count_result = await db.execute(select(func.count(Password.id)))
+    # Get aggregated core entity counts (only enabled items)
+    password_count_result = await db.execute(
+        select(func.count(Password.id)).where(Password.is_enabled.is_(True))
+    )
     passwords_count = password_count_result.scalar_one()
 
-    location_count_result = await db.execute(select(func.count(Location.id)))
+    location_count_result = await db.execute(
+        select(func.count(Location.id)).where(Location.is_enabled.is_(True))
+    )
     locations_count = location_count_result.scalar_one()
 
-    document_count_result = await db.execute(select(func.count(Document.id)))
+    document_count_result = await db.execute(
+        select(func.count(Document.id)).where(Document.is_enabled.is_(True))
+    )
     documents_count = document_count_result.scalar_one()
 
     # Get configuration types with aggregated counts
@@ -615,7 +621,8 @@ async def get_global_sidebar_data(
     for ct in config_types:
         count_result = await db.execute(
             select(func.count(Configuration.id)).where(
-                Configuration.configuration_type_id == ct.id
+                Configuration.configuration_type_id == ct.id,
+                Configuration.is_enabled.is_(True),
             )
         )
         count = count_result.scalar_one()
@@ -631,7 +638,8 @@ async def get_global_sidebar_data(
     for at in asset_types:
         count_result = await db.execute(
             select(func.count(CustomAsset.id)).where(
-                CustomAsset.custom_asset_type_id == at.id
+                CustomAsset.custom_asset_type_id == at.id,
+                CustomAsset.is_enabled.is_(True),
             )
         )
         count = count_result.scalar_one()

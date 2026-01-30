@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
+from itglue_migrate.api_client import APIError
 from itglue_migrate.document_processor import DocumentProcessor
 from itglue_migrate.progress import Phase, ProgressReporter, SimpleProgressReporter
 
@@ -427,6 +428,19 @@ class SyncExecutor:
                     result.created.get("organizations", 0) + 1
                 )
 
+            except APIError as e:
+                if e.status_code == 409:
+                    # Organization already exists - expected during re-sync
+                    logger.info(f"Organization '{entity.get('name')}' already exists")
+                    result.skipped["organizations"] = (
+                        result.skipped.get("organizations", 0) + 1
+                    )
+                else:
+                    result.failed["organizations"] = (
+                        result.failed.get("organizations", 0) + 1
+                    )
+                    result.errors.append(f"Organization '{entity.get('name')}': {e}")
+                    logger.warning(f"Failed to create organization: {e}")
             except Exception as e:
                 result.failed["organizations"] = (
                     result.failed.get("organizations", 0) + 1
@@ -631,7 +645,7 @@ class SyncExecutor:
             # SECOND: Check for empty content (after attempting to load from file)
             if _is_content_empty(raw_content):
                 result.skipped["documents"] = result.skipped.get("documents", 0) + 1
-                logger.warning(f"Skipping document '{doc_name}': empty content")
+                logger.debug(f"Skipping document '{doc_name}': empty content")
                 if self.reporter:
                     self.reporter.update_progress(skipped=1)
                     self.reporter.warning(f"Document '{doc_name}' has empty content")
@@ -665,7 +679,7 @@ class SyncExecutor:
                     if processed_content:
                         content = processed_content
                     for warning in warnings:
-                        logger.warning(f"Document {doc_name}: {warning}")
+                        logger.debug(f"Document {doc_name}: {warning}")
                 elif content:
                     # Fallback: just ensure content is string
                     content = str(content) if content else ""
@@ -840,9 +854,12 @@ class SyncExecutor:
 
                 result.created["passwords"] = result.created.get("passwords", 0) + 1
 
-                # Create relationship to custom asset if we have state
-                if password_uuid and resource_id and self.state:
-                    target_uuid = self.state.custom_asset_by_itglue_id.get(resource_id)
+                # Create relationship to custom asset
+                # Check id_map first (for assets created this run), then state (pre-existing)
+                if password_uuid and resource_id:
+                    target_uuid = result.id_map.get(resource_id)
+                    if not target_uuid and self.state:
+                        target_uuid = self.state.custom_asset_by_itglue_id.get(resource_id)
                     if target_uuid:
                         try:
                             await self.client.create_relationship(
@@ -855,6 +872,22 @@ class SyncExecutor:
                             result.created["relationships"] = (
                                 result.created.get("relationships", 0) + 1
                             )
+                        except APIError as rel_err:
+                            # 409 means relationship already exists - that's fine
+                            if rel_err.status_code == 409:
+                                result.created["relationships"] = (
+                                    result.created.get("relationships", 0) + 1
+                                )
+                            else:
+                                result.failed["relationships"] = (
+                                    result.failed.get("relationships", 0) + 1
+                                )
+                                result.errors.append(
+                                    f"Relationship for password '{name}' -> custom_asset: {rel_err}"
+                                )
+                                logger.warning(
+                                    f"Failed to create relationship for row password: {rel_err}"
+                                )
                         except Exception as rel_err:
                             result.failed["relationships"] = (
                                 result.failed.get("relationships", 0) + 1
@@ -1236,6 +1269,9 @@ class SyncExecutor:
                 )
             return
 
+        # Track skipped cell writes for summary logging
+        skipped_not_in_org: list[str] = []
+
         for entity in plan.passwords.cell_writes:
             try:
                 resource_id = str(entity.get("resource_id", ""))
@@ -1258,9 +1294,11 @@ class SyncExecutor:
                     result.skipped["cell_writes"] = (
                         result.skipped.get("cell_writes", 0) + 1
                     )
-                    logger.warning(
-                        f"Cell write skipped: custom asset not found for "
-                        f"resource_id={resource_id}"
+                    # Track for summary - likely a cross-org reference
+                    skipped_not_in_org.append(resource_id)
+                    logger.debug(
+                        f"Cell write skipped: custom asset {resource_id} not in "
+                        "synced org (likely cross-org reference)"
                     )
                     continue
 
@@ -1307,6 +1345,13 @@ class SyncExecutor:
                 )
                 logger.warning(f"Failed to execute cell write: {e}")
 
+        # Log summary of skipped cell writes (cross-org references are common)
+        if skipped_not_in_org:
+            logger.info(
+                f"Skipped {len(skipped_not_in_org)} cell writes: target assets not "
+                "in synced org (likely cross-org references to unsynced orgs)"
+            )
+
     async def _execute_relationships(
         self, plan: SyncPlan, result: SyncResult
     ) -> None:
@@ -1324,45 +1369,45 @@ class SyncExecutor:
                     )
                     continue
 
-                # Resolve source_id - may need to look up from ITGlue ID
+                # Resolve source_id - prefer id_map (newly created) over pre-filled
                 source_id = entity.get("source_id", "")
                 source_itglue_id = entity.get("source_itglue_id", "")
-                if not source_id and source_itglue_id:
-                    # Try result.id_map first (entity created this run)
-                    source_id = result.id_map.get(source_itglue_id, "")
+                # Prefer id_map (newly created entities) over pre-filled source_id
+                if source_itglue_id and source_itglue_id in result.id_map:
+                    source_id = result.id_map[source_itglue_id]
+                elif not source_id and source_itglue_id and self.state:
                     # Fall back to state lookup (entity already existed)
-                    if not source_id and self.state:
-                        source_type = entity.get("source_type", "")
-                        if source_type == "password":
-                            source_id = self.state.password_by_itglue_id.get(
-                                source_itglue_id, ""
-                            )
+                    source_type = entity.get("source_type", "")
+                    if source_type == "password":
+                        source_id = self.state.password_by_itglue_id.get(
+                            source_itglue_id, ""
+                        )
 
-                # Resolve target_id - may need to look up from ITGlue ID
+                # Resolve target_id - prefer id_map (newly created) over pre-filled
                 target_id = entity.get("target_id", "")
                 target_itglue_id = entity.get("target_itglue_id", "")
-                if not target_id and target_itglue_id:
-                    # Try result.id_map first (entity created this run)
-                    target_id = result.id_map.get(target_itglue_id, "")
+                # Prefer id_map (newly created entities) over pre-filled target_id
+                if target_itglue_id and target_itglue_id in result.id_map:
+                    target_id = result.id_map[target_itglue_id]
+                elif not target_id and target_itglue_id and self.state:
                     # Fall back to state lookup (entity already existed)
-                    if not target_id and self.state:
-                        target_type = entity.get("target_type", "")
-                        if target_type == "configuration":
-                            target_id = self.state.config_by_itglue_id.get(
-                                target_itglue_id, ""
-                            )
-                        elif target_type == "location":
-                            target_id = self.state.location_by_itglue_id.get(
-                                target_itglue_id, ""
-                            )
-                        elif target_type == "document":
-                            target_id = self.state.document_by_itglue_id.get(
-                                target_itglue_id, ""
-                            )
-                        elif target_type == "custom_asset":
-                            target_id = self.state.custom_asset_by_itglue_id.get(
-                                target_itglue_id, ""
-                            )
+                    target_type = entity.get("target_type", "")
+                    if target_type == "configuration":
+                        target_id = self.state.config_by_itglue_id.get(
+                            target_itglue_id, ""
+                        )
+                    elif target_type == "location":
+                        target_id = self.state.location_by_itglue_id.get(
+                            target_itglue_id, ""
+                        )
+                    elif target_type == "document":
+                        target_id = self.state.document_by_itglue_id.get(
+                            target_itglue_id, ""
+                        )
+                    elif target_type == "custom_asset":
+                        target_id = self.state.custom_asset_by_itglue_id.get(
+                            target_itglue_id, ""
+                        )
 
                 # Skip if we couldn't resolve both IDs
                 if not source_id or not target_id:
@@ -1389,6 +1434,20 @@ class SyncExecutor:
                     result.created.get("relationships", 0) + 1
                 )
 
+            except APIError as e:
+                # 409 means relationship already exists - that's fine
+                if e.status_code == 409:
+                    result.created["relationships"] = (
+                        result.created.get("relationships", 0) + 1
+                    )
+                else:
+                    result.failed["relationships"] = (
+                        result.failed.get("relationships", 0) + 1
+                    )
+                    source = entity.get("source_id") or entity.get("source_itglue_id", "?")
+                    target = entity.get("target_id") or entity.get("target_itglue_id", "?")
+                    result.errors.append(f"Relationship '{source}' -> '{target}': {e}")
+                    logger.warning(f"Failed to create relationship: {e}")
             except Exception as e:
                 result.failed["relationships"] = (
                     result.failed.get("relationships", 0) + 1

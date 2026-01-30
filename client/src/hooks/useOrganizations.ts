@@ -1,22 +1,30 @@
+/**
+ * React Query hooks for organizations management
+ */
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { organizationsApi, type Organization } from "@/lib/api-client";
 import { useOrganizationStore } from "@/stores/organization.store";
+import type { components } from "@/lib/v1";
 
-// Types for frequently accessed entities
-export interface FrequentItem {
-  entity_type: string;
-  entity_id: string;
-  name: string;
-  view_count: number;
-}
+// =============================================================================
+// Re-export types from OpenAPI spec for component convenience
+// =============================================================================
 
-export interface OrganizationWithFrequent extends Organization {
-  frequently_accessed?: FrequentItem[] | null;
-}
+export type OrganizationWithFrequent = components["schemas"]["OrganizationWithFrequent"];
+export type FrequentItem = components["schemas"]["FrequentItem"];
+
+// =============================================================================
+// Hook Types
+// =============================================================================
 
 interface UseOrganizationOptions {
   include?: string[];
 }
+
+// =============================================================================
+// Hooks
+// =============================================================================
 
 export function useOrganizations(options?: { showDisabled?: boolean }) {
   const { setOrganizations, currentOrg, clearCurrentOrg } = useOrganizationStore();

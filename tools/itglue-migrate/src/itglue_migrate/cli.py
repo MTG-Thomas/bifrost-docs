@@ -29,12 +29,13 @@ from itglue_migrate.document_processor import DocumentProcessor
 from itglue_migrate.field_inference import FieldInferrer, column_name_to_key
 from itglue_migrate.importers import map_archived_to_is_enabled
 from itglue_migrate.org_matcher import OrgMatcher
+from itglue_migrate.password_field_mapper import PasswordFieldMap, build_password_field_map
 from itglue_migrate.progress import Phase, create_progress_reporter
 from itglue_migrate.state import MigrationState, MigrationStateError
-from itglue_migrate.warnings import ParsedData, Warning, WarningDetector, summarize
 from itglue_migrate.state_fetcher import ExistingState, StateFetcher
 from itglue_migrate.sync_differ import EntityPlan, SyncDiffer, SyncPlan
 from itglue_migrate.sync_executor import SyncExecutor, SyncResult
+from itglue_migrate.warnings import ParsedData, Warning, WarningDetector, summarize
 
 # Create Typer app
 app = typer.Typer(
@@ -217,11 +218,14 @@ def _match_organizations(
 
 def _infer_custom_asset_schemas(
     parsed: ParsedData,
+    password_field_map: PasswordFieldMap | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Infer schemas for custom asset types.
 
     Args:
         parsed: ParsedData with custom assets and field definitions.
+        password_field_map: Optional map of fields that should be password type
+            based on embedded StructuredData::Cell passwords.
 
     Returns:
         Dict mapping asset type name to schema info.
@@ -248,11 +252,17 @@ def _infer_custom_asset_schemas(
         # Build rows for inference
         rows = [asset.get("fields", {}) for asset in assets]
 
+        # Get password fields for this asset type (if any)
+        password_fields: set[str] | None = None
+        if password_field_map:
+            password_fields = password_field_map.get_password_fields_for_type(asset_type)
+
         # Infer schema
         field_defs = inferrer.infer_schema(
             columns=columns,
             rows=rows,
             skip_columns={"id", "organization", "organization_id", "created_at", "updated_at"},
+            password_fields=password_fields,
         )
 
         # Get sample row
@@ -271,6 +281,35 @@ def _infer_custom_asset_schemas(
         }
 
     return schemas
+
+
+def _apply_password_field_types(
+    field_definitions: dict[str, list[dict[str, Any]]],
+    password_field_map: PasswordFieldMap,
+) -> None:
+    """Update field definitions to mark password fields correctly.
+
+    Modifies field_definitions in place to change the field_type of
+    password fields from their inferred type to "password".
+
+    Args:
+        field_definitions: Dict mapping asset type slug to list of field dicts.
+        password_field_map: Map identifying which fields should be password type.
+    """
+    for asset_type_slug, fields in field_definitions.items():
+        password_fields = password_field_map.get_password_fields_for_type(asset_type_slug)
+        if not password_fields:
+            continue
+
+        for field_def in fields:
+            field_name = field_def.get("name", "")
+            if field_name.lower() in password_fields:
+                old_type = field_def.get("field_type", "text")
+                if old_type != "password":
+                    field_def["field_type"] = "password"
+                    console.print(
+                        f"  [green]✓[/green] {asset_type_slug}.{field_name}: {old_type} → password"
+                    )
 
 
 def _scan_attachments(export_path: Path) -> dict[str, Any]:
@@ -567,7 +606,11 @@ def preview(
 
     # Step 5: Infer custom asset schemas
     console.print("[bold]Step 5:[/bold] Inferring custom asset type schemas...")
-    custom_asset_schemas = _infer_custom_asset_schemas(parsed)
+    # Build password field map from Cell passwords
+    password_field_map = build_password_field_map(parsed.passwords)
+    if password_field_map.global_password_fields:
+        console.print(f"  [dim]Detected password fields: {password_field_map.global_password_fields}[/dim]")
+    custom_asset_schemas = _infer_custom_asset_schemas(parsed, password_field_map)
     console.print(f"  [green]Inferred {len(custom_asset_schemas)} custom asset type schemas[/green]")
     console.print()
 
@@ -1858,9 +1901,14 @@ async def _migrate_relationships(
                 reporter.update_progress(succeeded=1, current_item=f"Linked: {name}")
 
         except APIError as e:
-            state.mark_failed(Phase.RELATIONSHIPS, rel_key, str(e))
-            reporter.error(f"Failed to create relationship for '{name}': {e}")
-            reporter.update_progress(failed=1)
+            # 409 means relationship already exists - that's fine
+            if e.status_code == 409:
+                state.mark_completed(Phase.RELATIONSHIPS, rel_key)
+                reporter.update_progress(succeeded=1, current_item=f"Already linked: {name}")
+            else:
+                state.mark_failed(Phase.RELATIONSHIPS, rel_key, str(e))
+                reporter.error(f"Failed to create relationship for '{name}': {e}")
+                reporter.update_progress(failed=1)
 
     reporter.complete_phase()
 
@@ -2528,6 +2576,7 @@ async def _run_sync(
     _all_orgs: bool,  # Unused - if target_org is None, we sync all
     dry_run: bool,
     update_existing: bool,
+    skip_attachments: bool = False,
 ) -> int:
     """Run the sync operation.
 
@@ -2539,6 +2588,7 @@ async def _run_sync(
         all_orgs: Whether to sync all organizations.
         dry_run: Preview changes without making them.
         update_existing: Update entities that already exist.
+        skip_attachments: Skip attachment uploads for faster testing.
 
     Returns:
         Exit code (0 for success, non-zero for failures).
@@ -2561,6 +2611,13 @@ async def _run_sync(
         parsed = _parse_all_csv_files(parser, export_path, validation, progress, task)
 
     console.print(f"  [green]Parsed {len(parsed.organizations)} organizations[/green]")
+    console.print()
+
+    # Build password field map from Cell passwords and update field definitions
+    password_field_map = build_password_field_map(parsed.passwords)
+    if password_field_map.global_password_fields:
+        console.print(f"[bold]Detected password fields:[/bold] {password_field_map.global_password_fields}")
+    _apply_password_field_types(parsed.field_definitions, password_field_map)
     console.print()
 
     # Determine which organizations to sync
@@ -2663,16 +2720,18 @@ async def _run_sync(
             console.print(f"    [dim]Configs by itglue_id: {len(state.config_by_itglue_id)}[/dim]")
             console.print(f"    [dim]Passwords by itglue_id: {len(state.password_by_itglue_id)}[/dim]")
             console.print(f"    [dim]Custom assets by itglue_id: {len(state.custom_asset_by_itglue_id)}[/dim]")
+            console.print(f"    [dim]Relationships tracked: {len(state.relationships)}[/dim]")
 
             # Debug: show sample itglue_ids
             if state.document_by_itglue_id:
                 sample_api_doc_ids = list(state.document_by_itglue_id.keys())[:5]
                 console.print(f"    [dim]Sample API document itglue_ids: {sample_api_doc_ids}[/dim]")
 
-            # Filter CSV data to this org (CSV may have org ID or org name in organization_id field)
+            # Filter CSV data to this org
+            # CSV files use either 'organization_id' or 'organization' column
             def matches_org(item: dict) -> bool:
-                csv_org_id = str(item.get("organization_id", ""))
-                return csv_org_id == org_itglue_id or csv_org_id == org_name
+                csv_org = str(item.get("organization_id") or item.get("organization") or "")
+                return csv_org == org_itglue_id or csv_org == org_name
 
             org_configs = [c for c in parsed.configurations if matches_org(c)]
             org_locations = [loc for loc in parsed.locations if matches_org(loc)]
@@ -2783,6 +2842,7 @@ async def _run_sync(
                     reporter=reporter,
                     doc_processor=doc_processor,
                     export_path=export_path,
+                    skip_attachments=skip_attachments,
                 )
 
                 # Use context manager to start/stop the live display
@@ -2874,6 +2934,21 @@ def sync(
             help="Update entities that already exist",
         ),
     ] = False,
+    skip_attachments: Annotated[
+        bool,
+        typer.Option(
+            "--skip-attachments",
+            help="Skip attachment uploads for faster testing",
+        ),
+    ] = False,
+    itglue_api_key: Annotated[
+        str | None,
+        typer.Option(
+            "--itglue-api-key",
+            help="IT Glue API key for accurate password field detection",
+            envvar="IT_GLUE_API_KEY",
+        ),
+    ] = None,
 ) -> None:
     """Sync IT Glue export data with existing BifrostDocs data.
 
@@ -2887,6 +2962,9 @@ def sync(
 
     Use --dry-run to preview what would be created without making changes.
     """
+    # Reserved for future use (relationship mapping)
+    _ = itglue_api_key
+
     console.print(Panel("IT Glue Migration - Sync", style="bold blue"))
     console.print()
 
@@ -2918,6 +2996,9 @@ def sync(
     if update_existing:
         console.print("[bold]Update existing:[/bold] Yes")
 
+    if skip_attachments:
+        console.print("[bold]Skip attachments:[/bold] Yes")
+
     console.print()
 
     # Run the sync
@@ -2930,6 +3011,7 @@ def sync(
             _all_orgs=all_orgs,
             dry_run=dry_run,
             update_existing=update_existing,
+            skip_attachments=skip_attachments,
         )
     )
 

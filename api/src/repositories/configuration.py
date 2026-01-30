@@ -224,6 +224,7 @@ class ConfigurationRepository(BaseRepository[Configuration]):
             select(func.count(Configuration.id)).where(
                 Configuration.configuration_type_id == configuration_type_id,
                 Configuration.organization_id == organization_id,
+                Configuration.is_enabled.is_(True),
             )
         )
         return result.scalar_one()

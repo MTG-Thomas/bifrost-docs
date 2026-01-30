@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { TOTPDisplay } from "@/components/ui/totp-display";
+import { toast } from "sonner";
+import { useTimedReveal } from "@/hooks/useTimedReveal";
 
 interface TOTPRevealProps {
   orgId: string;
@@ -16,32 +17,52 @@ interface PasswordRevealResponse {
 }
 
 export function TOTPReveal({ orgId, passwordId }: TOTPRevealProps) {
-  const [revealed, setRevealed] = useState(false);
+  // Store secret in local state only - no React Query caching for secrets
+  const [totpSecret, setTotpSecret] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const { data, isLoading, refetch, isFetched } = useQuery({
-    queryKey: ["passwords", orgId, passwordId, "reveal"],
-    queryFn: async () => {
+  // Clear secret from state when hiding
+  const handleClearSecret = useCallback(() => {
+    setTotpSecret(null);
+  }, []);
+
+  const { revealed, reveal, hide } = useTimedReveal({
+    onHide: handleClearSecret,
+  });
+
+  // Always fetch fresh - no caching
+  const fetchSecret = async (): Promise<string | null> => {
+    setIsLoading(true);
+    try {
       const response = await api.get<PasswordRevealResponse>(
         `/api/organizations/${orgId}/passwords/${passwordId}/reveal`
       );
-      return response.data;
-    },
-    enabled: false,
-  });
+      const secret = response.data.totp_secret;
+      setTotpSecret(secret);
+      return secret;
+    } catch {
+      toast.error("Failed to reveal TOTP");
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleToggleReveal = async () => {
-    if (!revealed && !isFetched) {
-      await refetch();
+    if (revealed) {
+      hide();
+    } else {
+      await fetchSecret();
+      reveal();
     }
-    setRevealed(!revealed);
   };
 
   return (
     <div className="space-y-2">
-      {revealed && data?.totp_secret ? (
+      {revealed && totpSecret ? (
         <div className="flex items-center gap-2">
           <div className="flex-1">
-            <TOTPDisplay secret={data.totp_secret} />
+            <TOTPDisplay secret={totpSecret} />
           </div>
           <Button
             variant="outline"
@@ -54,7 +75,11 @@ export function TOTPReveal({ orgId, passwordId }: TOTPRevealProps) {
       ) : (
         <div className="flex items-center gap-2">
           <div className="flex-1 font-mono text-sm bg-muted px-3 py-2 rounded-md">
-            <span className="tracking-widest">******</span>
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <span className="tracking-widest">******</span>
+            )}
           </div>
           <Button
             variant="outline"
@@ -62,11 +87,7 @@ export function TOTPReveal({ orgId, passwordId }: TOTPRevealProps) {
             onClick={handleToggleReveal}
             disabled={isLoading}
           >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
+            <Eye className="h-4 w-4" />
           </Button>
         </div>
       )}

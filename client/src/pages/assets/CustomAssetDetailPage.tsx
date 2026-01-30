@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,10 +18,11 @@ import { usePermissions } from "@/hooks/usePermissions";
 import {
   useCustomAssetType,
   useCustomAsset,
-  useRevealCustomAsset,
+  fetchCustomAssetSecrets,
   useUpdateCustomAsset,
   useDeleteCustomAsset,
   type FieldDefinition,
+  type CustomAssetReveal,
 } from "@/hooks/useCustomAssets";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -144,12 +145,20 @@ export function CustomAssetDetailPage() {
 
   const { data: assetType, isLoading: typeLoading } = useCustomAssetType(typeId!);
   const { data: asset, isLoading: assetLoading } = useCustomAsset(orgId!, typeId!, id!);
-  const revealQuery = useRevealCustomAsset(orgId!, typeId!, id!);
   const updateAsset = useUpdateCustomAsset(orgId!, typeId!, id!);
   const deleteAsset = useDeleteCustomAsset(orgId!, typeId!, () => {
     // Navigate in onSuccess callback BEFORE cache removal to prevent stale query refetch
     navigate(`/org/${orgId}/assets/${typeId}`);
   });
+
+  // Store revealed secrets in local state - no React Query caching for secrets
+  const [revealedSecrets, setRevealedSecrets] = useState<CustomAssetReveal | null>(null);
+  const [isRevealingSecrets, setIsRevealingSecrets] = useState(false);
+
+  // Clear revealed secrets from state (called by timed reveal auto-hide)
+  const handleClearSecrets = useCallback(() => {
+    setRevealedSecrets(null);
+  }, []);
 
   const isLoading = typeLoading || assetLoading;
 
@@ -276,8 +285,16 @@ export function CustomAssetDetailPage() {
     }
   };
 
-  const handleReveal = () => {
-    revealQuery.refetch();
+  const handleReveal = async () => {
+    setIsRevealingSecrets(true);
+    try {
+      const secrets = await fetchCustomAssetSecrets(orgId!, typeId!, id!);
+      setRevealedSecrets(secrets);
+    } catch {
+      toast.error("Failed to reveal secrets");
+    } finally {
+      setIsRevealingSecrets(false);
+    }
   };
 
   // Check if this type has password or totp fields
@@ -300,7 +317,7 @@ export function CustomAssetDetailPage() {
             </CardContent>
           </Card>
         </div>
-        <aside className="w-80 shrink-0 hidden lg:block space-y-4">
+        <aside className="w-[360px] shrink-0 hidden lg:block space-y-4">
           <Skeleton className="h-48" />
           <Skeleton className="h-48" />
         </aside>
@@ -465,9 +482,10 @@ export function CustomAssetDetailPage() {
               <CustomFieldList
                 fields={assetType.fields}
                 values={asset.values}
-                revealedValues={revealQuery.data?.values}
+                revealedValues={revealedSecrets?.values}
                 onReveal={hasSecretFields ? handleReveal : undefined}
-                isRevealing={revealQuery.isFetching}
+                onClear={hasSecretFields ? handleClearSecrets : undefined}
+                isRevealing={isRevealingSecrets}
               />
             )}
           </CardContent>
@@ -498,7 +516,7 @@ export function CustomAssetDetailPage() {
       </div>
 
       {/* Sidebar */}
-      <aside className="w-80 shrink-0 hidden lg:block space-y-4">
+      <aside className="w-[360px] shrink-0 hidden lg:block space-y-4">
         <RelatedItemsSidebar orgId={orgId} entityType="custom_asset" entityId={id} />
         <EntityAttachments entityType="custom_asset" entityId={id} />
       </aside>

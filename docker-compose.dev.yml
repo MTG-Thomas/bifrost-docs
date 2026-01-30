@@ -23,8 +23,8 @@ services:
   minio:
     environment:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-bifrost_docsdev}
-    # ports:
-    #   - "9000:9000" # S3 API
+    ports:
+      - "9003:9000" # S3 API
     #   - "9001:9001" # Web Console for debugging
 
   # MinIO Init - development password default
@@ -63,6 +63,7 @@ services:
       BIFROST_DOCS_DATABASE_URL: postgresql+asyncpg://bifrost_docs:${POSTGRES_PASSWORD:-bifrost_docsdev}@pgbouncer:5432/bifrost_docs
       BIFROST_DOCS_DATABASE_URL_SYNC: postgresql://bifrost_docs:${POSTGRES_PASSWORD:-bifrost_docsdev}@pgbouncer:5432/bifrost_docs
       BIFROST_DOCS_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-bifrost_docsdev}
+      BIFROST_DOCS_S3_PUBLIC_ENDPOINT: ${BIFROST_DOCS_S3_PUBLIC_ENDPOINT:-http://localhost:9000}
       # Debugging (optional - enables debugpy)
       ENABLE_DEBUG: ${ENABLE_DEBUG:-false}
     volumes:

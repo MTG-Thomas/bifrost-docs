@@ -30,10 +30,9 @@ from src.services.audit_service import get_audit_service
 from src.services.custom_asset_validation import (
     CustomAssetValidationError,
     apply_default_values,
-    decrypt_password_fields,
-    encrypt_password_fields,
-    filter_password_fields,
     validate_values,
+    values_id_to_key,
+    values_key_to_id,
 )
 from src.services.search_indexing import index_entity_for_search, remove_entity_from_search
 
@@ -118,17 +117,45 @@ def _get_display_field_key(asset_type: CustomAssetType) -> str | None:
     return None
 
 
+def _get_display_name(
+    asset: CustomAsset,
+    asset_type: CustomAssetType,
+    type_fields: list[FieldDefinition],
+) -> str:
+    """
+    Get the display name for a custom asset.
+
+    Uses the display field value if available, otherwise falls back to asset ID.
+
+    Args:
+        asset: CustomAsset entity
+        asset_type: CustomAssetType entity
+        type_fields: List of field definitions
+
+    Returns:
+        Display name string
+    """
+    display_field_key = _get_display_field_key(asset_type)
+    if not display_field_key:
+        return str(asset.id)
+
+    # Transform values to key-based to get the display field
+    key_values = values_id_to_key(type_fields, asset.values, filter_secrets=True)
+    return key_values.get(display_field_key) or str(asset.id)
+
+
 def _to_public(
     asset: CustomAsset,
     type_fields: list[FieldDefinition],
 ) -> CustomAssetPublic:
     """Convert ORM model to public response (password fields filtered)."""
-    filtered_values = filter_password_fields(type_fields, asset.values)
+    # Transform from ID-based storage to key-based API format, filtering secrets
+    key_values = values_id_to_key(type_fields, asset.values, filter_secrets=True)
     return CustomAssetPublic(
         id=str(asset.id),
         organization_id=str(asset.organization_id),
         custom_asset_type_id=str(asset.custom_asset_type_id),
-        values=filtered_values,
+        values=key_values,
         metadata=asset.metadata_ if isinstance(asset.metadata_, dict) else {},
         is_enabled=asset.is_enabled,
         created_at=asset.created_at,
@@ -143,12 +170,13 @@ def _to_reveal(
     type_fields: list[FieldDefinition],
 ) -> CustomAssetReveal:
     """Convert ORM model to reveal response (password fields decrypted)."""
-    decrypted_values = decrypt_password_fields(type_fields, asset.values)
+    # Transform from ID-based storage to key-based API format, decrypting secrets
+    key_values = values_id_to_key(type_fields, asset.values, decrypt_secrets=True)
     return CustomAssetReveal(
         id=str(asset.id),
         organization_id=str(asset.organization_id),
         custom_asset_type_id=str(asset.custom_asset_type_id),
-        values=decrypted_values,
+        values=key_values,
         metadata=asset.metadata_ if isinstance(asset.metadata_, dict) else {},
         is_enabled=asset.is_enabled,
         created_at=asset.created_at,
@@ -258,15 +286,15 @@ async def create_custom_asset(
             detail=str(e),
         ) from e
 
-    # Encrypt password fields
-    encrypted_values = encrypt_password_fields(type_fields, values)
+    # Transform to ID-based storage format (also encrypts password fields)
+    storage_values = values_key_to_id(type_fields, values)
 
     # Create the custom asset
     repo = CustomAssetRepository(db)
     asset = CustomAsset(
         organization_id=org_id,
         custom_asset_type_id=type_id,
-        values=encrypted_values,
+        values=storage_values,
         metadata_=data.metadata,
         is_enabled=data.is_enabled if data.is_enabled is not None else True,
     )
@@ -391,10 +419,13 @@ async def get_custom_asset_preview(
             detail="Custom asset not found",
         )
 
+    # Transform to key-based values (filtering secrets)
+    key_values = values_id_to_key(type_fields, asset.values, filter_secrets=True)
+
     # Get display name
     display_field_key = _get_display_field_key(asset_type)
     display_name = (
-        asset.values.get(display_field_key, asset_type.name)
+        key_values.get(display_field_key, asset_type.name)
         if display_field_key
         else asset_type.name
     )
@@ -403,14 +434,13 @@ async def get_custom_asset_preview(
     content_parts = [f"# {display_name}"]
     content_parts.append(f"\n**Type:** {asset_type.name}")
 
-    # Filter password fields and add visible values
-    filtered_values = filter_password_fields(type_fields, asset.values)
+    # Add visible field values
     for field in type_fields:
         if field.type == "header":
             continue
-        if field.type == "password":
+        if field.type in ("password", "totp"):
             continue
-        value = filtered_values.get(field.key)
+        value = key_values.get(field.key)
         if value is not None and str(value).strip():
             content_parts.append(f"\n**{field.name}:** {value}")
 
@@ -461,8 +491,7 @@ async def reveal_custom_asset(
         )
 
     # Get display name for logging
-    display_field_key = _get_display_field_key(asset_type)
-    display_name = asset.values.get(display_field_key, str(asset.id)) if display_field_key else str(asset.id)
+    display_name = _get_display_name(asset, asset_type, type_fields)
 
     logger.info(
         f"Custom asset revealed: {display_name}",
@@ -531,18 +560,16 @@ async def update_custom_asset(
                 detail=str(e),
             ) from e
 
-        # Merge with existing values
-        current_values = dict(asset.values)
+        # Convert existing ID-based values to key-based (decrypting secrets)
+        current_key_values = values_id_to_key(
+            type_fields, asset.values, decrypt_secrets=True
+        )
 
-        # Decrypt existing password fields for merging
-        decrypted_current = decrypt_password_fields(type_fields, current_values)
+        # Merge with incoming key-based values
+        current_key_values.update(data.values)
 
-        # Update with new values
-        decrypted_current.update(data.values)
-
-        # Re-encrypt password fields
-        encrypted_values = encrypt_password_fields(type_fields, decrypted_current)
-        asset.values = encrypted_values
+        # Convert back to ID-based storage format (encrypting secrets)
+        asset.values = values_key_to_id(type_fields, current_key_values)
 
     # Track who updated
     asset.updated_by_user_id = current_user.user_id
@@ -560,8 +587,7 @@ async def update_custom_asset(
     )
 
     # Get display name for logging
-    display_field_key = _get_display_field_key(asset_type)
-    display_name = asset.values.get(display_field_key, str(asset.id)) if display_field_key else str(asset.id)
+    display_name = _get_display_name(asset, asset_type, type_fields)
 
     logger.info(
         f"Custom asset updated: {display_name}",
@@ -621,8 +647,8 @@ async def delete_custom_asset(
 
     # Get display name for logging before deletion
     asset_type = await _get_asset_type(type_id, db)
-    display_field_key = _get_display_field_key(asset_type)
-    display_name = asset.values.get(display_field_key, str(asset.id)) if display_field_key else str(asset.id)
+    type_fields = _get_field_definitions(asset_type)
+    display_name = _get_display_name(asset, asset_type, type_fields)
 
     await repo.delete(asset)
 

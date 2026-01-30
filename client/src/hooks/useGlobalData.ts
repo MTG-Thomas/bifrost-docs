@@ -1,8 +1,32 @@
+/**
+ * React Query hooks for global view data (cross-organization)
+ */
+
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api-client";
+import type { components } from "@/lib/v1";
 
 // =============================================================================
-// Pagination Types
+// Re-export types from OpenAPI spec for component convenience
+// =============================================================================
+
+export type GlobalPassword = components["schemas"]["GlobalPasswordPublic"];
+export type GlobalConfiguration = components["schemas"]["GlobalConfigurationPublic"];
+export type GlobalLocation = components["schemas"]["GlobalLocationPublic"];
+export type GlobalDocument = components["schemas"]["GlobalDocumentPublic"];
+export type GlobalCustomAsset = components["schemas"]["GlobalCustomAssetPublic"];
+export type GlobalSidebarItemCount = components["schemas"]["GlobalSidebarItemCount"];
+export type GlobalSidebarData = components["schemas"]["GlobalSidebarData"];
+
+// API response types
+type GlobalPasswordListResponse = components["schemas"]["GlobalPasswordListResponse"];
+type GlobalConfigurationListResponse = components["schemas"]["GlobalConfigurationListResponse"];
+type GlobalLocationListResponse = components["schemas"]["GlobalLocationListResponse"];
+type GlobalDocumentListResponse = components["schemas"]["GlobalDocumentListResponse"];
+type GlobalCustomAssetListResponse = components["schemas"]["GlobalCustomAssetListResponse"];
+
+// =============================================================================
+// Pagination Types (client-side utilities)
 // =============================================================================
 
 export interface PaginatedResponse<T> {
@@ -18,96 +42,6 @@ export interface PaginationParams {
 }
 
 // =============================================================================
-// Global Types (include organization_name)
-// =============================================================================
-
-export interface GlobalPassword {
-  id: string;
-  organization_id: string;
-  organization_name: string;
-  name: string;
-  username: string | null;
-  url: string | null;
-  notes: string | null;
-  has_totp: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface GlobalConfiguration {
-  id: string;
-  organization_id: string;
-  organization_name: string;
-  configuration_type_id: string | null;
-  configuration_status_id: string | null;
-  name: string;
-  serial_number: string | null;
-  asset_tag: string | null;
-  manufacturer: string | null;
-  model: string | null;
-  ip_address: string | null;
-  mac_address: string | null;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-  configuration_type_name: string | null;
-  configuration_status_name: string | null;
-}
-
-export interface GlobalLocation {
-  id: string;
-  organization_id: string;
-  organization_name: string;
-  name: string;
-  notes: string | null;
-  address_1: string | null;
-  address_2: string | null;
-  city: string | null;
-  region: string | null;
-  postal_code: string | null;
-  country: string | null;
-  phone: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface GlobalDocument {
-  id: string;
-  organization_id: string;
-  organization_name: string;
-  path: string;
-  name: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface GlobalCustomAsset {
-  id: string;
-  organization_id: string;
-  organization_name: string;
-  custom_asset_type_id: string;
-  name: string;
-  values: Record<string, unknown>;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface GlobalSidebarItemCount {
-  id: string;
-  name: string;
-  count: number;
-}
-
-export interface GlobalSidebarData {
-  passwords_count: number;
-  locations_count: number;
-  documents_count: number;
-  configuration_types: GlobalSidebarItemCount[];
-  custom_asset_types: GlobalSidebarItemCount[];
-}
-
-// =============================================================================
 // Global Passwords Hook
 // =============================================================================
 
@@ -119,7 +53,7 @@ export function useGlobalPasswords(pagination?: PaginationParams) {
       if (pagination?.limit !== undefined) params.limit = pagination.limit;
       if (pagination?.offset !== undefined) params.offset = pagination.offset;
 
-      const response = await api.get<PaginatedResponse<GlobalPassword>>(
+      const response = await api.get<GlobalPasswordListResponse>(
         `/api/global/passwords`,
         { params }
       );
@@ -148,7 +82,7 @@ export function useGlobalConfigurations(options?: {
       if (options?.pagination?.offset !== undefined)
         params.offset = options.pagination.offset;
 
-      const response = await api.get<PaginatedResponse<GlobalConfiguration>>(
+      const response = await api.get<GlobalConfigurationListResponse>(
         `/api/global/configurations`,
         { params }
       );
@@ -169,7 +103,7 @@ export function useGlobalLocations(pagination?: PaginationParams) {
       if (pagination?.limit !== undefined) params.limit = pagination.limit;
       if (pagination?.offset !== undefined) params.offset = pagination.offset;
 
-      const response = await api.get<PaginatedResponse<GlobalLocation>>(
+      const response = await api.get<GlobalLocationListResponse>(
         `/api/global/locations`,
         { params }
       );
@@ -196,7 +130,7 @@ export function useGlobalDocuments(options?: {
       if (options?.pagination?.offset !== undefined)
         params.offset = options.pagination.offset;
 
-      const response = await api.get<PaginatedResponse<GlobalDocument>>(
+      const response = await api.get<GlobalDocumentListResponse>(
         `/api/global/documents`,
         { params }
       );
@@ -222,7 +156,7 @@ export function useGlobalCustomAssets(
       if (pagination?.limit !== undefined) params.limit = pagination.limit;
       if (pagination?.offset !== undefined) params.offset = pagination.offset;
 
-      const response = await api.get<PaginatedResponse<GlobalCustomAsset>>(
+      const response = await api.get<GlobalCustomAssetListResponse>(
         `/api/global/custom-assets`,
         { params }
       );

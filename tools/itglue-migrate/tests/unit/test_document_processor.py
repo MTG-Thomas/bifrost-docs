@@ -1039,6 +1039,62 @@ class TestProcessDocument:
         assert len(warnings) == 1
         assert "not found" in warnings[0]
 
+    @pytest.mark.asyncio
+    async def test_process_document_uploads_images_in_parallel(
+        self, processor: DocumentProcessor, temp_dir: Path
+    ) -> None:
+        """Test that multiple images are uploaded in parallel."""
+        import asyncio
+
+        doc_dir = temp_dir / "documents" / "DOC-1-100 Test"
+        images_dir = doc_dir / "1" / "docs" / "100" / "images"
+        images_dir.mkdir(parents=True)
+
+        # Create multiple image files
+        num_images = 5
+        for i in range(num_images):
+            (images_dir / f"img{i}").write_bytes(b"\x89PNG\r\n\x1a\n" + b"x" * 100)
+
+        # Create HTML referencing all images
+        img_tags = "".join(
+            f'<img src="1/docs/100/images/img{i}">' for i in range(num_images)
+        )
+        (doc_dir / "index.html").write_text(f"<html><body>{img_tags}</body></html>")
+
+        # Track concurrent calls to verify parallelism
+        concurrent_calls = 0
+        max_concurrent = 0
+        call_lock = asyncio.Lock()
+
+        original_upload = processor.client.upload_document_image
+
+        async def tracking_upload(*args: Any, **kwargs: Any) -> dict[str, Any]:
+            nonlocal concurrent_calls, max_concurrent
+            async with call_lock:
+                concurrent_calls += 1
+                if concurrent_calls > max_concurrent:
+                    max_concurrent = concurrent_calls
+            try:
+                # Small delay to ensure concurrent calls overlap
+                await asyncio.sleep(0.01)
+                return await original_upload(*args, **kwargs)
+            finally:
+                async with call_lock:
+                    concurrent_calls -= 1
+
+        processor.client.upload_document_image = AsyncMock(side_effect=tracking_upload)
+
+        html, warnings = await processor.process_document(
+            {"id": "100", "name": "Test"}, "org-uuid"
+        )
+
+        # All images should be uploaded
+        assert processor.client.upload_document_image.call_count == num_images
+        assert len(warnings) == 0
+
+        # Verify parallelism occurred (max_concurrent > 1 indicates parallel execution)
+        assert max_concurrent > 1, f"Expected parallel execution, but max_concurrent={max_concurrent}"
+
 
 class TestUploadEntityAttachments:
     """Test upload_entity_attachments method."""

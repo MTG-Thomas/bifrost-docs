@@ -227,7 +227,8 @@ class DocumentRepository(BaseRepository[Document]):
 
         result = await self.session.execute(
             select(func.count(Document.id)).where(
-                Document.organization_id == organization_id
+                Document.organization_id == organization_id,
+                Document.is_enabled.is_(True),
             )
         )
         return result.scalar_one()

@@ -1,13 +1,25 @@
-import {
-  keepPreviousData,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+/**
+ * React Query hooks for passwords management
+ */
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api-client";
+import type { components } from "@/lib/v1";
 
 // =============================================================================
-// Pagination Types
+// Re-export types from OpenAPI spec for component convenience
+// =============================================================================
+
+export type Password = components["schemas"]["PasswordPublic"];
+export type PasswordReveal = components["schemas"]["PasswordReveal"];
+export type PasswordCreate = components["schemas"]["PasswordCreate"];
+export type PasswordUpdate = components["schemas"]["PasswordUpdate"];
+
+// API response types
+type PasswordListResponse = components["schemas"]["PasswordListResponse"];
+
+// =============================================================================
+// Pagination Types (client-side utilities)
 // =============================================================================
 
 export interface PaginatedResponse<T> {
@@ -29,88 +41,39 @@ export interface PasswordsParams {
 }
 
 // =============================================================================
-// Types
-// =============================================================================
-
-export interface Password {
-  id: string;
-  organization_id: string;
-  name: string;
-  username: string | null;
-  url: string | null;
-  notes: string | null;
-  has_totp: boolean;
-  is_enabled: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface PasswordReveal extends Password {
-  password: string;
-  totp_secret: string | null;
-}
-
-export interface PasswordCreate {
-  name: string;
-  username?: string;
-  password: string;
-  url?: string;
-  notes?: string;
-  totp_secret?: string;
-  is_enabled?: boolean;
-}
-
-export interface PasswordUpdate {
-  name?: string;
-  username?: string;
-  password?: string;
-  url?: string;
-  notes?: string;
-  totp_secret?: string;
-  is_enabled?: boolean;
-}
-
-// =============================================================================
 // Hooks
 // =============================================================================
 
-export function usePasswords(
-  orgId: string,
-  options?: PasswordsParams
-) {
+export function usePasswords(orgId: string, options?: PasswordsParams) {
   return useQuery({
-    // Use specific values in query key instead of entire object for better caching
-    queryKey: [
-      "passwords",
-      orgId,
-      {
-        search: options?.search,
-        limit: options?.pagination?.limit,
-        offset: options?.pagination?.offset,
-        showDisabled: options?.showDisabled,
-      },
-    ],
+    queryKey: ["passwords", orgId, options],
     queryFn: async () => {
-      const params: Record<string, string | number | boolean> = {};
-      if (options?.pagination?.limit !== undefined) params.limit = options.pagination.limit;
-      if (options?.pagination?.offset !== undefined) params.offset = options.pagination.offset;
-      if (options?.search) params.search = options.search;
-      if (options?.showDisabled !== undefined) params.show_disabled = options.showDisabled;
-
-      const response = await api.get<PaginatedResponse<Password>>(
-        `/api/organizations/${orgId}/passwords`,
-        { params }
+      const params = new URLSearchParams();
+      if (options?.pagination?.limit !== undefined) {
+        params.set("limit", String(options.pagination.limit));
+      }
+      if (options?.pagination?.offset !== undefined) {
+        params.set("offset", String(options.pagination.offset));
+      }
+      if (options?.search) {
+        params.set("search", options.search);
+      }
+      if (options?.showDisabled) {
+        params.set("show_disabled", "true");
+      }
+      const response = await api.get<PasswordListResponse>(
+        `/api/organizations/${orgId}/passwords${params.toString() ? `?${params}` : ""}`
       );
       return response.data;
     },
     enabled: !!orgId,
-    placeholderData: keepPreviousData,
+    placeholderData: (prev) => prev,
   });
 }
 
 export function usePassword(orgId: string, id: string) {
   return useQuery({
-    queryKey: ["passwords", orgId, id],
+    queryKey: ["password", orgId, id],
     queryFn: async () => {
       const response = await api.get<Password>(
         `/api/organizations/${orgId}/passwords/${id}`
@@ -123,7 +86,7 @@ export function usePassword(orgId: string, id: string) {
 
 export function useRevealPassword(orgId: string, id: string) {
   return useQuery({
-    queryKey: ["passwords", orgId, id, "reveal"],
+    queryKey: ["password-reveal", orgId, id],
     queryFn: async () => {
       const response = await api.get<PasswordReveal>(
         `/api/organizations/${orgId}/passwords/${id}/reveal`
@@ -164,7 +127,7 @@ export function useUpdatePassword(orgId: string, id: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["passwords", orgId] });
-      queryClient.invalidateQueries({ queryKey: ["passwords", orgId, id] });
+      queryClient.invalidateQueries({ queryKey: ["password", orgId, id] });
     },
   });
 }
@@ -173,28 +136,22 @@ export function useDeletePassword(orgId: string, onDeleted?: (id: string) => voi
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      await api.delete(`/api/organizations/${orgId}/passwords/${id}`);
-      return id;
+    mutationFn: async (passwordId: string) => {
+      await api.delete(`/api/organizations/${orgId}/passwords/${passwordId}`);
+      return passwordId;
     },
-    onSuccess: (_data, id) => {
+    onSuccess: (passwordId) => {
       // Navigate FIRST (if callback provided) to unmount detail page before cache removal
-      // This prevents the detail page query from refetching a deleted resource
-      onDeleted?.(id);
+      onDeleted?.(passwordId);
 
       // Remove detail query from cache
-      queryClient.removeQueries({ queryKey: ["passwords", orgId, id] });
-      // Invalidate ONLY list queries (3rd element is object), not detail queries (3rd element is string)
-      queryClient.invalidateQueries({
-        predicate: (query) => {
-          const key = query.queryKey;
-          return (
-            key[0] === "passwords" &&
-            key[1] === orgId &&
-            (key.length === 2 || typeof key[2] === "object")
-          );
-        },
+      queryClient.removeQueries({
+        queryKey: ["password", orgId, passwordId],
       });
+
+      // Invalidate list queries
+      queryClient.invalidateQueries({ queryKey: ["passwords", orgId] });
+
       // Invalidate sidebar to update counts
       queryClient.invalidateQueries({ queryKey: ["sidebar", orgId] });
     },
@@ -205,10 +162,19 @@ export function useBatchTogglePasswords(orgId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ ids, isEnabled }: { ids: string[]; isEnabled: boolean }) => {
-      const response = await api.patch<{ updated_count: number }>(
-        `/api/organizations/${orgId}/passwords/batch/toggle`,
-        { ids, is_enabled: isEnabled }
+    mutationFn: async ({
+      ids,
+      is_enabled,
+      isEnabled,
+    }: {
+      ids: string[];
+      is_enabled?: boolean;
+      isEnabled?: boolean;
+    }) => {
+      const enabled = is_enabled ?? isEnabled;
+      const response = await api.patch(
+        `/api/organizations/${orgId}/passwords/batch`,
+        { ids, is_enabled: enabled }
       );
       return response.data;
     },

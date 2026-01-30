@@ -1,31 +1,21 @@
+/**
+ * React Query hooks for audit logs
+ */
+
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import api from "@/lib/api-client";
+import type { components } from "@/lib/v1";
 
 // =============================================================================
-// Types
+// Re-export types from OpenAPI spec for component convenience
 // =============================================================================
 
-export interface AuditLogEntry {
-  id: string;
-  organization_id: string | null;
-  organization_name: string | null;
-  action: string;
-  entity_type: string;
-  entity_id: string;
-  entity_name: string | null;
-  actor_type: string;
-  actor_user_id: string | null;
-  actor_display_name: string | null;
-  actor_label: string | null;
-  created_at: string;
-}
+export type AuditLogEntry = components["schemas"]["AuditLogEntry"];
+export type AuditLogListResponse = components["schemas"]["AuditLogListResponse"];
 
-export interface AuditLogListResponse {
-  items: AuditLogEntry[];
-  total: number;
-  page: number;
-  page_size: number;
-}
+// =============================================================================
+// Client-side Filter Types
+// =============================================================================
 
 export interface AuditLogFilters {
   organization_id?: string;

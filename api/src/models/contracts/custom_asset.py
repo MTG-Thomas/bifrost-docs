@@ -7,6 +7,7 @@ for both custom asset types and custom asset instances.
 
 from datetime import datetime
 from typing import Any, Literal
+from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -20,11 +21,14 @@ class FieldDefinition(BaseModel):
     Definition of a single field in a custom asset type.
 
     This defines the schema for fields that can be added to custom asset types.
+    The `id` is a stable identifier used for value storage, while `key` is
+    the human-readable identifier used in API requests/responses.
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    key: str  # unique identifier within type
+    id: str = Field(default_factory=lambda: str(uuid4()))  # stable storage identifier
+    key: str  # human-readable identifier for API
     name: str  # display name
     type: Literal[
         "text", "textbox", "number", "date", "checkbox", "select", "header", "password", "totp"

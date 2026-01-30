@@ -10,11 +10,10 @@ from src.models.contracts.custom_asset import FieldDefinition
 from src.services.custom_asset_validation import (
     CustomAssetValidationError,
     apply_default_values,
-    decrypt_password_fields,
-    encrypt_password_fields,
-    filter_password_fields,
     validate_field_definitions,
     validate_values,
+    values_id_to_key,
+    values_key_to_id,
 )
 
 
@@ -252,85 +251,90 @@ class TestValueValidation:
 
 
 class TestPasswordFieldEncryption:
-    """Tests for password field encryption/decryption."""
+    """Tests for password field encryption/decryption using ID-based storage."""
 
     @pytest.fixture
     def fields_with_password(self) -> list[FieldDefinition]:
-        """Field definitions including password fields."""
+        """Field definitions including password fields with explicit IDs."""
         return [
-            FieldDefinition(key="username", name="Username", type="text"),
-            FieldDefinition(key="api_key", name="API Key", type="password"),
-            FieldDefinition(key="secret_token", name="Secret Token", type="password"),
+            FieldDefinition(id="field-1", key="username", name="Username", type="text"),
+            FieldDefinition(id="field-2", key="api_key", name="API Key", type="password"),
+            FieldDefinition(id="field-3", key="secret_token", name="Secret Token", type="password"),
         ]
 
-    def test_encrypt_password_fields(self, fields_with_password):
-        """Test that password fields are encrypted."""
+    def test_values_key_to_id_encrypts_passwords(self, fields_with_password):
+        """Test that password fields are encrypted and stored by field ID."""
         values = {
             "username": "admin",
             "api_key": "my-api-key-123",
             "secret_token": "super-secret-token",
         }
 
-        encrypted = encrypt_password_fields(fields_with_password, values)
+        storage_values = values_key_to_id(fields_with_password, values)
+
+        # Values should be keyed by field ID, not key
+        assert "field-1" in storage_values  # username field ID
+        assert "field-2" in storage_values  # api_key field ID
+        assert "field-3" in storage_values  # secret_token field ID
 
         # Non-password fields should be unchanged
-        assert encrypted["username"] == "admin"
+        assert storage_values["field-1"] == "admin"
 
-        # Password fields should be removed and replaced with encrypted versions
-        assert "api_key" not in encrypted
-        assert "secret_token" not in encrypted
-        assert "api_key_encrypted" in encrypted
-        assert "secret_token_encrypted" in encrypted
+        # Password field values should be encrypted (different from originals)
+        assert storage_values["field-2"] != "my-api-key-123"
+        assert storage_values["field-3"] != "super-secret-token"
 
-        # Encrypted values should be different from originals
-        assert encrypted["api_key_encrypted"] != "my-api-key-123"
-        assert encrypted["secret_token_encrypted"] != "super-secret-token"
+        # No key-based keys should exist
+        assert "username" not in storage_values
+        assert "api_key" not in storage_values
+        assert "secret_token" not in storage_values
 
-    def test_decrypt_password_fields(self, fields_with_password):
-        """Test that password fields are decrypted."""
+    def test_values_id_to_key_decrypts_passwords(self, fields_with_password):
+        """Test that password fields are decrypted when transforming back to keys."""
         values = {
             "username": "admin",
             "api_key": "my-api-key-123",
             "secret_token": "super-secret-token",
         }
 
-        # Encrypt first
-        encrypted = encrypt_password_fields(fields_with_password, values)
+        # Transform to ID-based storage (encrypts passwords)
+        storage_values = values_key_to_id(fields_with_password, values)
 
-        # Then decrypt
-        decrypted = decrypt_password_fields(fields_with_password, encrypted)
+        # Transform back to key-based with decryption
+        key_values = values_id_to_key(fields_with_password, storage_values, decrypt_secrets=True)
 
-        # Non-password fields should be unchanged
-        assert decrypted["username"] == "admin"
+        # Should be keyed by field key
+        assert "username" in key_values
+        assert "api_key" in key_values
+        assert "secret_token" in key_values
 
-        # Password fields should be restored to original keys and values
-        assert decrypted["api_key"] == "my-api-key-123"
-        assert decrypted["secret_token"] == "super-secret-token"
+        # Values should match originals
+        assert key_values["username"] == "admin"
+        assert key_values["api_key"] == "my-api-key-123"
+        assert key_values["secret_token"] == "super-secret-token"
 
-        # Encrypted keys should be removed
-        assert "api_key_encrypted" not in decrypted
-        assert "secret_token_encrypted" not in decrypted
-
-    def test_filter_password_fields(self, fields_with_password):
+    def test_values_id_to_key_filters_passwords(self, fields_with_password):
         """Test that password fields are filtered from response."""
         values = {
             "username": "admin",
-            "api_key_encrypted": "encrypted-value-1",
-            "secret_token_encrypted": "encrypted-value-2",
+            "api_key": "my-api-key-123",
+            "secret_token": "super-secret-token",
         }
 
-        filtered = filter_password_fields(fields_with_password, values)
+        # Transform to ID-based storage
+        storage_values = values_key_to_id(fields_with_password, values)
+
+        # Transform back with password filtering
+        filtered = values_id_to_key(fields_with_password, storage_values, filter_secrets=True)
 
         # Non-password fields should be present
         assert filtered["username"] == "admin"
 
-        # All password-related keys should be removed
+        # Password fields should be excluded
         assert "api_key" not in filtered
         assert "secret_token" not in filtered
-        assert "api_key_encrypted" not in filtered
-        assert "secret_token_encrypted" not in filtered
 
-    def test_encrypt_handles_none_values(self, fields_with_password):
+    def test_key_to_id_handles_none_values(self, fields_with_password):
         """Test that encryption handles None password values."""
         values = {
             "username": "admin",
@@ -338,14 +342,13 @@ class TestPasswordFieldEncryption:
             "secret_token": "secret",
         }
 
-        encrypted = encrypt_password_fields(fields_with_password, values)
+        storage_values = values_key_to_id(fields_with_password, values)
 
-        # None values should not be encrypted
-        assert encrypted.get("api_key") is None
-        assert "api_key_encrypted" not in encrypted
+        # None values should remain None (not encrypted)
+        assert storage_values["field-2"] is None
 
         # Non-None password should be encrypted
-        assert "secret_token_encrypted" in encrypted
+        assert storage_values["field-3"] != "secret"
 
     def test_roundtrip_encryption(self, fields_with_password):
         """Test full encryption/decryption roundtrip."""
@@ -355,14 +358,14 @@ class TestPasswordFieldEncryption:
             "secret_token": "token-123-abc",
         }
 
-        # Encrypt
-        encrypted = encrypt_password_fields(fields_with_password, original_values)
+        # Transform to storage format (ID-based, encrypted)
+        storage_values = values_key_to_id(fields_with_password, original_values)
 
-        # Decrypt
-        decrypted = decrypt_password_fields(fields_with_password, encrypted)
+        # Transform back to API format (key-based, decrypted)
+        restored_values = values_id_to_key(fields_with_password, storage_values, decrypt_secrets=True)
 
         # Should match original
-        assert decrypted == original_values
+        assert restored_values == original_values
 
 
 class TestDefaultValues:

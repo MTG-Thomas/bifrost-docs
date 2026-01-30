@@ -1,3 +1,7 @@
+/**
+ * React Query hooks for documents management
+ */
+
 import {
   keepPreviousData,
   useMutation,
@@ -5,9 +9,26 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import api from "@/lib/api-client";
+import type { components } from "@/lib/v1";
 
 // =============================================================================
-// Pagination Types
+// Re-export types from OpenAPI spec for component convenience
+// =============================================================================
+
+export type Document = components["schemas"]["DocumentPublic"];
+export type DocumentCreate = components["schemas"]["DocumentCreate"];
+export type DocumentUpdate = components["schemas"]["DocumentUpdate"];
+export type FolderCount = components["schemas"]["FolderCount"];
+export type FolderList = components["schemas"]["FolderList"];
+export type BatchPathUpdateRequest = components["schemas"]["BatchPathUpdateRequest"];
+export type BatchPathUpdateResponse = components["schemas"]["BatchPathUpdateResponse"];
+export type CleanDocumentResponse = components["schemas"]["CleanDocumentResponse"];
+
+// API response types
+type DocumentListResponse = components["schemas"]["DocumentListResponse"];
+
+// =============================================================================
+// Pagination Types (client-side utilities)
 // =============================================================================
 
 export interface PaginatedResponse<T> {
@@ -20,57 +41,6 @@ export interface PaginatedResponse<T> {
 export interface PaginationParams {
   limit?: number;
   offset?: number;
-}
-
-// =============================================================================
-// Types
-// =============================================================================
-
-export interface Document {
-  id: string;
-  organization_id: string;
-  path: string;
-  name: string;
-  content: string;
-  is_enabled: boolean;
-  created_at: string;
-  updated_at: string;
-  updated_by_user_id: string | null;
-  updated_by_user_name: string | null;
-}
-
-export interface FolderCount {
-  path: string;
-  count: number;
-}
-
-export interface FolderList {
-  folders: FolderCount[];
-}
-
-export interface DocumentCreate {
-  path: string;
-  name: string;
-  content: string;
-  is_enabled?: boolean;
-}
-
-export interface DocumentUpdate {
-  path?: string;
-  name?: string;
-  content?: string;
-  is_enabled?: boolean;
-}
-
-export interface BatchPathUpdateRequest {
-  old_path_prefix: string;
-  new_path_prefix: string;
-  merge_if_exists?: boolean;
-}
-
-export interface BatchPathUpdateResponse {
-  updated_count: number;
-  conflicts: string[];
 }
 
 // =============================================================================
@@ -96,7 +66,7 @@ export function useDocuments(
       if (options?.search) params.search = options.search;
       if (options?.showDisabled !== undefined) params.show_disabled = options.showDisabled;
 
-      const response = await api.get<PaginatedResponse<Document>>(
+      const response = await api.get<DocumentListResponse>(
         `/api/organizations/${orgId}/documents`,
         { params }
       );
@@ -207,10 +177,19 @@ export function useBatchToggleDocuments(orgId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ ids, isEnabled }: { ids: string[]; isEnabled: boolean }) => {
+    mutationFn: async ({
+      ids,
+      isEnabled,
+      is_enabled,
+    }: {
+      ids: string[];
+      isEnabled?: boolean;
+      is_enabled?: boolean;
+    }) => {
+      const enabled = is_enabled ?? isEnabled;
       const response = await api.patch<{ updated_count: number }>(
-        `/api/organizations/${orgId}/documents/batch/toggle`,
-        { ids, is_enabled: isEnabled }
+        `/api/organizations/${orgId}/documents/batch`,
+        { ids, is_enabled: enabled }
       );
       return response.data;
     },
@@ -263,17 +242,17 @@ export function useMoveDocument(orgId: string) {
 export function useCleanDocument(orgId: string, documentId: string) {
   return useMutation({
     mutationFn: async () => {
-      const response = await api.post<{
-        cleaned_content: string;
-        summary: string;
-        suggested_name: string | null;
-      }>(
+      const response = await api.post<CleanDocumentResponse>(
         `/api/organizations/${orgId}/documents/${documentId}/clean`
       );
       return response.data;
     },
   });
 }
+
+// =============================================================================
+// Client-side Utilities
+// =============================================================================
 
 // Build folder tree from flat list of paths with counts
 export interface FolderNode {

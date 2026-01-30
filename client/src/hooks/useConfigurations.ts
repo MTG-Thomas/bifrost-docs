@@ -1,13 +1,28 @@
-import {
-  keepPreviousData,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+/**
+ * React Query hooks for configurations management
+ */
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api-client";
+import type { components } from "@/lib/v1";
 
 // =============================================================================
-// Pagination Types
+// Re-export types from OpenAPI spec for component convenience
+// =============================================================================
+
+export type ConfigurationType = components["schemas"]["ConfigurationTypePublic"];
+export type ConfigurationStatus = components["schemas"]["ConfigurationStatusPublic"];
+export type Configuration = components["schemas"]["ConfigurationPublic"];
+export type ConfigurationCreate = components["schemas"]["ConfigurationCreate"];
+export type ConfigurationUpdate = components["schemas"]["ConfigurationUpdate"];
+
+// API response types
+type ConfigurationListResponse = components["schemas"]["ConfigurationListResponse"];
+type ConfigurationTypeCreate = components["schemas"]["ConfigurationTypeCreate"];
+type ConfigurationStatusCreate = components["schemas"]["ConfigurationStatusCreate"];
+
+// =============================================================================
+// Pagination Types (client-side utilities)
 // =============================================================================
 
 export interface PaginatedResponse<T> {
@@ -23,81 +38,19 @@ export interface PaginationParams {
 }
 
 // =============================================================================
-// Types
+// Configuration Types Hooks (Global - not org-scoped)
 // =============================================================================
 
-export interface ConfigurationType {
-  id: string;
-  name: string;
-  is_active: boolean;
-  created_at: string;
-  configuration_count: number;
-}
-
-export interface ConfigurationStatus {
-  id: string;
-  name: string;
-  is_active: boolean;
-  created_at: string;
-  configuration_count: number;
-}
-
-export interface Configuration {
-  id: string;
-  organization_id: string;
-  configuration_type_id: string | null;
-  configuration_status_id: string | null;
-  name: string;
-  serial_number: string | null;
-  asset_tag: string | null;
-  manufacturer: string | null;
-  model: string | null;
-  ip_address: string | null;
-  mac_address: string | null;
-  notes: string | null;
-  is_enabled: boolean;
-  created_at: string;
-  updated_at: string;
-  configuration_type_name: string | null;
-  configuration_status_name: string | null;
-}
-
-export interface ConfigurationCreate {
-  name: string;
-  configuration_type_id?: string;
-  configuration_status_id?: string;
-  serial_number?: string;
-  asset_tag?: string;
-  manufacturer?: string;
-  model?: string;
-  ip_address?: string;
-  mac_address?: string;
-  notes?: string;
-  is_enabled?: boolean;
-}
-
-export interface ConfigurationUpdate {
-  name?: string;
-  configuration_type_id?: string | null;
-  configuration_status_id?: string | null;
-  serial_number?: string;
-  asset_tag?: string;
-  manufacturer?: string;
-  model?: string;
-  ip_address?: string;
-  mac_address?: string;
-  notes?: string;
-  is_enabled?: boolean;
-}
-
-// Configuration Types Hooks (Global - not org-scoped)
 export function useConfigurationTypes(options?: { includeInactive?: boolean }) {
   return useQuery({
     queryKey: ["configuration-types", options?.includeInactive],
     queryFn: async () => {
+      const params = new URLSearchParams();
+      if (options?.includeInactive) {
+        params.set("include_inactive", "true");
+      }
       const response = await api.get<ConfigurationType[]>(
-        `/api/configuration-types`,
-        { params: { include_inactive: options?.includeInactive ?? false } }
+        `/api/configuration-types${params.toString() ? `?${params}` : ""}`
       );
       return response.data;
     },
@@ -108,9 +61,9 @@ export function useCreateConfigurationType() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { name: string }) => {
+    mutationFn: async (data: ConfigurationTypeCreate) => {
       const response = await api.post<ConfigurationType>(
-        `/api/configuration-types`,
+        "/api/configuration-types",
         data
       );
       return response.data;
@@ -188,14 +141,20 @@ export function useActivateConfigurationType() {
   });
 }
 
+// =============================================================================
 // Configuration Statuses Hooks (Global - not org-scoped)
+// =============================================================================
+
 export function useConfigurationStatuses(options?: { includeInactive?: boolean }) {
   return useQuery({
     queryKey: ["configuration-statuses", options?.includeInactive],
     queryFn: async () => {
+      const params = new URLSearchParams();
+      if (options?.includeInactive) {
+        params.set("include_inactive", "true");
+      }
       const response = await api.get<ConfigurationStatus[]>(
-        `/api/configuration-statuses`,
-        { params: { include_inactive: options?.includeInactive ?? false } }
+        `/api/configuration-statuses${params.toString() ? `?${params}` : ""}`
       );
       return response.data;
     },
@@ -206,9 +165,9 @@ export function useCreateConfigurationStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { name: string }) => {
+    mutationFn: async (data: ConfigurationStatusCreate) => {
       const response = await api.post<ConfigurationStatus>(
-        `/api/configuration-statuses`,
+        "/api/configuration-statuses",
         data
       );
       return response.data;
@@ -281,8 +240,10 @@ export function useActivateConfigurationStatus() {
   });
 }
 
-
+// =============================================================================
 // Configurations Hooks
+// =============================================================================
+
 export function useConfigurations(
   orgId: string,
   options?: {
@@ -296,28 +257,38 @@ export function useConfigurations(
   return useQuery({
     queryKey: ["configurations", orgId, options],
     queryFn: async () => {
-      const params: Record<string, string | number | boolean> = {};
-      if (options?.typeId) params.configuration_type_id = options.typeId;
-      if (options?.statusId) params.configuration_status_id = options.statusId;
-      if (options?.pagination?.limit !== undefined) params.limit = options.pagination.limit;
-      if (options?.pagination?.offset !== undefined) params.offset = options.pagination.offset;
-      if (options?.search) params.search = options.search;
-      if (options?.showDisabled !== undefined) params.show_disabled = options.showDisabled;
-
-      const response = await api.get<PaginatedResponse<Configuration>>(
-        `/api/organizations/${orgId}/configurations`,
-        { params }
+      const params = new URLSearchParams();
+      if (options?.typeId) {
+        params.set("configuration_type_id", options.typeId);
+      }
+      if (options?.statusId) {
+        params.set("configuration_status_id", options.statusId);
+      }
+      if (options?.pagination?.limit !== undefined) {
+        params.set("limit", String(options.pagination.limit));
+      }
+      if (options?.pagination?.offset !== undefined) {
+        params.set("offset", String(options.pagination.offset));
+      }
+      if (options?.search) {
+        params.set("search", options.search);
+      }
+      if (options?.showDisabled) {
+        params.set("show_disabled", "true");
+      }
+      const response = await api.get<ConfigurationListResponse>(
+        `/api/organizations/${orgId}/configurations${params.toString() ? `?${params}` : ""}`
       );
       return response.data;
     },
     enabled: !!orgId,
-    placeholderData: keepPreviousData,
+    placeholderData: (prev) => prev,
   });
 }
 
 export function useConfiguration(orgId: string, id: string) {
   return useQuery({
-    queryKey: ["configurations", orgId, id],
+    queryKey: ["configuration", orgId, id],
     queryFn: async () => {
       const response = await api.get<Configuration>(
         `/api/organizations/${orgId}/configurations/${id}`
@@ -358,7 +329,7 @@ export function useUpdateConfiguration(orgId: string, id: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["configurations", orgId] });
-      queryClient.invalidateQueries({ queryKey: ["configurations", orgId, id] });
+      queryClient.invalidateQueries({ queryKey: ["configuration", orgId, id] });
     },
   });
 }
@@ -367,28 +338,22 @@ export function useDeleteConfiguration(orgId: string, onDeleted?: (id: string) =
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      await api.delete(`/api/organizations/${orgId}/configurations/${id}`);
-      return id;
+    mutationFn: async (configId: string) => {
+      await api.delete(`/api/organizations/${orgId}/configurations/${configId}`);
+      return configId;
     },
-    onSuccess: (_data, id) => {
+    onSuccess: (configId) => {
       // Navigate FIRST (if callback provided) to unmount detail page before cache removal
-      // This prevents the detail page query from refetching a deleted resource
-      onDeleted?.(id);
+      onDeleted?.(configId);
 
       // Remove detail query from cache
-      queryClient.removeQueries({ queryKey: ["configurations", orgId, id] });
-      // Invalidate ONLY list queries (3rd element is object), not detail queries (3rd element is string)
-      queryClient.invalidateQueries({
-        predicate: (query) => {
-          const key = query.queryKey;
-          return (
-            key[0] === "configurations" &&
-            key[1] === orgId &&
-            (key.length === 2 || typeof key[2] === "object")
-          );
-        },
+      queryClient.removeQueries({
+        queryKey: ["configuration", orgId, configId],
       });
+
+      // Invalidate list queries
+      queryClient.invalidateQueries({ queryKey: ["configurations", orgId] });
+
       // Invalidate sidebar to update counts
       queryClient.invalidateQueries({ queryKey: ["sidebar", orgId] });
     },
@@ -399,10 +364,19 @@ export function useBatchToggleConfigurations(orgId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ ids, isEnabled }: { ids: string[]; isEnabled: boolean }) => {
-      const response = await api.patch<{ updated_count: number }>(
-        `/api/organizations/${orgId}/configurations/batch/toggle`,
-        { ids, is_enabled: isEnabled }
+    mutationFn: async ({
+      ids,
+      is_enabled,
+      isEnabled,
+    }: {
+      ids: string[];
+      is_enabled?: boolean;
+      isEnabled?: boolean;
+    }) => {
+      const enabled = is_enabled ?? isEnabled;
+      const response = await api.patch(
+        `/api/organizations/${orgId}/configurations/batch`,
+        { ids, is_enabled: enabled }
       );
       return response.data;
     },

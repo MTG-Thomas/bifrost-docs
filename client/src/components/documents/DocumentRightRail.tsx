@@ -24,7 +24,7 @@ import {
   useRelationships,
   useDeleteRelationship,
   groupRelationshipsByType,
-  type ResolvedRelationship,
+  type RelatedEntity,
 } from "@/hooks/useRelationships";
 import {
   getEntityIcon,
@@ -85,7 +85,7 @@ export function DocumentRightRail({
   } = useRelationships(orgId, "document", documentId);
   const deleteRelationship = useDeleteRelationship(orgId);
 
-  const relationships = relationshipsData?.relationships ?? [];
+  const relationships = relationshipsData?.items ?? [];
   const groupedRelationships = groupRelationshipsByType(relationships);
   const entityTypes = Object.keys(groupedRelationships) as EntityType[];
 
@@ -123,26 +123,19 @@ export function DocumentRightRail({
   });
 
   // Handlers
-  const handleNavigateToRelated = (rel: ResolvedRelationship) => {
-    const route = getEntityRoute(rel.entity.entity_type);
-    let path: string;
-
-    if (rel.entity.entity_type === "custom_asset" && rel.entity.asset_type_id) {
-      path = `/org/${orgId}/${route}/${rel.entity.asset_type_id}/${rel.entity.id}`;
-    } else {
-      path = `/org/${orgId}/${route}/${rel.entity.id}`;
-    }
-
+  const handleNavigateToRelated = (rel: RelatedEntity) => {
+    const route = getEntityRoute(rel.entity_type as EntityType);
+    const path = `/org/${orgId}/${route}/${rel.entity_id}`;
     navigate(path);
   };
 
   const handleRemoveRelationship = async (
-    rel: ResolvedRelationship,
+    rel: RelatedEntity,
     e: React.MouseEvent
   ) => {
     e.stopPropagation();
     try {
-      await deleteRelationship.mutateAsync(rel.relationship.id);
+      await deleteRelationship.mutateAsync(rel.relationship_id);
       toast.success("Relationship removed");
     } catch {
       toast.error("Failed to remove relationship");
@@ -264,12 +257,12 @@ export function DocumentRightRail({
                     <div className="space-y-0.5">
                       {rels.map((rel) => (
                         <div
-                          key={rel.relationship.id}
+                          key={rel.relationship_id}
                           className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-muted cursor-pointer transition-colors"
                           onClick={() => handleNavigateToRelated(rel)}
                         >
                           <span className="text-sm truncate flex-1">
-                            {rel.entity.name}
+                            {rel.name}
                           </span>
                           <Button
                             variant="ghost"

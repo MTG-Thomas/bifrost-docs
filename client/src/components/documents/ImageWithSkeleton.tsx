@@ -1,0 +1,123 @@
+import { useState, useEffect } from "react";
+import { NodeViewWrapper } from "@tiptap/react";
+import type { NodeViewProps } from "@tiptap/react";
+import { cn } from "@/lib/utils";
+
+export function ImageWithSkeleton({ node }: NodeViewProps) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+
+  const { src, alt, title } = node.attrs;
+
+  // Fetch image with auth headers and convert to blob URL
+  useEffect(() => {
+    if (!src) {
+      setHasError(true);
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    let objectUrl: string | null = null;
+
+    const fetchImage = async () => {
+      try {
+        const token = localStorage.getItem("access_token");
+        const headers: HeadersInit = {};
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+
+        const response = await fetch(src, { headers });
+
+        if (!response.ok) {
+          throw new Error(`Failed to load image: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+
+        if (cancelled) {
+          return;
+        }
+
+        objectUrl = URL.createObjectURL(blob);
+        setBlobUrl(objectUrl);
+      } catch (error) {
+        console.error("Image fetch failed:", error);
+        if (!cancelled) {
+          setHasError(true);
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchImage();
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [src]);
+
+  // Clean up blob URL when component unmounts or URL changes
+  useEffect(() => {
+    return () => {
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, [blobUrl]);
+
+  const handleLoad = () => {
+    setIsLoading(false);
+  };
+
+  const handleError = () => {
+    setIsLoading(false);
+    setHasError(true);
+  };
+
+  if (hasError) {
+    return (
+      <NodeViewWrapper className="my-4">
+        <div className="flex items-center justify-center h-32 bg-muted/50 rounded-md border border-dashed">
+          <span className="text-sm text-muted-foreground">
+            Failed to load image
+          </span>
+        </div>
+      </NodeViewWrapper>
+    );
+  }
+
+  return (
+    <NodeViewWrapper className="my-4">
+      <div className="relative inline-block max-w-full">
+        {/* Skeleton placeholder */}
+        {isLoading && (
+          <div
+            className="animate-pulse rounded-md bg-primary/10"
+            style={{ minHeight: "100px", minWidth: "200px" }}
+          />
+        )}
+
+        {/* Actual image - only render once we have the blob URL */}
+        {blobUrl && (
+          <img
+            src={blobUrl}
+            alt={alt || ""}
+            title={title || ""}
+            onLoad={handleLoad}
+            onError={handleError}
+            className={cn(
+              "rounded-md max-w-full transition-opacity duration-300",
+              isLoading ? "opacity-0 absolute inset-0" : "opacity-100"
+            )}
+          />
+        )}
+      </div>
+    </NodeViewWrapper>
+  );
+}

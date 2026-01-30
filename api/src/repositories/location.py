@@ -148,7 +148,8 @@ class LocationRepository(BaseRepository[Location]):
 
         result = await self.session.execute(
             select(func.count(Location.id)).where(
-                Location.organization_id == organization_id
+                Location.organization_id == organization_id,
+                Location.is_enabled.is_(True),
             )
         )
         return result.scalar_one()

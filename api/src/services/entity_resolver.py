@@ -109,18 +109,36 @@ class EntityResolver:
     async def _get_custom_asset_name(
         self, organization_id: UUID, entity_id: UUID
     ) -> str | None:
-        """Get custom asset name by ID (from values JSONB field)."""
+        """Get custom asset name by ID (from values JSONB field).
+
+        Values are stored with UUID keys (field definition IDs), not human-readable
+        names. We try to find any non-empty string value to use as a display name,
+        or return a placeholder if the asset exists but has no suitable name.
+        """
         result = await self.session.execute(
-            select(CustomAsset.values).where(
+            select(CustomAsset.id, CustomAsset.values).where(
                 CustomAsset.id == entity_id,
                 CustomAsset.organization_id == organization_id,
             )
         )
-        values = result.scalar_one_or_none()
-        if values:
-            # Try common name fields
-            return values.get("name") or values.get("title") or values.get("domain")
-        return None
+        row = result.first()
+        if not row:
+            return None
+
+        values = row.values or {}
+
+        # First, try direct keys (for backwards compatibility)
+        for key in ("name", "title", "domain"):
+            if key in values and values[key]:
+                return values[key]
+
+        # Then try all values to find first non-empty string
+        for value in values.values():
+            if isinstance(value, str) and value.strip():
+                return value
+
+        # Asset exists but has no name - return placeholder
+        return f"Custom Asset {entity_id}"
 
     async def resolve_entities(
         self,

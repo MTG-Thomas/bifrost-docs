@@ -70,8 +70,17 @@ export function OrgSelector() {
     // Find current org from URL param or stored value
     const selectedOrg =
         organizations?.find((org) => org.id === orgId) ||
-        currentOrg ||
-        organizations?.[0];
+        currentOrg;
+
+    // Sync store with URL param (e.g., on page refresh or direct navigation)
+    useEffect(() => {
+        if (orgId && organizations) {
+            const orgFromUrl = organizations.find((org) => org.id === orgId);
+            if (orgFromUrl && orgFromUrl.id !== currentOrg?.id) {
+                setCurrentOrg(orgFromUrl);
+            }
+        }
+    }, [orgId, organizations, currentOrg?.id, setCurrentOrg]);
 
     // Validate selected org after refetch
     useEffect(() => {
@@ -112,7 +121,7 @@ export function OrgSelector() {
             setIsValidating(true);
             try {
                 await refetch();
-            } catch (error) {
+            } catch {
                 setIsValidating(false);
                 toast.error("Failed to refresh organization list");
             }
@@ -181,16 +190,15 @@ export function OrgSelector() {
                             className="w-[280px] justify-between"
                         >
                             <span className="flex items-center gap-2 truncate">
-                                {isGlobalView ? (
+                                {isGlobalView || !selectedOrg ? (
                                     <Globe className="h-4 w-4 shrink-0" />
                                 ) : (
                                     <Building2 className="h-4 w-4 shrink-0" />
                                 )}
                                 <span className="truncate">
-                                    {isGlobalView
+                                    {isGlobalView || !selectedOrg
                                         ? "Global View"
-                                        : selectedOrg?.name ||
-                                          "Select organization"}
+                                        : selectedOrg.name}
                                 </span>
                             </span>
                             <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
@@ -269,7 +277,7 @@ export function OrgSelector() {
                                                                         className={cn(
                                                                             "mr-2 h-4 w-4 shrink-0",
                                                                             !isGlobalView &&
-                                                                                selectedOrg?.id ===
+                                                                                currentOrg?.id ===
                                                                                     org.id
                                                                                 ? "opacity-100"
                                                                                 : "opacity-0"
@@ -337,25 +345,36 @@ export function OrgSelector() {
                     </PopoverContent>
                 </Popover>
 
-                {/* Quick nav button - only show when org is selected */}
-                {currentOrg && !isGlobalView && (
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-9 w-9"
-                                onClick={() => navigate(`/org/${currentOrg.id}`)}
-                                aria-label={`Go to ${currentOrg.name}`}
-                            >
-                                <ArrowRight className="h-4 w-4" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>Go to {currentOrg.name}</p>
-                        </TooltipContent>
-                    </Tooltip>
-                )}
+                {/* Quick nav button - always show, navigates to selected org or global */}
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9"
+                            onClick={() =>
+                                navigate(
+                                    selectedOrg
+                                        ? `/org/${selectedOrg.id}`
+                                        : "/global"
+                                )
+                            }
+                            aria-label={
+                                selectedOrg
+                                    ? `Go to ${selectedOrg.name}`
+                                    : "Go to Global View"
+                            }
+                        >
+                            <ArrowRight className="h-4 w-4" />
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>
+                            Go to{" "}
+                            {selectedOrg ? selectedOrg.name : "Global View"}
+                        </p>
+                    </TooltipContent>
+                </Tooltip>
             </div>
 
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>

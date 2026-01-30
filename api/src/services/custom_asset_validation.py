@@ -155,85 +155,80 @@ def _validate_field_value(field: FieldDefinition, value: Any) -> None:
             pass
 
 
-def encrypt_password_fields(
+def values_key_to_id(
     type_fields: list[FieldDefinition],
     values: dict[str, Any],
 ) -> dict[str, Any]:
     """
-    Encrypt password and totp field values for storage.
+    Transform values from key-based (API format) to ID-based (storage format).
+
+    Also encrypts password/totp fields.
 
     Args:
         type_fields: List of field definitions from the custom asset type
-        values: Dictionary of values (will be modified in place)
+        values: Dictionary of values keyed by field key
 
     Returns:
-        Values dictionary with password/totp fields encrypted and stored with "_encrypted" suffix
+        Values dictionary keyed by field ID, with password/totp fields encrypted
     """
-    result = values.copy()
-    secret_keys = {f.key for f in type_fields if f.type in ("password", "totp")}
+    key_to_field = {f.key: f for f in type_fields}
+    result: dict[str, Any] = {}
 
-    for key in list(result.keys()):
-        if key in secret_keys and result[key] is not None:
-            # Encrypt the value
-            encrypted = encrypt_secret(str(result[key]))
-            # Remove the plain value and store encrypted with suffix
-            del result[key]
-            result[f"{key}_encrypted"] = encrypted
+    for key, value in values.items():
+        field = key_to_field.get(key)
+        if not field:
+            # Unknown key - skip (validation should have caught this)
+            continue
+
+        if value is not None and field.type in ("password", "totp"):
+            # Encrypt sensitive fields
+            result[field.id] = encrypt_secret(str(value))
+        else:
+            result[field.id] = value
 
     return result
 
 
-def decrypt_password_fields(
+def values_id_to_key(
     type_fields: list[FieldDefinition],
     values: dict[str, Any],
+    *,
+    decrypt_secrets: bool = False,
+    filter_secrets: bool = False,
 ) -> dict[str, Any]:
     """
-    Decrypt password and totp field values for reveal endpoint.
+    Transform values from ID-based (storage format) to key-based (API format).
 
     Args:
         type_fields: List of field definitions from the custom asset type
-        values: Dictionary of values from database
+        values: Dictionary of values keyed by field ID
+        decrypt_secrets: If True, decrypt password/totp fields
+        filter_secrets: If True, exclude password/totp fields from result
 
     Returns:
-        Values dictionary with password/totp fields decrypted and restored to original keys
+        Values dictionary keyed by field key
     """
-    result = values.copy()
-    secret_keys = {f.key for f in type_fields if f.type in ("password", "totp")}
+    id_to_field = {f.id: f for f in type_fields}
+    result: dict[str, Any] = {}
 
-    for key in secret_keys:
-        encrypted_key = f"{key}_encrypted"
-        if encrypted_key in result:
-            # Decrypt the value
-            decrypted = decrypt_secret(result[encrypted_key])
-            # Remove encrypted key and restore original
-            del result[encrypted_key]
-            result[key] = decrypted
+    for field_id, value in values.items():
+        field = id_to_field.get(field_id)
+        if not field:
+            # Unknown field ID - could be from old/removed field, skip
+            continue
 
-    return result
-
-
-def filter_password_fields(
-    type_fields: list[FieldDefinition],
-    values: dict[str, Any],
-) -> dict[str, Any]:
-    """
-    Remove password and totp values from response (for public endpoint).
-
-    Args:
-        type_fields: List of field definitions from the custom asset type
-        values: Dictionary of values from database
-
-    Returns:
-        Values dictionary with password/totp fields removed (both plain and encrypted)
-    """
-    result = values.copy()
-    secret_keys = {f.key for f in type_fields if f.type in ("password", "totp")}
-
-    for key in secret_keys:
-        # Remove plain key if present
-        result.pop(key, None)
-        # Remove encrypted key if present
-        result.pop(f"{key}_encrypted", None)
+        if field.type in ("password", "totp"):
+            if filter_secrets:
+                # Don't include in result
+                continue
+            elif decrypt_secrets and value is not None:
+                # Decrypt for reveal endpoint
+                result[field.key] = decrypt_secret(value)
+            else:
+                # Include encrypted value as-is (shouldn't normally happen)
+                result[field.key] = value
+        else:
+            result[field.key] = value
 
     return result
 

@@ -250,7 +250,7 @@ export function useDocumentSections(orgId: string): SectionTree {
       return [];
     }
 
-    return buildSectionTree(foldersData.folders, documentsData.items);
+    return buildSectionTree(foldersData.folders ?? [], documentsData.items);
   }, [foldersData, documentsData]);
 
   return {

@@ -1,43 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api-client";
 import type { EntityType } from "@/lib/entity-icons";
+import type { components } from "@/lib/v1";
 
-export interface RelatedEntity {
-  id: string;
-  entity_type: EntityType;
-  name: string;
-  description?: string;
-  // For custom assets
-  asset_type_id?: string;
-}
+// =============================================================================
+// Re-export types from OpenAPI spec for component convenience
+// =============================================================================
 
-export interface Relationship {
-  id: string;
-  source_entity_type: EntityType;
-  source_entity_id: string;
-  target_entity_type: EntityType;
-  target_entity_id: string;
-  relationship_type: string;
-  created_at: string;
-}
+export type RelatedEntity = components["schemas"]["RelatedEntity"];
+export type RelatedItemsResponse = components["schemas"]["RelatedItemsResponse"];
+export type RelationshipCreate = components["schemas"]["RelationshipCreate"];
+export type RelationshipPublic = components["schemas"]["RelationshipPublic"];
 
-export interface ResolvedRelationship {
-  relationship: Relationship;
-  entity: RelatedEntity;
-  direction: "source" | "target";
-}
-
-export interface ResolvedRelationshipsResponse {
-  relationships: ResolvedRelationship[];
-}
-
-export interface CreateRelationshipRequest {
-  source_entity_type: EntityType;
-  source_entity_id: string;
-  target_entity_type: EntityType;
-  target_entity_id: string;
-  relationship_type?: string;
-}
+// =============================================================================
+// Hooks
+// =============================================================================
 
 export function useRelationships(
   orgId: string,
@@ -47,7 +24,7 @@ export function useRelationships(
   return useQuery({
     queryKey: ["relationships", orgId, entityType, entityId],
     queryFn: async () => {
-      const response = await api.get<ResolvedRelationshipsResponse>(
+      const response = await api.get<RelatedItemsResponse>(
         `/api/organizations/${orgId}/relationships/resolved`,
         {
           params: {
@@ -67,8 +44,8 @@ export function useCreateRelationship(orgId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: CreateRelationshipRequest) => {
-      const response = await api.post<Relationship>(
+    mutationFn: async (data: RelationshipCreate) => {
+      const response = await api.post<RelationshipPublic>(
         `/api/organizations/${orgId}/relationships`,
         data
       );
@@ -80,16 +57,16 @@ export function useCreateRelationship(orgId: string) {
         queryKey: [
           "relationships",
           orgId,
-          variables.source_entity_type,
-          variables.source_entity_id,
+          variables.source_type,
+          variables.source_id,
         ],
       });
       queryClient.invalidateQueries({
         queryKey: [
           "relationships",
           orgId,
-          variables.target_entity_type,
-          variables.target_entity_id,
+          variables.target_type,
+          variables.target_id,
         ],
       });
     },
@@ -113,17 +90,17 @@ export function useDeleteRelationship(orgId: string) {
 }
 
 export function groupRelationshipsByType(
-  relationships: ResolvedRelationship[]
-): Record<EntityType, ResolvedRelationship[]> {
-  const grouped: Record<string, ResolvedRelationship[]> = {};
+  relationships: RelatedEntity[]
+): Record<EntityType, RelatedEntity[]> {
+  const grouped: Record<string, RelatedEntity[]> = {};
 
   for (const rel of relationships) {
-    const type = rel.entity.entity_type;
+    const type = rel.entity_type;
     if (!grouped[type]) {
       grouped[type] = [];
     }
     grouped[type].push(rel);
   }
 
-  return grouped as Record<EntityType, ResolvedRelationship[]>;
+  return grouped as Record<EntityType, RelatedEntity[]>;
 }

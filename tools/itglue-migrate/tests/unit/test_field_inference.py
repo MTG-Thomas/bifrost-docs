@@ -623,3 +623,105 @@ class TestFieldInferrerPriorityOrder:
         # Even though values are numbers, name indicates password
         field = inferrer.infer_type("Secret Key", ["123456", "789012"])
         assert field["type"] == "password"
+
+
+class TestFieldInferrerForcePassword:
+    """Tests for force_password parameter."""
+
+    def test_force_password_overrides_text(self) -> None:
+        """Force password overrides normal text inference."""
+        inferrer = FieldInferrer()
+
+        field = inferrer.infer_type("regular_field", ["value1", "value2"], force_password=True)
+        assert field["type"] == "password"
+
+    def test_force_password_overrides_number(self) -> None:
+        """Force password overrides number inference."""
+        inferrer = FieldInferrer()
+
+        field = inferrer.infer_type("count", ["1", "2", "3"], force_password=True)
+        assert field["type"] == "password"
+
+    def test_force_password_false_uses_normal_inference(self) -> None:
+        """Force password False uses normal inference."""
+        inferrer = FieldInferrer()
+
+        field = inferrer.infer_type("count", ["1", "2", "3"], force_password=False)
+        assert field["type"] == "number"
+
+
+class TestFieldInferrerPasswordFieldsParam:
+    """Tests for password_fields parameter in infer_schema."""
+
+    def test_infer_schema_with_password_fields(self) -> None:
+        """Password fields parameter forces specific fields to password type."""
+        inferrer = FieldInferrer()
+
+        columns = ["Name", "API Key", "Count"]
+        rows = [
+            {"Name": "Item 1", "API Key": "abc123", "Count": "5"},
+            {"Name": "Item 2", "API Key": "def456", "Count": "10"},
+        ]
+
+        fields = inferrer.infer_schema(
+            columns,
+            rows,
+            password_fields={"api key"},  # lowercase
+        )
+
+        assert len(fields) == 3
+        assert fields[0]["key"] == "name"
+        assert fields[0]["type"] == "text"
+        assert fields[1]["key"] == "api_key"
+        assert fields[1]["type"] == "password"
+        assert fields[2]["key"] == "count"
+        assert fields[2]["type"] == "number"
+
+    def test_infer_schema_password_fields_case_insensitive(self) -> None:
+        """Password fields matching is case-insensitive."""
+        inferrer = FieldInferrer()
+
+        columns = ["API_KEY", "Connection String"]
+        rows = [
+            {"API_KEY": "key1", "Connection String": "conn1"},
+        ]
+
+        fields = inferrer.infer_schema(
+            columns,
+            rows,
+            password_fields={"api_key", "connection string"},  # lowercase
+        )
+
+        assert fields[0]["key"] == "api_key"
+        assert fields[0]["type"] == "password"
+        assert fields[1]["key"] == "connection_string"
+        assert fields[1]["type"] == "password"
+
+    def test_infer_schema_password_fields_empty(self) -> None:
+        """Empty password_fields set uses normal inference."""
+        inferrer = FieldInferrer()
+
+        columns = ["API Key", "Count"]
+        rows = [
+            {"API Key": "key1", "Count": "5"},
+        ]
+
+        fields = inferrer.infer_schema(columns, rows, password_fields=set())
+
+        # API Key should still be password due to column name pattern
+        assert fields[0]["type"] == "password"
+        assert fields[1]["type"] == "number"
+
+    def test_infer_schema_password_fields_none(self) -> None:
+        """None password_fields uses normal inference."""
+        inferrer = FieldInferrer()
+
+        columns = ["Regular Field", "Count"]
+        rows = [
+            {"Regular Field": "value", "Count": "5"},
+        ]
+
+        fields = inferrer.infer_schema(columns, rows, password_fields=None)
+
+        assert fields[0]["type"] == "text"
+        assert fields[1]["type"] == "number"

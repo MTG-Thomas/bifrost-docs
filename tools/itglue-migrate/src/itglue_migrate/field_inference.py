@@ -240,6 +240,7 @@ class FieldInferrer:
         values: Sequence[str | None],
         *,
         field_index: int = 0,
+        force_password: bool = False,
     ) -> FieldDefinition:
         """Infer the field type from column name and values.
 
@@ -247,12 +248,18 @@ class FieldInferrer:
             column_name: Original column header name.
             values: List of values from all rows for this column.
             field_index: Position index for show_in_list calculation.
+            force_password: If True, override type inference and use password type.
 
         Returns:
             FieldDefinition with inferred type and settings.
         """
         key = column_name_to_key(column_name)
-        field_type = self._infer_field_type(column_name, values)
+
+        # Force password type if explicitly requested (e.g., from embedded passwords)
+        if force_password:
+            field_type: FieldType = "password"
+        else:
+            field_type = self._infer_field_type(column_name, values)
 
         field: FieldDefinition = {
             "key": key,
@@ -382,6 +389,7 @@ class FieldInferrer:
         rows: Sequence[Mapping[str, str | None]],
         *,
         skip_columns: set[str] | None = None,
+        password_fields: set[str] | None = None,
     ) -> list[FieldDefinition]:
         """Infer field definitions for all columns in a dataset.
 
@@ -389,11 +397,14 @@ class FieldInferrer:
             columns: List of column names.
             rows: List of row dictionaries.
             skip_columns: Column names to skip (e.g., ID columns).
+            password_fields: Set of lowercase field names that should be
+                forced to password type (from embedded password detection).
 
         Returns:
             List of FieldDefinition dicts for all non-skipped columns.
         """
         skip_columns = skip_columns or set()
+        password_fields = password_fields or set()
 
         # Filter columns
         filtered_columns = [c for c in columns if c not in skip_columns]
@@ -410,10 +421,14 @@ class FieldInferrer:
         field_index = 0
 
         for col in filtered_columns:
+            # Check if this field should be forced to password type
+            force_password = col.lower() in password_fields
+
             field = self.infer_type(
                 col,
                 column_values[col],
                 field_index=field_index,
+                force_password=force_password,
             )
             fields.append(field)
             field_index += 1

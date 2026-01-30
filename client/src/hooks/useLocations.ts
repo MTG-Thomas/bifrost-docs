@@ -1,13 +1,24 @@
-import {
-  keepPreviousData,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+/**
+ * React Query hooks for locations management
+ */
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api-client";
+import type { components } from "@/lib/v1";
 
 // =============================================================================
-// Pagination Types
+// Re-export types from OpenAPI spec for component convenience
+// =============================================================================
+
+export type Location = components["schemas"]["LocationPublic"];
+export type LocationCreate = components["schemas"]["LocationCreate"];
+export type LocationUpdate = components["schemas"]["LocationUpdate"];
+
+// API response types
+type LocationListResponse = components["schemas"]["LocationListResponse"];
+
+// =============================================================================
+// Pagination Types (client-side utilities)
 // =============================================================================
 
 export interface PaginatedResponse<T> {
@@ -29,83 +40,39 @@ export interface LocationsParams {
 }
 
 // =============================================================================
-// Types
-// =============================================================================
-
-export interface Location {
-  id: string;
-  organization_id: string;
-  name: string;
-  notes: string | null;
-  is_enabled: boolean;
-  address_1: string | null;
-  address_2: string | null;
-  city: string | null;
-  region: string | null;
-  postal_code: string | null;
-  country: string | null;
-  phone: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface LocationCreate {
-  name: string;
-  notes?: string;
-  is_enabled?: boolean;
-  address_1?: string;
-  address_2?: string;
-  city?: string;
-  region?: string;
-  postal_code?: string;
-  country?: string;
-  phone?: string;
-}
-
-export interface LocationUpdate {
-  name?: string;
-  notes?: string;
-  is_enabled?: boolean;
-  address_1?: string | null;
-  address_2?: string | null;
-  city?: string | null;
-  region?: string | null;
-  postal_code?: string | null;
-  country?: string | null;
-  phone?: string | null;
-}
-
-// =============================================================================
 // Hooks
 // =============================================================================
 
-export function useLocations(
-  orgId: string,
-  options?: LocationsParams
-) {
+export function useLocations(orgId: string, options?: LocationsParams) {
   return useQuery({
     queryKey: ["locations", orgId, options],
     queryFn: async () => {
-      const params: Record<string, string | number | boolean> = {};
-      if (options?.pagination?.limit !== undefined) params.limit = options.pagination.limit;
-      if (options?.pagination?.offset !== undefined) params.offset = options.pagination.offset;
-      if (options?.search) params.search = options.search;
-      if (options?.showDisabled !== undefined) params.show_disabled = options.showDisabled;
-
-      const response = await api.get<PaginatedResponse<Location>>(
-        `/api/organizations/${orgId}/locations`,
-        { params }
+      const params = new URLSearchParams();
+      if (options?.pagination?.limit !== undefined) {
+        params.set("limit", String(options.pagination.limit));
+      }
+      if (options?.pagination?.offset !== undefined) {
+        params.set("offset", String(options.pagination.offset));
+      }
+      if (options?.search) {
+        params.set("search", options.search);
+      }
+      if (options?.showDisabled) {
+        params.set("show_disabled", "true");
+      }
+      const response = await api.get<LocationListResponse>(
+        `/api/organizations/${orgId}/locations${params.toString() ? `?${params}` : ""}`
       );
       return response.data;
     },
     enabled: !!orgId,
-    placeholderData: keepPreviousData,
+    placeholderData: (prev) => prev,
   });
 }
 
 export function useLocation(orgId: string, id: string) {
   return useQuery({
-    queryKey: ["locations", orgId, id],
+    queryKey: ["location", orgId, id],
     queryFn: async () => {
       const response = await api.get<Location>(
         `/api/organizations/${orgId}/locations/${id}`
@@ -146,7 +113,7 @@ export function useUpdateLocation(orgId: string, id: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["locations", orgId] });
-      queryClient.invalidateQueries({ queryKey: ["locations", orgId, id] });
+      queryClient.invalidateQueries({ queryKey: ["location", orgId, id] });
     },
   });
 }
@@ -155,28 +122,22 @@ export function useDeleteLocation(orgId: string, onDeleted?: (id: string) => voi
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      await api.delete(`/api/organizations/${orgId}/locations/${id}`);
-      return id;
+    mutationFn: async (locationId: string) => {
+      await api.delete(`/api/organizations/${orgId}/locations/${locationId}`);
+      return locationId;
     },
-    onSuccess: (_data, id) => {
+    onSuccess: (locationId) => {
       // Navigate FIRST (if callback provided) to unmount detail page before cache removal
-      // This prevents the detail page query from refetching a deleted resource
-      onDeleted?.(id);
+      onDeleted?.(locationId);
 
       // Remove detail query from cache
-      queryClient.removeQueries({ queryKey: ["locations", orgId, id] });
-      // Invalidate ONLY list queries (3rd element is object), not detail queries (3rd element is string)
-      queryClient.invalidateQueries({
-        predicate: (query) => {
-          const key = query.queryKey;
-          return (
-            key[0] === "locations" &&
-            key[1] === orgId &&
-            (key.length === 2 || typeof key[2] === "object")
-          );
-        },
+      queryClient.removeQueries({
+        queryKey: ["location", orgId, locationId],
       });
+
+      // Invalidate list queries
+      queryClient.invalidateQueries({ queryKey: ["locations", orgId] });
+
       // Invalidate sidebar to update counts
       queryClient.invalidateQueries({ queryKey: ["sidebar", orgId] });
     },
@@ -187,10 +148,19 @@ export function useBatchToggleLocations(orgId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ ids, isEnabled }: { ids: string[]; isEnabled: boolean }) => {
-      const response = await api.patch<{ updated_count: number }>(
+    mutationFn: async ({
+      ids,
+      is_enabled,
+      isEnabled,
+    }: {
+      ids: string[];
+      is_enabled?: boolean;
+      isEnabled?: boolean;
+    }) => {
+      const enabled = is_enabled ?? isEnabled;
+      const response = await api.patch(
         `/api/organizations/${orgId}/locations/batch/toggle`,
-        { ids, is_enabled: isEnabled }
+        { ids, is_enabled: enabled }
       );
       return response.data;
     },

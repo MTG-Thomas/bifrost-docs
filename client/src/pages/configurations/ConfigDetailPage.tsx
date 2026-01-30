@@ -174,7 +174,7 @@ export function ConfigDetailPage() {
             </CardContent>
           </Card>
         </div>
-        <aside className="w-80 shrink-0 hidden lg:block space-y-4">
+        <aside className="w-[360px] shrink-0 hidden lg:block space-y-4">
           <Skeleton className="h-48" />
           <Skeleton className="h-48" />
         </aside>
@@ -528,7 +528,7 @@ export function ConfigDetailPage() {
       </div>
 
       {/* Sidebar */}
-      <aside className="w-80 shrink-0 hidden lg:block space-y-4">
+      <aside className="w-[360px] shrink-0 hidden lg:block space-y-4">
         <RelatedItemsSidebar
           orgId={orgId}
           entityType="configuration"

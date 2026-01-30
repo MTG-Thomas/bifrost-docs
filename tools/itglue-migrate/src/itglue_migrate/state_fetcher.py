@@ -7,9 +7,12 @@ CSV export data.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from itglue_migrate.api_client import BifrostDocsClient
@@ -254,6 +257,8 @@ class StateFetcher:
 
     async def _fetch_relationships(self, state: ExistingState, org_id: str) -> None:
         """Fetch relationships for all passwords in org."""
+        total_fetched = 0
+        total_stored = 0
         for password_id in state.passwords:
             try:
                 rels = await self.client.list_relationships(
@@ -261,10 +266,31 @@ class StateFetcher:
                     entity_type="password",
                     entity_id=password_id,
                 )
+                total_fetched += len(rels)
                 for rel in rels:
-                    # Build relationship key
-                    key = f"password:{password_id}:{rel.get('target_type')}:{rel.get('target_id')}"
+                    # API returns bidirectional results - normalize to password:X:type:Y
+                    # regardless of whether password is source or target
+                    src_type = rel.get("source_type")
+                    src_id = str(rel.get("source_id", ""))
+                    tgt_type = rel.get("target_type")
+                    tgt_id = str(rel.get("target_id", ""))
+
+                    if src_type == "password" and src_id == str(password_id):
+                        # Password is source: password -> other
+                        key = f"password:{password_id}:{tgt_type}:{tgt_id}"
+                    elif tgt_type == "password" and tgt_id == str(password_id):
+                        # Password is target: other -> password, normalize to password -> other
+                        key = f"password:{password_id}:{src_type}:{src_id}"
+                    else:
+                        # Shouldn't happen, but skip if neither matches
+                        continue
+
                     state.relationships.add(key)
+                    total_stored += 1
             except Exception:
                 # Continue if relationship fetch fails
                 pass
+        logger.debug(
+            f"Relationships: fetched {total_fetched} from API, "
+            f"stored {total_stored} (normalized to password:X:type:Y)"
+        )

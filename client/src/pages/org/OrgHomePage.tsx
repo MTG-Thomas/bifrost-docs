@@ -35,10 +35,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RecentEntityCard } from "@/components/RecentEntityCard";
 import { useOrganization, useUpdateOrganization } from "@/hooks/useOrganizations";
 import { usePermissions } from "@/hooks/usePermissions";
-import { usePasswords } from "@/hooks/usePasswords";
-import { useConfigurations } from "@/hooks/useConfigurations";
-import { useLocations } from "@/hooks/useLocations";
-import { useDocuments } from "@/hooks/useDocuments";
 
 interface QuickLinkProps {
   title: string;
@@ -85,12 +81,6 @@ export function OrgHomePage() {
   const frequentItems = organization?.frequently_accessed || [];
   const updateOrganization = useUpdateOrganization();
   const { canEdit } = usePermissions();
-
-  // Fetch counts for stat cards (limit: 1 to minimize data transfer)
-  const { data: passwordsData } = usePasswords(orgId || "", { pagination: { limit: 1, offset: 0 } });
-  const { data: configurationsData } = useConfigurations(orgId || "", { pagination: { limit: 1, offset: 0 } });
-  const { data: locationsData } = useLocations(orgId || "", { pagination: { limit: 1, offset: 0 } });
-  const { data: documentsData } = useDocuments(orgId || "", { pagination: { limit: 1, offset: 0 } });
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editName, setEditName] = useState("");
@@ -223,34 +213,6 @@ export function OrgHomePage() {
           </AlertDescription>
         </Alert>
       )}
-
-      {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Passwords</CardDescription>
-            <CardTitle className="text-2xl">{passwordsData?.total ?? 0}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Configurations</CardDescription>
-            <CardTitle className="text-2xl">{configurationsData?.total ?? 0}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Locations</CardDescription>
-            <CardTitle className="text-2xl">{locationsData?.total ?? 0}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Documents</CardDescription>
-            <CardTitle className="text-2xl">{documentsData?.total ?? 0}</CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
 
       {/* Frequently Accessed Section */}
       {frequentItems.length > 0 && (

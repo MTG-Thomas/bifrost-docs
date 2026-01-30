@@ -231,6 +231,7 @@ class CustomAssetRepository(BaseRepository[CustomAsset]):
             select(func.count(CustomAsset.id)).where(
                 CustomAsset.custom_asset_type_id == custom_asset_type_id,
                 CustomAsset.organization_id == organization_id,
+                CustomAsset.is_enabled.is_(True),
             )
         )
         return result.scalar_one()

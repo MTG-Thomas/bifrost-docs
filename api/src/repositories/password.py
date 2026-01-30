@@ -127,7 +127,8 @@ class PasswordRepository(BaseRepository[Password]):
 
         result = await self.session.execute(
             select(func.count(Password.id)).where(
-                Password.organization_id == organization_id
+                Password.organization_id == organization_id,
+                Password.is_enabled.is_(True),
             )
         )
         return result.scalar_one()

@@ -15,6 +15,7 @@ Image src format in HTML: <img src="{org_id}/docs/{doc_id}/images/{image_id}">
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import mimetypes
 import re
@@ -38,6 +39,9 @@ IMG_SRC_PATTERN = re.compile(
 
 # Pattern for extracting doc_id from DOC folder names (captures only doc_id)
 DOC_FOLDER_MAP_PATTERN = re.compile(r"^DOC-\d+-(\d+)\s")
+
+# Maximum concurrent image uploads
+_UPLOAD_CONCURRENCY = 10
 
 # Common image MIME types by extension or content
 IMAGE_MIME_TYPES = {
@@ -271,20 +275,41 @@ class DocumentProcessor:
             markdown = self._html_to_markdown(html)
             return markdown, warnings
 
-        # Step 4: Upload each image and build replacement map
+        # Step 4: Upload images in parallel and build replacement map
         replacements: dict[str, str] = {}
+
+        # Resolve all image paths first
+        upload_tasks: list[tuple[str, Path]] = []
         for src in image_srcs:
             image_path = self._resolve_image_path(doc_folder, src)
             if image_path is None:
                 warnings.append(f"Image not found: {src}")
                 continue
+            upload_tasks.append((src, image_path))
 
-            new_url = await self._upload_image(image_path, org_uuid)
-            if new_url is None:
-                warnings.append(f"Failed to upload image: {src}")
-                continue
+        # Upload all images concurrently with semaphore
+        if upload_tasks:
+            sem = asyncio.Semaphore(_UPLOAD_CONCURRENCY)
 
-            replacements[src] = new_url
+            async def upload_with_limit(src: str, path: Path) -> tuple[str, str | None]:
+                async with sem:
+                    url = await self._upload_image(path, org_uuid)
+                    return src, url
+
+            results = await asyncio.gather(
+                *(upload_with_limit(src, path) for src, path in upload_tasks),
+                return_exceptions=True,
+            )
+
+            for result in results:
+                if isinstance(result, BaseException):
+                    warnings.append(f"Image upload error: {result}")
+                    continue
+                src, new_url = result
+                if new_url is None:
+                    warnings.append(f"Failed to upload image: {src}")
+                    continue
+                replacements[src] = new_url
 
         # Step 5: Transform HTML with new URLs
         if replacements:

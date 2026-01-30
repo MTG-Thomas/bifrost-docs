@@ -3,6 +3,7 @@ import { Check, X, Eye, EyeOff, Copy, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TOTPDisplay } from "@/components/ui/totp-display";
 import { toast } from "sonner";
+import { useTimedReveal } from "@/hooks/useTimedReveal";
 import type { FieldDefinition } from "@/hooks/useCustomAssets";
 
 interface CustomFieldRendererProps {
@@ -10,6 +11,7 @@ interface CustomFieldRendererProps {
   value: unknown;
   revealedValue?: unknown;
   onReveal?: () => void;
+  onClear?: () => void;
   isRevealing?: boolean;
 }
 
@@ -18,6 +20,7 @@ export function CustomFieldRenderer({
   value,
   revealedValue,
   onReveal,
+  onClear,
   isRevealing,
 }: CustomFieldRendererProps) {
   // Header fields are just section dividers
@@ -32,6 +35,31 @@ export function CustomFieldRenderer({
   }
 
   const renderValue = () => {
+    // Handle password/totp FIRST - they're excluded from public API response
+    // and should always show reveal UI regardless of whether value is defined
+    if (field.type === "password") {
+      return (
+        <InlinePasswordReveal
+          value={revealedValue !== undefined ? String(revealedValue) : undefined}
+          onReveal={onReveal}
+          onClear={onClear}
+          isRevealing={isRevealing}
+        />
+      );
+    }
+
+    if (field.type === "totp") {
+      return (
+        <InlineTOTPReveal
+          value={revealedValue !== undefined ? String(revealedValue) : undefined}
+          onReveal={onReveal}
+          onClear={onClear}
+          isRevealing={isRevealing}
+        />
+      );
+    }
+
+    // For all other field types, show "Not set" if empty
     if (value === undefined || value === null || value === "") {
       return <span className="text-muted-foreground italic">Not set</span>;
     }
@@ -88,26 +116,6 @@ export function CustomFieldRenderer({
       case "select":
         return <span>{String(value)}</span>;
 
-      case "password":
-        // Password fields - show reveal/copy UI inline
-        return (
-          <InlinePasswordReveal
-            value={revealedValue !== undefined ? String(revealedValue) : undefined}
-            onReveal={onReveal}
-            isRevealing={isRevealing}
-          />
-        );
-
-      case "totp":
-        // TOTP fields - show live code generator when revealed
-        return (
-          <InlineTOTPReveal
-            value={revealedValue !== undefined ? String(revealedValue) : undefined}
-            onReveal={onReveal}
-            isRevealing={isRevealing}
-          />
-        );
-
       default:
         return <span>{String(value)}</span>;
     }
@@ -133,23 +141,34 @@ export function CustomFieldRenderer({
 interface InlinePasswordRevealProps {
   value?: string;
   onReveal?: () => void;
+  onClear?: () => void;
   isRevealing?: boolean;
 }
 
-function InlinePasswordReveal({ value, onReveal, isRevealing }: InlinePasswordRevealProps) {
-  const [revealed, setRevealed] = useState(false);
+function InlinePasswordReveal({ value, onReveal, onClear, isRevealing }: InlinePasswordRevealProps) {
   const [copied, setCopied] = useState(false);
 
+  const { revealed, reveal, hide } = useTimedReveal({
+    onHide: onClear,
+  });
+
   const handleToggleReveal = () => {
-    if (!revealed && !value && onReveal) {
-      onReveal();
+    if (revealed) {
+      hide();
+    } else {
+      // Fetch if we don't have the value
+      if (!value && onReveal) {
+        onReveal();
+      }
+      reveal();
     }
-    setRevealed(!revealed);
   };
 
   const handleCopy = async () => {
+    // Fetch if we don't have the value
     if (!value && onReveal) {
       onReveal();
+      reveal();
       return;
     }
     if (value) {
@@ -203,17 +222,25 @@ function InlinePasswordReveal({ value, onReveal, isRevealing }: InlinePasswordRe
 interface InlineTOTPRevealProps {
   value?: string;
   onReveal?: () => void;
+  onClear?: () => void;
   isRevealing?: boolean;
 }
 
-function InlineTOTPReveal({ value, onReveal, isRevealing }: InlineTOTPRevealProps) {
-  const [revealed, setRevealed] = useState(false);
+function InlineTOTPReveal({ value, onReveal, onClear, isRevealing }: InlineTOTPRevealProps) {
+  const { revealed, reveal, hide } = useTimedReveal({
+    onHide: onClear,
+  });
 
   const handleToggleReveal = () => {
-    if (!revealed && !value && onReveal) {
-      onReveal();
+    if (revealed) {
+      hide();
+    } else {
+      // Fetch if we don't have the value
+      if (!value && onReveal) {
+        onReveal();
+      }
+      reveal();
     }
-    setRevealed(!revealed);
   };
 
   // When not revealed, show masked placeholder with reveal button
@@ -279,6 +306,7 @@ interface CustomFieldListProps {
   values: Record<string, unknown>;
   revealedValues?: Record<string, unknown>;
   onReveal?: () => void;
+  onClear?: () => void;
   isRevealing?: boolean;
 }
 
@@ -287,6 +315,7 @@ export function CustomFieldList({
   values,
   revealedValues,
   onReveal,
+  onClear,
   isRevealing,
 }: CustomFieldListProps) {
   const hasSecretFields = fields.some((f) => f.type === "password" || f.type === "totp");
@@ -300,6 +329,7 @@ export function CustomFieldList({
           value={values[field.key]}
           revealedValue={revealedValues?.[field.key]}
           onReveal={hasSecretFields ? onReveal : undefined}
+          onClear={hasSecretFields ? onClear : undefined}
           isRevealing={isRevealing}
         />
       ))}

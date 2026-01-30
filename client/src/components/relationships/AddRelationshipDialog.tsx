@@ -56,10 +56,10 @@ export function AddRelationshipDialog({
     async (result: SearchResult) => {
       try {
         await createRelationship.mutateAsync({
-          source_entity_type: sourceEntityType,
-          source_entity_id: sourceEntityId,
-          target_entity_type: result.entity_type,
-          target_entity_id: result.entity_id,
+          source_type: sourceEntityType,
+          source_id: sourceEntityId,
+          target_type: result.entity_type,
+          target_id: result.entity_id,
         });
         toast.success(`Linked to "${result.name}"`);
         setQuery("");

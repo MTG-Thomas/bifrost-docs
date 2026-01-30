@@ -264,6 +264,7 @@ async def get_resolved_relationships(
         if name:  # Only include if entity still exists
             items.append(
                 RelatedEntity(
+                    relationship_id=str(rel.id),
                     entity_type=other_type,
                     entity_id=str(other_id),
                     name=name,
