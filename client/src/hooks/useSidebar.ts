@@ -12,6 +12,7 @@ export interface SidebarData {
   passwords_count: number;
   locations_count: number;
   documents_count: number;
+  configurations_count: number;
   configuration_types: SidebarItemCount[];
   custom_asset_types: SidebarItemCount[];
 }

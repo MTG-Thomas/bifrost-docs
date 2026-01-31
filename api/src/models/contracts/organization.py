@@ -71,6 +71,7 @@ class SidebarData(BaseModel):
     passwords_count: int
     locations_count: int
     documents_count: int
+    configurations_count: int
 
     # Dynamic types with counts
     configuration_types: list[SidebarItemCount]

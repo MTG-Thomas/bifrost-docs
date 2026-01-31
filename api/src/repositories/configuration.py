@@ -228,3 +228,23 @@ class ConfigurationRepository(BaseRepository[Configuration]):
             )
         )
         return result.scalar_one()
+
+    async def count_by_organization(self, organization_id: UUID) -> int:
+        """
+        Count all enabled configurations for an organization.
+
+        Args:
+            organization_id: Organization UUID
+
+        Returns:
+            Count of enabled configurations
+        """
+        from sqlalchemy import func
+
+        result = await self.session.execute(
+            select(func.count(Configuration.id)).where(
+                Configuration.organization_id == organization_id,
+                Configuration.is_enabled.is_(True),
+            )
+        )
+        return result.scalar_one()

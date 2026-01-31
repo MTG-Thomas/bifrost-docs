@@ -5592,6 +5592,8 @@ export interface components {
             locations_count: number;
             /** Documents Count */
             documents_count: number;
+            /** Configurations Count */
+            configurations_count: number;
             /** Configuration Types */
             configuration_types: components["schemas"]["GlobalSidebarItemCount"][];
             /** Custom Asset Types */
@@ -7008,6 +7010,8 @@ export interface components {
             locations_count: number;
             /** Documents Count */
             documents_count: number;
+            /** Configurations Count */
+            configurations_count: number;
             /** Configuration Types */
             configuration_types: components["schemas"]["SidebarItemCount"][];
             /** Custom Asset Types */

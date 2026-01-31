@@ -360,9 +360,12 @@ async def get_sidebar_data(
     locations_count = await location_repo.count_by_organization(org_id)
     documents_count = await document_repo.count_by_organization(org_id)
 
+    # Get configuration counts
+    config_repo = ConfigurationRepository(db)
+    configurations_count = await config_repo.count_by_organization(org_id)
+
     # Get configuration types with their configuration counts (types are global)
     config_type_repo = ConfigurationTypeRepository(db)
-    config_repo = ConfigurationRepository(db)
     config_types = await config_type_repo.get_all_ordered()
 
     configuration_types = []
@@ -388,6 +391,7 @@ async def get_sidebar_data(
         passwords_count=passwords_count,
         locations_count=locations_count,
         documents_count=documents_count,
+        configurations_count=configurations_count,
         configuration_types=configuration_types,
         custom_asset_types=custom_asset_types,
     )

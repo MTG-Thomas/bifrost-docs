@@ -178,6 +178,7 @@ class GlobalSidebarData(BaseModel):
     passwords_count: int
     locations_count: int
     documents_count: int
+    configurations_count: int
 
     # Dynamic types with counts (aggregated across all orgs)
     configuration_types: list[GlobalSidebarItemCount]
@@ -613,6 +614,11 @@ async def get_global_sidebar_data(
     )
     documents_count = document_count_result.scalar_one()
 
+    configuration_count_result = await db.execute(
+        select(func.count(Configuration.id)).where(Configuration.is_enabled.is_(True))
+    )
+    configurations_count = configuration_count_result.scalar_one()
+
     # Get configuration types with aggregated counts
     config_type_repo = ConfigurationTypeRepository(db)
     config_types = await config_type_repo.get_all_ordered()
@@ -651,6 +657,7 @@ async def get_global_sidebar_data(
         passwords_count=passwords_count,
         locations_count=locations_count,
         documents_count=documents_count,
+        configurations_count=configurations_count,
         configuration_types=configuration_types,
         custom_asset_types=custom_asset_types,
     )

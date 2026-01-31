@@ -275,11 +275,8 @@ function OrgSidebarContent({
 }) {
   const { data: sidebarData, isLoading } = useSidebarData(orgId);
 
-  // Calculate total configurations count from all types
-  const configurationsCount = sidebarData?.configuration_types.reduce(
-    (sum, type) => sum + type.count,
-    0
-  );
+  // Use configurations_count from API (counts all enabled configs)
+  const configurationsCount = sidebarData?.configurations_count ?? 0;
 
   if (isLoading) {
     return <SidebarSkeleton />;
@@ -373,11 +370,8 @@ function GlobalSidebarContent({
 }) {
   const { data: sidebarData, isLoading } = useGlobalSidebarData();
 
-  // Calculate total configurations count from all types
-  const configurationsCount = sidebarData?.configuration_types.reduce(
-    (sum, type) => sum + type.count,
-    0
-  );
+  // Use configurations_count from API (counts all enabled configs)
+  const configurationsCount = sidebarData?.configurations_count ?? 0;
 
   if (isLoading) {
     return <SidebarSkeleton />;
