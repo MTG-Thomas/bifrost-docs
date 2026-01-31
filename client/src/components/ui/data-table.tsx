@@ -495,6 +495,9 @@ interface ColumnFiltersDropdownProps {
   onColumnFiltersChange: (filters: ColumnFilter[]) => void;
 }
 
+// Sentinel value for "All" option - Radix UI Select forbids empty string values
+const ALL_FILTER_VALUE = "__all__";
+
 const ColumnFiltersDropdown = React.memo(function ColumnFiltersDropdown({
   filterableColumns,
   columnFilters,
@@ -503,12 +506,15 @@ const ColumnFiltersDropdown = React.memo(function ColumnFiltersDropdown({
   const activeFilterCount = columnFilters.length;
 
   const getFilterValue = (columnId: string) => {
-    return columnFilters.find((f) => f.columnId === columnId)?.value;
+    const value = columnFilters.find((f) => f.columnId === columnId)?.value;
+    // Return sentinel value if no filter is set (for Select component)
+    return value || ALL_FILTER_VALUE;
   };
 
-  const handleFilterChange = (columnId: string, value: string | undefined) => {
+  const handleFilterChange = (columnId: string, value: string) => {
     const newFilters = columnFilters.filter((f) => f.columnId !== columnId);
-    if (value) {
+    // Only add filter if value is not the sentinel "all" value
+    if (value && value !== ALL_FILTER_VALUE) {
       newFilters.push({ columnId, value });
     }
     onColumnFiltersChange(newFilters);
@@ -516,7 +522,8 @@ const ColumnFiltersDropdown = React.memo(function ColumnFiltersDropdown({
 
   const getSelectedLabel = (columnId: string) => {
     const value = getFilterValue(columnId);
-    if (!value) return null;
+    // Return null for sentinel value (shows "All" placeholder)
+    if (!value || value === ALL_FILTER_VALUE) return null;
     const column = filterableColumns.find((c) => c.columnId === columnId);
     return column?.options.find((o) => o.value === value)?.label;
   };
@@ -548,9 +555,9 @@ const ColumnFiltersDropdown = React.memo(function ColumnFiltersDropdown({
                   {column.title}
                 </label>
                 <Select
-                  value={selectedValue || ""}
+                  value={selectedValue}
                   onValueChange={(value) =>
-                    handleFilterChange(column.columnId, value || undefined)
+                    handleFilterChange(column.columnId, value)
                   }
                 >
                   <SelectTrigger className="h-8">
@@ -559,7 +566,7 @@ const ColumnFiltersDropdown = React.memo(function ColumnFiltersDropdown({
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All {column.title.toLowerCase()}</SelectItem>
+                    <SelectItem value={ALL_FILTER_VALUE}>All {column.title.toLowerCase()}</SelectItem>
                     {column.options.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
