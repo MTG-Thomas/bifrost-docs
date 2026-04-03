@@ -35,6 +35,7 @@ class PasswordRepository(BaseRepository[Password]):
         limit: int = 100,
         offset: int = 0,
         is_enabled: bool | None = None,
+        has_totp: bool | None = None,
     ) -> tuple[list[Password], int]:
         """
         Get paginated passwords for an organization with optional search and sorting.
@@ -47,6 +48,7 @@ class PasswordRepository(BaseRepository[Password]):
             limit: Maximum number of results
             offset: Number of results to skip
             is_enabled: Filter by is_enabled status (None = no filter)
+            has_totp: Filter by TOTP status (None = no filter, True = has TOTP, False = no TOTP)
 
         Returns:
             Tuple of (list of passwords, total count)
@@ -55,6 +57,12 @@ class PasswordRepository(BaseRepository[Password]):
 
         if is_enabled is not None and hasattr(Password, 'is_enabled'):
             filters.append(Password.is_enabled == is_enabled)
+
+        if has_totp is not None:
+            if has_totp:
+                filters.append(Password.totp_secret_encrypted.isnot(None))
+            else:
+                filters.append(Password.totp_secret_encrypted.is_(None))
 
         return await self.get_paginated(
             filters=filters,

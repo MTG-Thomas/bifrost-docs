@@ -52,6 +52,7 @@ async def list_passwords(
     limit: int = Query(100, ge=1, le=1000, description="Maximum results per page"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
     show_disabled: bool = Query(False, description="Include disabled passwords"),
+    has_totp: bool | None = Query(None, description="Filter by TOTP status (True = has TOTP, False = no TOTP)"),
 ) -> PasswordListResponse:
     """
     List all passwords for an organization with pagination and search.
@@ -66,6 +67,7 @@ async def list_passwords(
         limit: Maximum number of results
         offset: Number of results to skip
         show_disabled: Include disabled passwords
+        has_totp: Filter by TOTP status (None = no filter, True = has TOTP, False = no TOTP)
 
     Returns:
         Paginated list of passwords (without password values)
@@ -82,6 +84,7 @@ async def list_passwords(
         limit=limit,
         offset=offset,
         is_enabled=is_enabled_filter,
+        has_totp=has_totp,
     )
 
     items = [

@@ -38,6 +38,7 @@ export interface PasswordsParams {
   pagination?: PaginationParams;
   search?: string;
   showDisabled?: boolean;
+  hasTotp?: boolean;
 }
 
 // =============================================================================
@@ -60,6 +61,9 @@ export function usePasswords(orgId: string, options?: PasswordsParams) {
       }
       if (options?.showDisabled) {
         params.set("show_disabled", "true");
+      }
+      if (options?.hasTotp !== undefined) {
+        params.set("has_totp", String(options.hasTotp));
       }
       const response = await api.get<PasswordListResponse>(
         `/api/organizations/${orgId}/passwords${params.toString() ? `?${params}` : ""}`

@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { KeyRound, Plus, ExternalLink } from "lucide-react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import {
   type PaginationState,
   createSelectionColumn,
   type RowSelectionState,
+  type ColumnFilter,
 } from "@/components/ui/data-table";
 import {
   usePasswords,
@@ -126,6 +127,7 @@ const allColumnIds = ["name", "username", "url", "updated_at"];
 export function PasswordsPage() {
   const { orgId } = useParams<{ orgId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [formOpen, setFormOpen] = useState(false);
   const [showDisabled, setShowDisabled] = useState(false);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -136,6 +138,22 @@ export function PasswordsPage() {
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebounce(searchInput, 300);
   const { canEdit } = usePermissions();
+
+  // Build column filters from URL params
+  const columnFilters = useMemo(() => {
+    const filters: ColumnFilter[] = [];
+    const hasTotp = searchParams.get("has_totp");
+    if (hasTotp === "true") {
+      filters.push({ columnId: "has_totp", value: "true" });
+    } else if (hasTotp === "false") {
+      filters.push({ columnId: "has_totp", value: "false" });
+    }
+    return filters;
+  }, [searchParams]);
+
+  // Extract filter values for API call
+  const hasTotpFilter = columnFilters.find((f) => f.columnId === "has_totp")?.value;
+  const hasTotpParam = hasTotpFilter === "true" ? true : hasTotpFilter === "false" ? false : undefined;
 
   const columns = useMemo(() => createColumns(orgId!), [orgId]);
 
@@ -154,9 +172,39 @@ export function PasswordsPage() {
     pagination,
     search: debouncedSearch || undefined,
     showDisabled,
+    hasTotp: hasTotpParam,
   });
 
-  // Reset pagination when search changes
+  // Handle column filter changes - sync to URL
+  const handleColumnFiltersChange = (filters: ColumnFilter[]) => {
+    const params = new URLSearchParams(searchParams);
+    const totpFilter = filters.find((f) => f.columnId === "has_totp")?.value;
+    if (totpFilter) {
+      params.set("has_totp", totpFilter);
+    } else {
+      params.delete("has_totp");
+    }
+    setSearchParams(params);
+    // Reset pagination when filter changes
+    setPagination({ limit: pagination.limit, offset: 0 });
+  };
+
+  // Build filterable columns configuration
+  const filterableColumns = useMemo(
+    () => [
+      {
+        columnId: "has_totp",
+        title: "TOTP",
+        options: [
+          { label: "Has TOTP", value: "true" },
+          { label: "No TOTP", value: "false" },
+        ],
+      },
+    ],
+    []
+  );
+
+  // Reset pagination when search or filters change
   const handleSearchChange = useCallback((value: string) => {
     setSearchInput(value);
     setPagination((prev) => ({ ...prev, offset: 0 }));
@@ -257,6 +305,9 @@ export function PasswordsPage() {
         searchValue={searchInput}
         onSearchChange={handleSearchChange}
         searchPlaceholder="Search passwords..."
+        filterableColumns={filterableColumns}
+        columnFilters={columnFilters}
+        onColumnFiltersChange={handleColumnFiltersChange}
         showDisabled={showDisabled}
         onShowDisabledChange={setShowDisabled}
         onRefresh={handleRefresh}

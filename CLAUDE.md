@@ -146,6 +146,25 @@ See GitHub Issues on this repo. Key areas:
 - **Testing**: E2E suite, cross-browser, mobile responsiveness
 - **API docs**: Document endpoints for migration script authors
 
+## Agent Workflow
+
+This repo uses multi-agent development with OpenCode and Kilo. See:
+- [`docs/AGENTS.md`](docs/AGENTS.md) — Full workflow documentation
+- [`.github/ISSUE_TEMPLATE/agent_task.md`](.github/ISSUE_TEMPLATE/agent_task.md) — Issue template
+- `scripts/agent.sh` — Helper script for issue management
+
+**Quick start for agents:**
+```bash
+# See available work
+./scripts/agent.sh next
+
+# Claim an issue
+./scripts/agent.sh claim 12
+
+# Mark as done
+./scripts/agent.sh done 12
+```
+
 ## Reference
 
 - `upstream`: `jackmusick/bifrost-docs` (FOSS origin)
