@@ -208,3 +208,295 @@ Potential future features:
 - [IT Glue Migration Guide](../plans/MIGRATION_TOOL.md)
 - [Database Schema](../database/README.md)
 - [API Authentication](../docs/authentication.md)
+
+---
+
+# Migration Author's Guide
+
+> **For IT Glue Migration and External Integration Authors**
+
+This section provides practical guidance for writing migration scripts and external tools.
+
+## Quick Start
+
+### Interactive API Documentation
+
+FastAPI automatically generates interactive docs at these endpoints:
+
+- **Swagger UI:** `GET /docs` — Interactive testing interface
+- **OpenAPI JSON:** `GET /openapi.json` — Machine-readable spec
+- **ReDoc:** `GET /redoc` — Alternative documentation UI
+
+Visit `/docs` in your browser to explore and test endpoints interactively.
+
+### Authentication for Scripts
+
+Use API keys for migration scripts:
+
+1. **Create an API key** via the web UI (Settings → API Keys)
+2. **Include in requests** via the `X-API-Key` header:
+
+```bash
+curl -H "X-API-Key: your-api-key-here" \
+  https://api.example.com/api/organizations/{org_id}/passwords
+```
+
+## Pagination Pattern
+
+All list endpoints use consistent pagination:
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limit` | integer | 100 | Results per page (max 1000) |
+| `offset` | integer | 0 | Skip this many results |
+| `search` | string | - | Text search filter |
+| `sort_by` | string | varies | Sort column |
+| `sort_dir` | `asc`/`desc` | `asc` | Sort direction |
+
+### Response Format
+
+```json
+{
+  "items": [...],
+  "total": 256,
+  "limit": 100,
+  "offset": 0
+}
+```
+
+### Python: Iterate All Pages
+
+```python
+def get_all_items(org_id, endpoint):
+    items = []
+    offset = 0
+    limit = 100
+    
+    while True:
+        response = requests.get(
+            f"{BASE_URL}/api/organizations/{org_id}/{endpoint}",
+            headers={"X-API-Key": API_KEY},
+            params={"limit": limit, "offset": offset}
+        )
+        data = response.json()
+        items.extend(data["items"])
+        
+        if len(data["items"]) < limit:
+            break
+        offset += limit
+    
+    return items
+```
+
+## Entity Patterns
+
+### Passwords
+
+**Write-only fields:** `password` and `totp_secret` are never returned in responses.
+
+**Reveal endpoint:**
+```bash
+GET /api/organizations/{org_id}/passwords/{id}/reveal
+```
+
+**Check for TOTP:**
+```json
+{
+  "name": "Example",
+  "has_totp": true  // Indicates TOTP is configured
+}
+```
+
+### Configurations
+
+**Column filters:** Support `type_id` and `status_id` filters:
+```bash
+GET /api/organizations/{org_id}/configurations?type_id=...&status_id=...
+```
+
+**Global types/statuses:**
+```bash
+GET /api/configuration-types      # Shared across orgs
+GET /api/configuration-statuses   # Shared across orgs
+```
+
+### Custom Assets
+
+**Dynamic values:** Values are keyed by field key:
+```json
+{
+  "name": "Asset Name",
+  "values": {
+    "serial_number": "ABC123",
+    "purchase_date": "2024-01-15"
+  }
+}
+```
+
+**Encrypted fields:** Password and TOTP fields are automatically encrypted.
+
+**Reveal secrets:**
+```bash
+GET /api/organizations/{org_id}/custom-asset-types/{type_id}/assets/{id}/reveal
+```
+
+### Documents
+
+**Content format:** HTML stored in `content` field.
+
+**Image uploads:**
+```bash
+POST /api/organizations/{org_id}/documents/{id}/attachments
+Content-Type: multipart/form-data
+```
+
+### Locations
+
+**Structured address:**
+```json
+{
+  "name": "Main Office",
+  "address_1": "123 Main St",
+  "address_2": "Suite 100",
+  "city": "New York",
+  "region": "NY",
+  "postal_code": "10001",
+  "country": "US"
+}
+```
+
+### Relationships
+
+Link any two entities:
+```json
+{
+  "source_type": "password",
+  "source_id": "uuid-1",
+  "target_type": "configuration",
+  "target_id": "uuid-2",
+  "relation_type": "belongs_to"
+}
+```
+
+Relation types: `belongs_to`, `connected_to`, `depends_on`, `runs_on`, `installed_on`, `located_at`, `manages`, `parent_of`, `related_to`.
+
+## Migration Patterns
+
+### Store External IDs
+
+Preserve original IDs in metadata:
+```json
+{
+  "name": "Imported Item",
+  "metadata": {
+    "external_id": "12345",
+    "source_system": "itglue",
+    "imported_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+### Bulk Import
+
+Use parallel requests for speed:
+```python
+from concurrent.futures import ThreadPoolExecutor
+
+def create_password(data):
+    response = requests.post(
+        f"{BASE_URL}/api/organizations/{org_id}/passwords",
+        headers={"X-API-Key": API_KEY},
+        json=data
+    )
+    response.raise_for_status()
+    return response.json()
+
+with ThreadPoolExecutor(max_workers=5) as executor:
+    results = list(executor.map(create_password, passwords_to_import))
+```
+
+### Disable Search Indexing During Import
+
+For large imports:
+1. Disable indexing in Settings
+2. Run bulk import
+3. Re-enable indexing
+
+## Migration-Specific API Endpoints
+
+### Bulk Operations
+
+Enable/disable multiple entities:
+```bash
+POST /api/organizations/{org_id}/{entity}/batch-toggle
+{
+  "ids": ["uuid-1", "uuid-2"],
+  "is_enabled": false
+}
+```
+
+Supported entities: passwords, configurations, locations, custom-assets, documents
+
+### Global View
+
+Search across all organizations (cross-org access):
+```bash
+GET /api/global/{entity}?search=...
+```
+
+Entities: configurations, passwords, documents, locations
+
+## Error Handling
+
+### HTTP Status Codes
+
+| Code | Meaning | Action |
+|------|---------|--------|
+| 200 | Success | Continue |
+| 201 | Created | Entity created successfully |
+| 400 | Bad Request | Check request format |
+| 401 | Unauthorized | Check API key |
+| 403 | Forbidden | Insufficient permissions |
+| 404 | Not Found | Entity doesn't exist |
+| 422 | Validation Error | Check field constraints |
+| 500 | Server Error | Retry with backoff |
+
+### Validation Errors
+
+```json
+{
+  "detail": [
+    {
+      "loc": ["body", "name"],
+      "msg": "field required",
+      "type": "value_error.missing"
+    }
+  ]
+}
+```
+
+## API Quick Reference
+
+| Entity | Base Path | Contracts |
+|--------|-----------|-----------|
+| Passwords | `/api/organizations/{org_id}/passwords` | `password.py` |
+| Configurations | `/api/organizations/{org_id}/configurations` | `configuration.py` |
+| Locations | `/api/organizations/{org_id}/locations` | `location.py` |
+| Documents | `/api/organizations/{org_id}/documents` | `document.py` |
+| Custom Assets | `/api/organizations/{org_id}/custom-asset-types/{type_id}/assets` | `custom_asset.py` |
+| Relationships | `/api/organizations/{org_id}/relationships` | `relationship.py` |
+
+## Example Migration Script
+
+See `tools/itglue-migrate/` for production migration code. Key patterns:
+
+1. **Batch operations** with retry logic
+2. **Progress tracking** with resume capability
+3. **Error handling** with detailed logging
+4. **Rate limiting** with concurrency control
+
+---
+
+*Last updated: 2026-04-03*
