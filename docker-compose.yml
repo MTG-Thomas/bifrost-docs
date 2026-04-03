@@ -37,50 +37,49 @@ services:
       timeout: 5s
       retries: 5
 
-  # MinIO (S3-compatible object storage for attachments)
-  minio:
-    image: minio/minio:latest
-    container_name: bifrost-docs-minio
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-    command: server /data --console-address ":9001"
-    # Ports only exposed in docker-compose.dev.yml
+  # Garage (S3-compatible object storage — MPL-2.0, replaces AGPL MinIO)
+  # Scratch image: only /garage binary available — no shell, no curl
+  garage:
+    image: dxflrs/garage:v1.3.1
+    container_name: bifrost-docs-garage
     volumes:
-      - bifrost_docsminio_data:/data
+      - ./config/garage.toml:/etc/garage.toml:ro
+      - bifrost_docsgarage_meta:/var/lib/garage/meta
+      - bifrost_docsgarage_data:/var/lib/garage/data
+    # Ports only exposed in docker-compose.dev.yml
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "/garage", "status"]
       interval: 5s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 15
+      start_period: 10s
 
-  # MinIO Initialization - Creates required buckets
-  minio-init:
-    image: minio/mc:latest
-    container_name: bifrost-docs-minio-init
+  # Garage Initialization — assigns layout, creates bucket and access key
+  # Uses alpine:3 (has wget + sh) to hit the Garage admin HTTP API
+  garage-init:
+    image: alpine:3
+    container_name: bifrost-docs-garage-init
     depends_on:
-      minio:
+      garage:
         condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set myminio http://minio:9000 $${MINIO_ROOT_USER:-minioadmin} $${MINIO_ROOT_PASSWORD:-minioadmin};
-      mc mb myminio/bifrost-docs --ignore-existing;
-      echo 'Bucket created successfully';
-      "
+    volumes:
+      - ./scripts/garage-init.sh:/garage-init.sh:ro
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?GARAGE_ADMIN_TOKEN is required}
+      GARAGE_ACCESS_KEY_ID: ${GARAGE_ACCESS_KEY_ID:?GARAGE_ACCESS_KEY_ID is required}
+      GARAGE_SECRET_ACCESS_KEY: ${GARAGE_SECRET_ACCESS_KEY:?GARAGE_SECRET_ACCESS_KEY is required}
+    entrypoint: ["sh", "/garage-init.sh"]
 
-  # Redis (Sessions & Cache)
-  redis:
-    image: redis:7-alpine
-    container_name: bifrost-docs-redis
-    command: redis-server --appendonly yes
+  # Valkey (Redis-compatible cache and pub/sub — BSD-3-Clause, replaces SSPL Redis)
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: bifrost-docs-valkey
+    command: valkey-server --appendonly yes
     # Port only exposed in docker-compose.dev.yml
     volumes:
-      - bifrost_docsredis_data:/data
+      - bifrost_docsvalkey_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -158,10 +157,10 @@ services:
       BIFROST_DOCS_MFA_TOTP_ISSUER: ${BIFROST_DOCS_MFA_TOTP_ISSUER:-BifrostDocs}
       # WebAuthn/Passkeys
       BIFROST_DOCS_WEBAUTHN_ORIGIN: ${BIFROST_DOCS_WEBAUTHN_ORIGIN:-http://localhost:3000}
-      # S3/MinIO Storage
-      BIFROST_DOCS_S3_ENDPOINT: http://minio:9000
-      BIFROST_DOCS_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
-      BIFROST_DOCS_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      # S3/Garage Storage
+      BIFROST_DOCS_S3_ENDPOINT: http://garage:3900
+      BIFROST_DOCS_S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY_ID:?GARAGE_ACCESS_KEY_ID is required}
+      BIFROST_DOCS_S3_SECRET_KEY: ${GARAGE_SECRET_ACCESS_KEY:?GARAGE_SECRET_ACCESS_KEY is required}
       BIFROST_DOCS_S3_BUCKET: ${BIFROST_DOCS_S3_BUCKET:-bifrost-docs}
       BIFROST_DOCS_S3_REGION: us-east-1
       # OpenAI (for vector search)
@@ -172,9 +171,9 @@ services:
     depends_on:
       init:
         condition: service_completed_successfully
-      redis:
+      valkey:
         condition: service_healthy
-      minio-init:
+      garage-init:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -190,11 +189,11 @@ services:
     environment:
       BIFROST_DOCS_SECRET_KEY: ${BIFROST_DOCS_SECRET_KEY:?BIFROST_DOCS_SECRET_KEY is required (32+ chars)}
       BIFROST_DOCS_DATABASE_URL: postgresql+asyncpg://bifrost_docs:${POSTGRES_PASSWORD}@pgbouncer:5432/bifrost_docs
-      BIFROST_DOCS_REDIS_URL: redis://redis:6379/0
+      BIFROST_DOCS_REDIS_URL: redis://valkey:6379/0
     depends_on:
       init:
         condition: service_completed_successfully
-      redis:
+      valkey:
         condition: service_healthy
     command: arq src.worker.WorkerSettings
 
@@ -210,5 +209,6 @@ services:
 
 volumes:
   bifrost_docspostgres_data:
-  bifrost_docsredis_data:
-  bifrost_docsminio_data:
+  bifrost_docsvalkey_data:
+  bifrost_docsgarage_meta:
+  bifrost_docsgarage_data:

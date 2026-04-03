@@ -1,0 +1,29 @@
+# Garage S3-compatible object storage configuration
+# Used by the garage service in docker-compose.yml
+#
+# This file contains development defaults. In production, mount a custom
+# garage.toml with a real rpc_secret (64 hex chars) and appropriate capacity.
+#
+# Garage docs: https://garagehq.deuxfleurs.fr/documentation/
+
+metadata_dir = "/var/lib/garage/meta"
+data_dir     = "/var/lib/garage/data"
+db_engine    = "lmdb"
+
+replication_factor = 1
+
+# Development RPC secret — CHANGE IN PRODUCTION
+# Generate a real one with: openssl rand -hex 32
+rpc_secret      = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+rpc_bind_addr   = "0.0.0.0:3901"
+rpc_public_addr = "garage:3901"
+
+[s3_api]
+s3_region    = "us-east-1"
+api_bind_addr = "0.0.0.0:3900"
+
+[admin]
+api_bind_addr = "0.0.0.0:3903"
+# Development token — CHANGE IN PRODUCTION
+# Generate a real one with: openssl rand -hex 32
+admin_token = "bifrost-docs-dev-admin-token"

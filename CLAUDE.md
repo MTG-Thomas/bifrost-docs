@@ -67,15 +67,33 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f api
 docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm api pytest tests/integration/test_auth.py -v
 ```
 
-**Ports:** Frontend → http://localhost:8080 | Postgres → localhost:5433 | MinIO S3 → localhost:9003
+**Ports:** Frontend → http://localhost:8080 | Postgres → localhost:5433 | Garage S3 → localhost:3900 | Garage admin → localhost:3903 | Valkey → localhost:6379
 
 ### First-time bootstrap
 
-1. Copy `.env.example` to `.env` and fill in `BIFROST_DOCS_SECRET_KEY` (32+ chars) and `POSTGRES_PASSWORD`
-   - Dev defaults already committed to `.env` — do not commit production secrets
+1. Copy `.env.example` to `.env` and fill in required vars — dev defaults are already committed to `.env`, do not commit production secrets
 2. `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d`
 3. The `init` container runs Alembic migrations automatically on every startup
-4. Register the first user at http://localhost:8080 — first user is automatically assigned `owner` role
+4. The `garage-init` container configures Garage (layout, bucket, S3 key) — runs once and exits
+5. Register the first user at http://localhost:8080 — first user is automatically assigned `owner` role
+
+### Garage (S3 storage) notes
+
+- Config: `config/garage.toml` — contains a dev `admin_token` and `rpc_secret`; replace both in production
+- Init script: `scripts/garage-init.sh` — uses the Garage admin HTTP API (port 3903) via `alpine:3` with `wget`
+- Garage image is scratch-based (no shell) — healthcheck uses `/garage status` (RPC), admin API calls go through the init container
+- `GARAGE_ADMIN_TOKEN` must match `admin_token` in `config/garage.toml`
+- Layout API (v1.3.1) requires `tags: []` in the role assignment body — omitting it causes a 400
+
+### WSL2 gotcha
+
+If you see `error getting credentials - err: fork/exec /usr/bin/docker-credential-desktop.exe`, clear the credential store:
+
+```bash
+echo '{}' > ~/.docker/config.json
+```
+
+Bind mount restarts also fail in WSL2 — always use full `down` + `up` rather than `restart` for containers with file mounts.
 
 ### WSL2 gotcha
 
