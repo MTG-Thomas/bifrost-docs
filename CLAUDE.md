@@ -51,20 +51,41 @@ bifrost-docs/
 ## Running Locally
 
 ```bash
-# Start all infrastructure + API + frontend
-docker compose -f docker-compose.dev.yml up
+# Start full dev stack (always use both files)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
-# API only (with hot reload)
-docker compose -f docker-compose.dev.yml up api
+# Rebuild after code changes outside of hot-reload volumes
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
+
+# Follow logs
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f api
 
 # Run tests
 ./test.sh
 
 # Run a specific test
-docker compose -f docker-compose.dev.yml run --rm api pytest tests/integration/test_auth.py -v
+docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm api pytest tests/integration/test_auth.py -v
 ```
 
-First-time setup: `./setup.sh` — seeds the DB and creates the first owner account.
+**Ports:** Frontend → http://localhost:8080 | Postgres → localhost:5433 | MinIO S3 → localhost:9003
+
+### First-time bootstrap
+
+1. Copy `.env.example` to `.env` and fill in `BIFROST_DOCS_SECRET_KEY` (32+ chars) and `POSTGRES_PASSWORD`
+   - Dev defaults already committed to `.env` — do not commit production secrets
+2. `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d`
+3. The `init` container runs Alembic migrations automatically on every startup
+4. Register the first user at http://localhost:8080 — first user is automatically assigned `owner` role
+
+### WSL2 gotcha
+
+If you see `error getting credentials - err: fork/exec /usr/bin/docker-credential-desktop.exe`, clear the credential store:
+
+```bash
+echo '{}' > ~/.docker/config.json
+```
+
+Then retry. Docker Desktop WSL2 integration sets `credsStore: desktop.exe` which doesn't work from inside WSL.
 
 ## Key Conventions
 
