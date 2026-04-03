@@ -112,3 +112,11 @@ See GitHub Issues on this repo. Key areas:
 - `upstream`: `jackmusick/bifrost-docs` (FOSS origin)
 - `origin`: `MTG-Thomas/bifrost-docs` (our fork)
 - Design docs and implementation notes: `docs/plans/`
+
+## GitHub Tokens
+
+- **General API / issues / PRs:** `github/token` (fine-grained PAT via `pass`)
+- **Projects v2 (kanban board):** `bifrost/workspace-github-pat` (classic PAT via `pass`) — required because fine-grained tokens cannot access the Projects v2 GraphQL API
+  ```bash
+  GH_TOKEN=$(pass show bifrost/workspace-github-pat) gh project ...
+  ```
