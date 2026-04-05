@@ -68,6 +68,7 @@ async def list_locations(
     current_user: CurrentActiveUser,
     db: DbSession,
     search: str | None = Query(None, description="Search by name or notes"),
+    region: str | None = Query(None, description="Filter by region (state/province)"),
     sort_by: str | None = Query(None, description="Column to sort by"),
     sort_dir: str = Query("asc", pattern="^(asc|desc)$", description="Sort direction"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum results per page"),
@@ -82,6 +83,7 @@ async def list_locations(
         current_user: Current authenticated user
         db: Database session
         search: Optional search term
+        region: Optional filter by region (state/province)
         sort_by: Column to sort by
         sort_dir: Sort direction ("asc" or "desc")
         limit: Maximum number of results
@@ -98,6 +100,7 @@ async def list_locations(
     locations, total = await location_repo.get_paginated_by_org(
         org_id,
         search=search,
+        region=region,
         sort_by=sort_by,
         sort_dir=sort_dir,
         limit=limit,

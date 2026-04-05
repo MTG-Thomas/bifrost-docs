@@ -30,6 +30,7 @@ class LocationRepository(BaseRepository[Location]):
         organization_id: UUID,
         *,
         search: str | None = None,
+        region: str | None = None,
         sort_by: str | None = None,
         sort_dir: str = "asc",
         limit: int = 100,
@@ -37,11 +38,12 @@ class LocationRepository(BaseRepository[Location]):
         is_enabled: bool | None = None,
     ) -> tuple[list[Location], int]:
         """
-        Get paginated locations for an organization with optional search and sorting.
+        Get paginated locations for an organization with optional search, filtering and sorting.
 
         Args:
             organization_id: Organization UUID
             search: Optional search term for name, notes
+            region: Optional filter by region (state/province)
             sort_by: Column to sort by
             sort_dir: Sort direction ("asc" or "desc")
             limit: Maximum number of results
@@ -52,6 +54,9 @@ class LocationRepository(BaseRepository[Location]):
             Tuple of (list of locations, total count)
         """
         filters = [Location.organization_id == organization_id]
+
+        if region is not None:
+            filters.append(Location.region == region)
 
         if is_enabled is not None and hasattr(Location, 'is_enabled'):
             filters.append(Location.is_enabled == is_enabled)

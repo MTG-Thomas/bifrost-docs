@@ -1311,15 +1311,13 @@ export function DataTable<TData, TValue>({
               </thead>
               <tbody className="[&_tr:last-child]:border-0">
                 {isLoading ? (
-                  <tr data-testid="table-loading">
-                    {[...Array(5)].map((_, rowIndex) => (
-                    <tr key={rowIndex} className="border-b last:border-0">
+                  [...Array(5)].map((_, rowIndex) => (
+                    <tr key={rowIndex} className="border-b last:border-0" data-testid="table-loading">
                       {columns.map((_, cellIndex) => (
                         <td key={cellIndex} className="p-4">
                           <div className="h-4 w-full bg-muted animate-pulse rounded" />
                         </td>
-                    ))}
-                  </tr>
+                      ))}
                     </tr>
                   ))
                 ) : table.getRowModel().rows.length ? (

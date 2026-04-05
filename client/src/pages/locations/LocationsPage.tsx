@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useMemo } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { MapPin, Plus } from "lucide-react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import {
   type PaginationState,
   createSelectionColumn,
   type RowSelectionState,
+  type ColumnFilter,
 } from "@/components/ui/data-table";
 import {
   useLocations,
@@ -104,6 +105,7 @@ const allColumnIds = ["name", "address", "notes", "updated_at"];
 export function LocationsPage() {
   const { orgId } = useParams<{ orgId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [formOpen, setFormOpen] = useState(false);
   const [showDisabled, setShowDisabled] = useState(false);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -114,6 +116,19 @@ export function LocationsPage() {
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebounce(searchInput, 300);
   const { canEdit } = usePermissions();
+
+  // Build column filters from URL params
+  const columnFilters = useMemo(() => {
+    const filters: ColumnFilter[] = [];
+    const region = searchParams.get("region");
+    if (region) {
+      filters.push({ columnId: "region", value: region });
+    }
+    return filters;
+  }, [searchParams]);
+
+  // Extract filter values for API call
+  const regionFilter = columnFilters.find((f) => f.columnId === "region")?.value;
 
   const batchToggle = useBatchToggleLocations(orgId!);
 
@@ -129,14 +144,49 @@ export function LocationsPage() {
   const { data, isLoading, refetch, isRefetching } = useLocations(orgId!, {
     pagination,
     search: debouncedSearch || undefined,
+    region: regionFilter,
     showDisabled,
   });
+
+  // Handle column filter changes - sync to URL
+  const handleColumnFiltersChange = (filters: ColumnFilter[]) => {
+    const params = new URLSearchParams();
+    const region = filters.find((f) => f.columnId === "region")?.value;
+    if (region) params.set("region", region);
+    setSearchParams(params);
+    // Reset pagination when filter changes
+    setPagination({ limit: pagination.limit, offset: 0 });
+  };
+
+  // Build filterable columns configuration (regions from data)
+  const filterableColumns = useMemo(() => {
+    // Extract unique regions from data
+    const regions = new Set<string>();
+    data?.items.forEach((location) => {
+      if (location.region) {
+        regions.add(location.region);
+      }
+    });
+    
+    if (regions.size === 0) return [];
+    
+    return [
+      {
+        columnId: "region",
+        title: "Region",
+        options: Array.from(regions)
+          .sort()
+          .map((r) => ({ label: r, value: r })),
+      },
+    ];
+  }, [data?.items]);
 
   // Reset pagination when search changes
   const handleSearchChange = (value: string) => {
     setSearchInput(value);
     setPagination((prev) => ({ ...prev, offset: 0 }));
   };
+  
   const createLocation = useCreateLocation(orgId!);
 
   const handleCreate = async (formData: LocationCreate | LocationUpdate) => {
@@ -224,6 +274,9 @@ export function LocationsPage() {
         searchValue={searchInput}
         onSearchChange={handleSearchChange}
         searchPlaceholder="Search locations..."
+        filterableColumns={filterableColumns}
+        columnFilters={columnFilters}
+        onColumnFiltersChange={handleColumnFiltersChange}
         showDisabled={showDisabled}
         onShowDisabledChange={setShowDisabled}
         onRefresh={() => { refetch(); }}

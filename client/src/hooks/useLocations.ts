@@ -36,6 +36,7 @@ export interface PaginationParams {
 export interface LocationsParams {
   pagination?: PaginationParams;
   search?: string;
+  region?: string;
   showDisabled?: boolean;
 }
 
@@ -56,6 +57,9 @@ export function useLocations(orgId: string, options?: LocationsParams) {
       }
       if (options?.search) {
         params.set("search", options.search);
+      }
+      if (options?.region) {
+        params.set("region", options.region);
       }
       if (options?.showDisabled) {
         params.set("show_disabled", "true");
