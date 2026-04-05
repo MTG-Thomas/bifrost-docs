@@ -1,0 +1,8 @@
+# Playwright test artifacts
+test-results/
+playwright-report/
+playwright/.cache/
+
+# E2E environment files (local only)
+.env.e2e
+.env.e2e.local

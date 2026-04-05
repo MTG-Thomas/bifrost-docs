@@ -183,3 +183,7 @@ cython_debug/
 .claude/
 .kilo/
 .planning/debug/
+
+# Playwright test results (if running from root)
+test-results/
+playwright-report/

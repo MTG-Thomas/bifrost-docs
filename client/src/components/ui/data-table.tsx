@@ -1273,7 +1273,7 @@ export function DataTable<TData, TValue>({
         <>{emptyContent}</>
       ) : (
         /* Table container - grows to fill available space, scrolls internally */
-        <div className="rounded-lg border bg-card overflow-hidden flex flex-col min-h-0 flex-1">
+        <div className="rounded-lg border bg-card overflow-hidden flex flex-col min-h-0 flex-1" data-testid="data-table">
           {/* Scrollable table area */}
           <div className="overflow-auto flex-1 min-h-0">
             <table className="w-full caption-bottom text-sm">
@@ -1311,13 +1311,15 @@ export function DataTable<TData, TValue>({
               </thead>
               <tbody className="[&_tr:last-child]:border-0">
                 {isLoading ? (
-                  [...Array(5)].map((_, rowIndex) => (
+                  <tr data-testid="table-loading">
+                    {[...Array(5)].map((_, rowIndex) => (
                     <tr key={rowIndex} className="border-b last:border-0">
                       {columns.map((_, cellIndex) => (
                         <td key={cellIndex} className="p-4">
                           <div className="h-4 w-full bg-muted animate-pulse rounded" />
                         </td>
-                      ))}
+                    ))}
+                  </tr>
                     </tr>
                   ))
                 ) : table.getRowModel().rows.length ? (
