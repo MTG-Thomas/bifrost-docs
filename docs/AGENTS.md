@@ -279,6 +279,95 @@ git push -u origin feature/{N}-{agent}-{description}
 
 ---
 
+## Testing
+
+### Test Suite Overview
+
+The repository includes multiple testing layers:
+
+| Type | Location | Command | Description |
+|------|----------|---------|-------------|
+| **Unit** | `api/tests/unit/` | `pytest tests/unit/` | FastAPI endpoint tests |
+| **Integration** | `api/tests/integration/` | `pytest tests/integration/` | Database + API tests |
+| **E2E** | `client/e2e/tests/` | `npm run test:e2e` | Playwright browser tests |
+
+### Running Tests
+
+**Backend (API):**
+```bash
+# All tests
+./test.sh
+
+# Specific test file
+docker compose run --rm api pytest tests/integration/test_auth.py -v
+```
+
+**Frontend (E2E):**
+```bash
+cd client
+
+# Install browsers (one-time)
+npx playwright install
+
+# Run all E2E tests
+npm run test:e2e
+
+# Interactive UI mode (for debugging)
+npm run test:e2e:ui
+
+# Specific test file
+npm run test:e2e -- auth.smoke.spec.ts
+
+# Specific browser
+npm run test:e2e -- --project=chromium
+```
+
+### E2E Test Structure
+
+```
+client/e2e/
+├── tests/
+│   ├── test-utils.ts          # Shared fixtures & helpers
+│   ├── auth.smoke.spec.ts     # Authentication tests
+│   ├── navigation.smoke.spec.ts # Navigation tests
+│   ├── passwords.smoke.spec.ts  # Password CRUD tests
+│   └── responsive.spec.ts     # Mobile/tablet tests
+├── README.md                  # E2E testing guide
+└── .gitignore                 # Test artifacts
+```
+
+### Test Configuration
+
+E2E tests use environment variables (see `client/.env.e2e.example`):
+
+```bash
+E2E_BASE_URL=http://localhost:8080
+E2E_TEST_EMAIL=test@example.com
+E2E_TEST_PASSWORD=TestPassword123!
+E2E_TEST_ORG_ID=test-org-uuid
+```
+
+### Writing E2E Tests
+
+Use the test utilities for common operations:
+
+```typescript
+import { test, expect, navigateToEntity } from './test-utils';
+
+test('should create password', async ({ page }) => {
+  // Auto-logged in via fixture
+  await navigateToEntity(page, 'org-id', 'passwords');
+  
+  // Use role-based selectors
+  await page.getByRole('button', { name: 'Add Password' }).click();
+  
+  // Assert
+  await expect(page.getByRole('heading', { name: 'Create Password' })).toBeVisible();
+});
+```
+
+---
+
 ## Questions or Process Changes
 
 If this workflow needs adjustment:
