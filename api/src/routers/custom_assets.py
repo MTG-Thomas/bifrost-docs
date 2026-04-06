@@ -152,18 +152,19 @@ def _to_public(
     """Convert ORM model to public response (password fields filtered)."""
     # Transform from ID-based storage to key-based API format, filtering secrets
     key_values = values_id_to_key(type_fields, asset.values, filter_secrets=True)
-    return CustomAssetPublic(
-        id=str(asset.id),
-        organization_id=str(asset.organization_id),
-        custom_asset_type_id=str(asset.custom_asset_type_id),
-        values=key_values,
-        metadata=asset.metadata_ if isinstance(asset.metadata_, dict) else {},
-        is_enabled=asset.is_enabled,
-        created_at=asset.created_at,
-        updated_at=asset.updated_at,
-        updated_by_user_id=str(asset.updated_by_user_id) if asset.updated_by_user_id else None,
-        updated_by_user_name=asset.updated_by_user.email if asset.updated_by_user else None,
-    )
+    data = {
+        "id": asset.id,
+        "organization_id": asset.organization_id,
+        "custom_asset_type_id": asset.custom_asset_type_id,
+        "values": key_values,
+        "metadata": asset.metadata_ if isinstance(asset.metadata_, dict) else {},
+        "is_enabled": asset.is_enabled,
+        "created_at": asset.created_at,
+        "updated_at": asset.updated_at,
+        "updated_by_user_id": str(asset.updated_by_user_id) if asset.updated_by_user_id else None,
+        "updated_by_user_name": asset.updated_by_user.email if asset.updated_by_user else None,
+    }
+    return CustomAssetPublic.model_validate(data)
 
 
 def _to_reveal(
@@ -173,18 +174,19 @@ def _to_reveal(
     """Convert ORM model to reveal response (password fields decrypted)."""
     # Transform from ID-based storage to key-based API format, decrypting secrets
     key_values = values_id_to_key(type_fields, asset.values, decrypt_secrets=True)
-    return CustomAssetReveal(
-        id=str(asset.id),
-        organization_id=str(asset.organization_id),
-        custom_asset_type_id=str(asset.custom_asset_type_id),
-        values=key_values,
-        metadata=asset.metadata_ if isinstance(asset.metadata_, dict) else {},
-        is_enabled=asset.is_enabled,
-        created_at=asset.created_at,
-        updated_at=asset.updated_at,
-        updated_by_user_id=str(asset.updated_by_user_id) if asset.updated_by_user_id else None,
-        updated_by_user_name=asset.updated_by_user.email if asset.updated_by_user else None,
-    )
+    data = {
+        "id": asset.id,
+        "organization_id": asset.organization_id,
+        "custom_asset_type_id": asset.custom_asset_type_id,
+        "values": key_values,
+        "metadata": asset.metadata_ if isinstance(asset.metadata_, dict) else {},
+        "is_enabled": asset.is_enabled,
+        "created_at": asset.created_at,
+        "updated_at": asset.updated_at,
+        "updated_by_user_id": str(asset.updated_by_user_id) if asset.updated_by_user_id else None,
+        "updated_by_user_name": asset.updated_by_user.email if asset.updated_by_user else None,
+    }
+    return CustomAssetReveal.model_validate(data)
 
 
 @router.get("", response_model=CustomAssetListResponse)

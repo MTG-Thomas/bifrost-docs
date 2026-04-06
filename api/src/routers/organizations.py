@@ -37,6 +37,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/organizations", tags=["organizations"])
 
 
+def _to_public(org: Organization) -> OrganizationPublic:
+    """Convert Organization ORM model to public response."""
+    data = {
+        "id": org.id,
+        "name": org.name,
+        "metadata": org.metadata_ if isinstance(org.metadata_, dict) else {},
+        "is_enabled": org.is_enabled,
+        "created_at": org.created_at,
+        "updated_at": org.updated_at,
+        "updated_by_user_id": str(org.updated_by_user_id) if org.updated_by_user_id else None,
+        "updated_by_user_name": org.updated_by_user.email if org.updated_by_user else None,
+    }
+    return OrganizationPublic.model_validate(data)
+
+
 @router.get("", response_model=list[OrganizationPublic])
 async def list_organizations(
     current_user: CurrentActiveUser,
@@ -62,19 +77,7 @@ async def list_organizations(
     is_enabled_filter = None if show_disabled else True
     organizations = await org_repo.get_all(is_enabled=is_enabled_filter)
 
-    return [
-        OrganizationPublic(
-            id=str(org.id),
-            name=org.name,
-            metadata=org.metadata_ if isinstance(org.metadata_, dict) else {},
-            is_enabled=org.is_enabled,
-            created_at=org.created_at,
-            updated_at=org.updated_at,
-            updated_by_user_id=str(org.updated_by_user_id) if org.updated_by_user_id else None,
-            updated_by_user_name=org.updated_by_user.email if org.updated_by_user else None,
-        )
-        for org in organizations
-    ]
+    return [_to_public(org) for org in organizations]
 
 
 @router.post("", response_model=OrganizationPublic, status_code=status.HTTP_201_CREATED)
@@ -130,16 +133,7 @@ async def create_organization(
         extra={"org_id": str(org.id), "user_id": str(current_user.user_id)},
     )
 
-    return OrganizationPublic(
-        id=str(org.id),
-        name=org.name,
-        metadata=org.metadata_ if isinstance(org.metadata_, dict) else {},
-        is_enabled=org.is_enabled,
-        created_at=org.created_at,
-        updated_at=org.updated_at,
-        updated_by_user_id=str(org.updated_by_user_id) if org.updated_by_user_id else None,
-        updated_by_user_name=org.updated_by_user.email if org.updated_by_user else None,
-    )
+    return _to_public(org)
 
 
 @router.get("/{org_id}", response_model=OrganizationWithFrequent)
@@ -268,16 +262,7 @@ async def update_organization(
         extra={"org_id": str(org.id), "user_id": str(current_user.user_id)},
     )
 
-    return OrganizationPublic(
-        id=str(org.id),
-        name=org.name,
-        metadata=org.metadata_ if isinstance(org.metadata_, dict) else {},
-        is_enabled=org.is_enabled,
-        created_at=org.created_at,
-        updated_at=org.updated_at,
-        updated_by_user_id=str(org.updated_by_user_id) if org.updated_by_user_id else None,
-        updated_by_user_name=org.updated_by_user.email if org.updated_by_user else None,
-    )
+    return _to_public(org)
 
 
 @router.delete("/{org_id}", status_code=status.HTTP_204_NO_CONTENT)

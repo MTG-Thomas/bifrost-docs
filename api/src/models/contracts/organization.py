@@ -1,12 +1,10 @@
-"""
-Organization contracts (API request/response schemas).
+"""Organization contracts (API request/response schemas).
 """
 
-from datetime import datetime
-
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from src.models.contracts.access_tracking import FrequentItem
+from src.models.contracts.base import PublicOrganizationBase
 
 
 class OrganizationCreate(BaseModel):
@@ -25,17 +23,9 @@ class OrganizationUpdate(BaseModel):
     is_enabled: bool | None = None  # Don't change if not provided
 
 
-class OrganizationPublic(BaseModel):
+class OrganizationPublic(PublicOrganizationBase):
     """Organization public response model."""
 
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    name: str
-    metadata: dict = Field(default_factory=dict)
-    is_enabled: bool = True
-    created_at: datetime
-    updated_at: datetime
     updated_by_user_id: str | None = None
     updated_by_user_name: str | None = None
 

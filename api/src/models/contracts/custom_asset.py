@@ -1,5 +1,4 @@
-"""
-Custom Asset contracts (API request/response schemas).
+"""Custom Asset contracts (API request/response schemas).
 
 Defines field definitions for custom asset types and the contracts
 for both custom asset types and custom asset instances.
@@ -7,9 +6,11 @@ for both custom asset types and custom asset instances.
 
 from datetime import datetime
 from typing import Any, Literal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serializer
+
+from src.models.contracts.base import PublicEntityBase
 
 # =============================================================================
 # Field Definition Schema
@@ -117,6 +118,10 @@ class CustomAssetTypePublic(BaseModel):
     updated_at: datetime
     asset_count: int = 0
 
+    @field_serializer("id")
+    def serialize_uuid(self, v: UUID) -> str:
+        return str(v)
+
 
 # =============================================================================
 # Custom Asset Instance Contracts
@@ -143,43 +148,37 @@ class CustomAssetUpdate(BaseModel):
     is_enabled: bool | None = None  # Don't change if not provided
 
 
-class CustomAssetPublic(BaseModel):
+class CustomAssetPublic(PublicEntityBase):
     """
     Custom asset public response model.
 
     Password fields are excluded from values.
     """
 
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    organization_id: str
     custom_asset_type_id: str
     values: dict[str, Any]  # password fields excluded
-    metadata: dict = Field(default_factory=dict)
-    is_enabled: bool = True
-    created_at: datetime
-    updated_at: datetime
     updated_by_user_id: str | None = None
     updated_by_user_name: str | None = None
 
+    @field_serializer("custom_asset_type_id")
+    def serialize_fk_uuid(self, v: UUID) -> str:
+        """Serialize foreign key UUID to string."""
+        return str(v)
 
-class CustomAssetReveal(BaseModel):
+
+class CustomAssetReveal(PublicEntityBase):
     """
     Custom asset reveal response model.
 
     Includes decrypted password field values.
     """
 
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    organization_id: str
     custom_asset_type_id: str
     values: dict[str, Any]  # includes decrypted password fields
-    metadata: dict = Field(default_factory=dict)
-    is_enabled: bool = True
-    created_at: datetime
-    updated_at: datetime
     updated_by_user_id: str | None = None
     updated_by_user_name: str | None = None
+
+    @field_serializer("custom_asset_type_id")
+    def serialize_fk_uuid(self, v: UUID) -> str:
+        """Serialize foreign key UUID to string."""
+        return str(v)
