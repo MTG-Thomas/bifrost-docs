@@ -64,7 +64,7 @@ if RATE_LIMITING_ENABLED:
         key_func=get_remote_address,
         storage_uri=settings.redis_url,
         storage_options={"socket_connect_timeout": "30"},
-        default_limits="100/minute",  # Default: 100 requests per minute
+        default_limits=["100/minute"],  # Default: 100 requests per minute
     )
 else:
     limiter = Limiter(key_func=get_remote_address)  # Dummy limiter
