@@ -49,7 +49,6 @@ import {
 import { SettingsPage } from "@/pages/settings/SettingsPage";
 import { ProfileSettings } from "@/pages/settings/ProfileSettings";
 import { SecuritySettings } from "@/pages/settings/SecuritySettings";
-import { AppearanceSettings } from "@/pages/settings/AppearanceSettings";
 import { ConfigTypesSettings } from "@/pages/settings/ConfigTypesSettings";
 import { ConfigStatusesSettings } from "@/pages/settings/ConfigStatusesSettings";
 import { CustomAssetTypesSettings } from "@/pages/settings/CustomAssetTypesSettings";
