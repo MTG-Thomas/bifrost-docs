@@ -1,11 +1,12 @@
 """Tests for document mutation service."""
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from src.services.document_mutations import (
     DocumentMutationService,
-    classify_document_type,
     apply_diataxis_structure,
+    classify_document_type,
 )
 
 
@@ -102,7 +103,7 @@ async def test_generate_cleaned_content_llm_error():
 
     service = DocumentMutationService(mock_client)
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         await service.generate_cleaned_content(
             original_content="content",
             document_name="Test",

@@ -1,8 +1,9 @@
 """Tests for audit service with dedupe support."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
+
+import pytest
 
 from src.models.enums import AuditAction
 from src.services.audit_service import AuditService

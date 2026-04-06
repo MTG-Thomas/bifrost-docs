@@ -70,7 +70,7 @@ async def test_generate_field_updates_llm_error():
     service = AssetMutationService(mock_client)
 
     # Should propagate exception
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         await service.generate_field_updates(
             asset_type="Server",
             current_fields={"ip": "10.0.0.1"},

@@ -1,19 +1,18 @@
 """Tests for AI chat mutation tools."""
-import json
 from uuid import UUID
 
 import pytest
 
+from src.models.contracts.mutations import (
+    AssetMutation,
+    DocumentMutation,
+    MutationPreview,
+)
 from src.services.ai_chat import (
     MUTATION_TOOL_DEFINITION,
     parse_mutation_tool_call,
 )
 from src.services.llm import ToolCall
-from src.models.contracts.mutations import (
-    MutationPreview,
-    DocumentMutation,
-    AssetMutation,
-)
 
 
 def test_mutation_tool_definition():
