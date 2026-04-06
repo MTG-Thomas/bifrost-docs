@@ -69,6 +69,13 @@ services:
       GARAGE_ACCESS_KEY_ID: ${GARAGE_ACCESS_KEY_ID:?GARAGE_ACCESS_KEY_ID is required}
       GARAGE_SECRET_ACCESS_KEY: ${GARAGE_SECRET_ACCESS_KEY:?GARAGE_SECRET_ACCESS_KEY is required}
     entrypoint: ["sh", "/garage-init.sh"]
+    # Healthcheck: verifies Garage is accessible (one-shot container)
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null --header=\"Authorization: Bearer ${GARAGE_ADMIN_TOKEN}\" http://garage:3903/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
   # Valkey (Redis-compatible cache and pub/sub — BSD-3-Clause, replaces SSPL Redis)
   valkey:
@@ -132,6 +139,13 @@ services:
       pgbouncer:
         condition: service_healthy
     command: python -m scripts.init_container
+    # Healthcheck: verifies database connectivity (one-shot container)
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import psycopg2; psycopg2.connect(host='pgbouncer', port=5432, dbname='bifrost_docs', user='bifrost_docs', password='${POSTGRES_PASSWORD}')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
   # FastAPI Application
   api:
@@ -213,6 +227,13 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    # Healthcheck: verifies nginx is serving (proxies /health to API)
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
 volumes:
   bifrost_docspostgres_data:
