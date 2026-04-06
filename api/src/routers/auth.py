@@ -13,7 +13,6 @@ import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 
 from src.config import get_settings
@@ -119,6 +118,13 @@ class RevokeAllResponse(BaseModel):
     sessions_revoked: int
 
 
+class LoginRequest(BaseModel):
+    """Login request with email and password."""
+
+    email: str
+    password: str
+
+
 class LogoutRequest(BaseModel):
     """Logout request with optional refresh token."""
 
@@ -135,15 +141,16 @@ async def login(
     request: Request,
     response: Response,
     db: DbSession,
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    login_data: LoginRequest,
 ) -> LoginResponse:
     """
     Login with email and password.
 
     Args:
+        request: FastAPI request object
         response: FastAPI response object
-        form_data: OAuth2 password form with username (email) and password
         db: Database session
+        login_data: Login credentials with email and password
 
     Returns:
         LoginResponse with access and refresh tokens
@@ -152,7 +159,7 @@ async def login(
         HTTPException: If credentials are invalid
     """
     user_repo = UserRepository(db)
-    user = await user_repo.get_by_email(form_data.username)
+    user = await user_repo.get_by_email(login_data.email)
 
     if not user:
         raise HTTPException(
@@ -168,7 +175,7 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if not verify_password(form_data.password, user.hashed_password):
+    if not verify_password(login_data.password, user.hashed_password):
         # Audit log - failed login (wrong password)
         audit_service = get_audit_service(db)
         await audit_service.log(
