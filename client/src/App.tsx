@@ -50,7 +50,7 @@ import { SettingsPage } from "@/pages/settings/SettingsPage";
 import { ProfileSettings } from "@/pages/settings/ProfileSettings";
 import { SecuritySettings } from "@/pages/settings/SecuritySettings";
 import { ConfigTypesSettings } from "@/pages/settings/ConfigurationTypesSettings";
-import { ConfigStatusesSettings } from "@/pages/settings/ConfigurationStatusesSettings";
+import { ConfigurationStatusesSettings } from "@/pages/settings/ConfigurationStatusesSettings";
 import { CustomAssetTypesSettings } from "@/pages/settings/CustomAssetTypesSettings";
 import { UsersSettings } from "@/pages/settings/UsersSettings";
 import { AISettings } from "@/pages/settings/AISettings";
