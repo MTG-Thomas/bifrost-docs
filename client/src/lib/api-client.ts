@@ -599,7 +599,7 @@ export const settingsApi = {
   listPasskeys: () => api.get<Passkey[]>("/auth/passkeys"),
 
   registerPasskeyOptions: () =>
-    api.post<PublicKeyCredentialCreationOptions>("/auth/passkeys/register/options"),
+    api.post<PublicKeyCredentialCreationOptions>("/auth/passkeys/register/options", {}),
 
   registerPasskey: (data: { name: string; credential: unknown }) =>
     api.post<Passkey>("/auth/passkeys/register", data),
