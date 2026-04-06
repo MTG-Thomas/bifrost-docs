@@ -240,3 +240,55 @@ Which would you like me to tackle first?
 - [ ] Add API key-specific limits
 - [ ] Add endpoint for checking current rate limit status
 - [ ] Add rate limit headers to responses (X-RateLimit-*)
+
+---
+
+## ✅ Completed: Security Headers (2026-04-06)
+
+**Implemented:** OWASP recommended security headers middleware
+
+### Headers Added
+
+| Header | Value | Protection |
+|--------|-------|------------|
+| X-Content-Type-Options | nosniff | MIME sniffing |
+| X-Frame-Options | DENY | Clickjacking |
+| X-XSS-Protection | 1; mode=block | XSS (legacy) |
+| Content-Security-Policy | See below | XSS, injection |
+| Referrer-Policy | strict-origin-when-cross-origin | Privacy |
+| Permissions-Policy | Feature restrictions | Permission abuse |
+| Strict-Transport-Security | max-age=31536000 (prod) | SSL downgrade |
+
+### Development vs Production CSP
+
+**Development:**
+```
+default-src 'self';
+script-src 'self' 'unsafe-inline' 'unsafe-eval';
+style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob: https:;
+font-src 'self' data:;
+connect-src 'self' ws: wss:;
+media-src 'self';
+object-src 'none';
+frame-ancestors 'none'
+```
+
+**Production:**
+```
+default-src 'self';
+script-src 'self';
+style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob:;
+font-src 'self';
+connect-src 'self';
+media-src 'self';
+object-src 'none';
+frame-ancestors 'none';
+base-uri 'self';
+form-action 'self'
+```
+
+### Middleware
+- All responses include security headers automatically
+- Applied via `SecurityHeadersMiddleware` in FastAPI
