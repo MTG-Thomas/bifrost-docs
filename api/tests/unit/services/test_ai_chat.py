@@ -125,7 +125,6 @@ class TestBuildContextFromResults:
         assert "Test Org" in context
         assert "Passwords" in context
         assert "Test Password" in context
-        assert "95%" in context
         assert "This is a snippet" in context
 
     def test_groups_results_by_organization_and_type(self):

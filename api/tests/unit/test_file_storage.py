@@ -26,6 +26,7 @@ def mock_settings():
     settings = MagicMock()
     settings.s3_configured = True
     settings.s3_endpoint = "http://localhost:9000"
+    settings.s3_public_endpoint = None  # Use internal endpoint for tests
     settings.s3_access_key = "test-access-key"
     settings.s3_secret_key = "test-secret-key"
     settings.s3_region = "us-east-1"
@@ -83,6 +84,7 @@ class TestFileStorageService:
         attachment_id = uuid4()
 
         s3_key = file_storage_service.generate_s3_key(
+            organization_id=org_id,
             entity_type="document",
             entity_id=entity_id,
             attachment_id=attachment_id,
