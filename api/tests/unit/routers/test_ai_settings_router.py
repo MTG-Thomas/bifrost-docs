@@ -196,10 +196,14 @@ class TestGetAISettings:
             mock_embeddings_row = MagicMock()
             mock_embeddings_row.value_json = mock_embeddings_config
 
-            # get_ai_settings calls get_config twice: completions then embeddings
+            mock_indexing_row = MagicMock()
+            mock_indexing_row.value_json = {"enabled": True}
+
+            # get_ai_settings calls get_config 3 times: completions, embeddings, indexing
             mock_repo_instance.get_config.side_effect = [
                 mock_completions_row,
                 mock_embeddings_row,
+                mock_indexing_row,
             ]
             MockRepo.return_value = mock_repo_instance
 
