@@ -203,3 +203,40 @@
 4. "Create backup solution" - Essential for data safety
 
 Which would you like me to tackle first?
+
+---
+
+## ✅ Completed: Rate Limiting (2026-04-06)
+
+**Implemented:** Redis-backed rate limiting using slowapi
+
+### Configuration
+
+| Endpoint Category | Limits | Purpose |
+|-------------------|--------|---------|
+| AUTH_STRICT | 5/min, 20/hr | Registration, password reset |
+| AUTH_LOGIN | 10/min, 50/hr | Login attempts |
+| PASSKEY | 10/min, 30/hr | WebAuthn operations |
+| API_GENERAL | 100/min, 1000/hr | Standard API calls |
+| HEALTH | 1000/min | Health check endpoints |
+
+### Protected Endpoints
+- All `/auth/*` endpoints (login, register, refresh, etc.)
+- All `/auth/passkeys/*` endpoints
+- `/health` endpoint
+
+### How It Works
+- Rate limits stored in Redis (shared across API instances)
+- Keys based on client IP address
+- Different limits per endpoint category
+- Returns 429 Too Many Requests when limit exceeded
+
+### Development vs Production
+- **Development**: Rate limiting disabled if slowapi not installed
+- **Production**: Active when CI builds images with slowapi
+
+### Future Improvements
+- [ ] Add per-user rate limits (in addition to per-IP)
+- [ ] Add API key-specific limits
+- [ ] Add endpoint for checking current rate limit status
+- [ ] Add rate limit headers to responses (X-RateLimit-*)
