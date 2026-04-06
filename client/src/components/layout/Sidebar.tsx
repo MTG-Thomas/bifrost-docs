@@ -28,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useSidebarData, type SidebarItemCount } from "@/hooks/useSidebar";
 import { useGlobalSidebarData, type GlobalSidebarItemCount } from "@/hooks/useGlobalData";
 import { useSidebarCollapse } from "@/hooks/useSidebarCollapse";
+import { FavoritesList } from "@/components/favorites/FavoritesList";
 
 interface SidebarProps {
   isMobileMenuOpen: boolean;
@@ -292,6 +293,13 @@ function OrgSidebarContent({
         onClick={closeMobileMenu}
         isCollapsed={isCollapsed}
       />
+
+      {/* Favorites Widget - only when not collapsed */}
+      {!isCollapsed && (
+        <div className="px-2">
+          <FavoritesList maxItems={5} showHeader={true} />
+        </div>
+      )}
 
       {/* Core Section */}
       <NavSection title="Core" isCollapsed={isCollapsed}>

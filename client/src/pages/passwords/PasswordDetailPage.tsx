@@ -38,6 +38,7 @@ import {
 } from "@/hooks/usePasswords";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { FavoriteButton } from "@/components/favorites/FavoriteButton";
 
 const passwordSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
@@ -226,9 +227,19 @@ export function PasswordDetailPage() {
                     {password.name}
                   </h1>
                 )}
-                <p className="text-sm text-muted-foreground">
-                  Last updated {new Date(password.updated_at).toLocaleDateString()}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-muted-foreground">
+                    {password.username || "No username"}
+                  </p>
+                  <FavoriteButton
+                    organizationId={orgId!}
+                    entityType="password"
+                    entityId={id!}
+                    entityName={password.name}
+                    size="sm"
+                    variant="ghost"
+                  />
+                </div>
               </div>
             </div>
           </div>

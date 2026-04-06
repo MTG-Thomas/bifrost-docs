@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from src.models.orm.session import Session
     from src.models.orm.user_oauth_account import UserOAuthAccount
     from src.models.orm.user_preferences import UserPreferences
+    from src.models.orm.user_favorite import UserFavorite
 
 
 class User(Base):
@@ -69,5 +70,6 @@ class User(Base):
     api_keys: Mapped[list["APIKey"]] = relationship(back_populates="user")
     oauth_accounts: Mapped[list["UserOAuthAccount"]] = relationship(back_populates="user")
     preferences: Mapped[list["UserPreferences"]] = relationship(back_populates="user")
+    favorites: Mapped[list["UserFavorite"]] = relationship(back_populates="user")
 
     __table_args__ = (Index("ix_users_email", "email"),)
