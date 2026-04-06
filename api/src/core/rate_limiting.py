@@ -7,25 +7,35 @@ Different limits for different endpoint types (auth vs API).
 Note: If slowapi is not installed, rate limiting is disabled (development mode).
 """
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    pass
+    # Import types for type checking only
+    from slowapi import Limiter as _SlowapiLimiter
+
+    # Define the Limiter type as a union of the real and dummy types
+    Limiter = _SlowapiLimiter  # noqa: F811
+    get_remote_address: Callable[[Any], str]
 
 try:
-    from slowapi import Limiter
-    from slowapi.util import get_remote_address
+    from slowapi import Limiter as _Limiter  # noqa: F811
+    from slowapi.util import get_remote_address as _get_remote_address_impl  # noqa: F811
 
     RATE_LIMITING_ENABLED = True
+    Limiter = _Limiter  # type: ignore[misc]
+    get_remote_address = _get_remote_address_impl  # type: ignore[misc]
 except ImportError:
     RATE_LIMITING_ENABLED = False
 
     # Create dummy limiter class and decorator for when slowapi is not installed
     class Limiter:  # type: ignore[no-redef]
+        """Dummy Limiter class when slowapi is not installed."""
+
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             pass
 
-        def limit(self, limits: Any) -> Any:
+        def limit(self, limits: Any) -> Callable[[Any], Any]:
             """Dummy decorator that does nothing when slowapi not installed."""
 
             def decorator(f: Any) -> Any:
@@ -37,6 +47,7 @@ except ImportError:
         middleware_class: Any = None
 
     def get_remote_address(request: Any) -> str:  # type: ignore[misc]
+        """Dummy get_remote_address when slowapi is not installed."""
         return "127.0.0.1"
 
 
