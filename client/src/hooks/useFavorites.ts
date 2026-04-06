@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import api from "@/lib/api-client";
 import { toast } from "sonner";
 
@@ -151,7 +151,6 @@ export function useUnfavoriteEntity() {
  * Uses optimistic updates for better UX.
  */
 export function useToggleFavorite() {
-  const queryClient = useQueryClient();
   const addFavorite = useAddFavorite();
   const unfavorite = useUnfavoriteEntity();
 

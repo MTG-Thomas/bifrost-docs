@@ -15,8 +15,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models.orm.base import Base
 
 if TYPE_CHECKING:
-    from src.models.orm.user import User
     from src.models.orm.organization import Organization
+    from src.models.orm.user import User
 
 
 class UserFavorite(Base):
