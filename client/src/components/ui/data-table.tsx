@@ -396,6 +396,9 @@ const ColumnVisibilityToggle = React.memo(function ColumnVisibilityToggle<TData>
     (column) => typeof column.accessorFn !== "undefined" && column.getCanHide()
   );
 
+  // Get column visibility state for dependency array
+  const columnVisibility = table.getState().columnVisibility;
+
   // Sort by current order if available
   const orderedColumns = React.useMemo(() => {
     if (!currentOrder || currentOrder.length === 0) {
@@ -409,7 +412,7 @@ const ColumnVisibilityToggle = React.memo(function ColumnVisibilityToggle<TData>
       if (bIndex === -1) return -1;
       return aIndex - bIndex;
     });
-  }, [sortableColumns, currentOrder, table.getState().columnVisibility]);
+  }, [sortableColumns, currentOrder, columnVisibility]);
 
   // Set up drop zone for reordering
   React.useEffect(() => {

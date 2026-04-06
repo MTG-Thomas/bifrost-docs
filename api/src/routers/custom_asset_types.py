@@ -10,11 +10,9 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import update
 
 from src.core.auth import CurrentActiveUser, CurrentSuperuser
 from src.core.database import DbSession
-from src.models.contracts.common import BatchToggleRequest, BatchToggleResponse
 from src.models.contracts.custom_asset import (
     CustomAssetTypeCreate,
     CustomAssetTypePublic,

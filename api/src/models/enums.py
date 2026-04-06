@@ -2,17 +2,17 @@
 Enums for Bifrost Docs models.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class UserType(str, Enum):
+class UserType(StrEnum):
     """User types in the system."""
 
     PLATFORM = "PLATFORM"  # Platform admin (global access)
     ORG = "ORG"  # Organization user (org-scoped access)
 
 
-class UserRole(str, Enum):
+class UserRole(StrEnum):
     """User roles for access control."""
 
     OWNER = "owner"
@@ -36,13 +36,13 @@ class UserRole(str, Enum):
         return role == cls.OWNER
 
 
-class MFAMethodType(str, Enum):
+class MFAMethodType(StrEnum):
     """Types of MFA methods."""
 
     TOTP = "totp"  # Time-based One-Time Password (Google Authenticator, etc.)
 
 
-class MFAMethodStatus(str, Enum):
+class MFAMethodStatus(StrEnum):
     """Status of an MFA method."""
 
     PENDING = "pending"  # Setup started but not verified
@@ -50,7 +50,7 @@ class MFAMethodStatus(str, Enum):
     DISABLED = "disabled"  # Disabled by user or admin
 
 
-class EntityType(str, Enum):
+class EntityType(StrEnum):
     """Entity types that can have attachments."""
 
     PASSWORD = "password"
@@ -61,7 +61,7 @@ class EntityType(str, Enum):
     DOCUMENT_IMAGE = "document_image"  # Embedded images in markdown documents
 
 
-class AuditAction(str, Enum):
+class AuditAction(StrEnum):
     """Actions tracked in audit logs."""
 
     # Entity mutations
@@ -89,7 +89,7 @@ class AuditAction(str, Enum):
     USER_DELETE = "user_delete"
 
 
-class ActorType(str, Enum):
+class ActorType(StrEnum):
     """Types of actors that can perform audited actions."""
 
     USER = "user"

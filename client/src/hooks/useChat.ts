@@ -122,7 +122,7 @@ export function useChat(options: UseChatOptions = {}) {
         ]);
         break;
 
-      case "mutation_preview":
+      case "mutation_preview": {
         const previewData = chunk.data as {
           tool_call_id?: string;
           entity_type: string;
@@ -166,8 +166,9 @@ export function useChat(options: UseChatOptions = {}) {
           }
         });
         break;
+      }
 
-      case "mutation_error":
+      case "mutation_error": {
         // Replace any pending message with error
         const errorData = chunk.data as { message?: string };
         setMessages((prev) => {
@@ -199,6 +200,7 @@ export function useChat(options: UseChatOptions = {}) {
           }
         });
         break;
+      }
 
       case "done":
         // Finalize the message with citations

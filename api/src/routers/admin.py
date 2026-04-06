@@ -15,7 +15,7 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 from pydantic import BaseModel, EmailStr
 from redis.asyncio import Redis
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 
 from src.config import get_settings
 from src.core.auth import RequireAdmin, RequireOwner
@@ -25,7 +25,6 @@ from src.core.pubsub import (
     publish_reindex_cancelling,
     publish_reindex_failed,
 )
-from src.models.contracts.common import BatchToggleRequest, BatchToggleResponse
 from src.models.enums import UserRole
 from src.models.orm.configuration import Configuration
 from src.models.orm.custom_asset import CustomAsset
@@ -33,7 +32,6 @@ from src.models.orm.document import Document
 from src.models.orm.embedding_index import EmbeddingIndex
 from src.models.orm.location import Location
 from src.models.orm.password import Password
-from src.models.orm.user import User
 from src.repositories.user import UserRepository
 from src.services.embeddings import EntityType
 from src.services.reindex_state import ReindexStateService

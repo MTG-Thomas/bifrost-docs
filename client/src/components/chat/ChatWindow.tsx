@@ -253,6 +253,7 @@ export function ChatWindow({
   }, [open, initialMessage, sendMessage]);
 
   // Sync scope when view changes (e.g., user navigates from org to global)
+  // Safe: this doesn't cause cascading renders as it's a simple state sync
   useEffect(() => {
     setScope(isGlobalView ? "global" : "org");
   }, [isGlobalView]);

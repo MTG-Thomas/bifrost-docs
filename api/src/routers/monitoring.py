@@ -10,13 +10,13 @@ Provides endpoints for application monitoring:
 import time
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from src.core.auth import CurrentActiveUser
-from src.core.database import DbSession, get_db_context
+from src.core.database import DbSession
 from src.repositories.user import UserRepository
 
 router = APIRouter(tags=["monitoring"])
@@ -31,46 +31,46 @@ _last_request_time = None
 async def prometheus_metrics(db: DbSession) -> str:
     """
     Prometheus-compatible metrics endpoint.
-    
+
     Returns metrics in Prometheus text format for scraping.
     """
     metrics = []
-    
+
     # Application info
     metrics.append('# HELP bifrost_docs_info Application information')
     metrics.append('# TYPE bifrost_docs_info gauge')
     metrics.append('bifrost_docs_info{version="1.0.0"} 1')
-    
+
     # Uptime (simulated - in production track actual start time)
     metrics.append('')
     metrics.append('# HELP bifrost_docs_uptime_seconds Application uptime')
     metrics.append('# TYPE bifrost_docs_uptime_seconds counter')
     metrics.append('bifrost_docs_uptime_seconds 1')
-    
+
     # Database connection status
     db_healthy = True
     try:
         await db.execute(text("SELECT 1"))
     except SQLAlchemyError:
         db_healthy = False
-    
+
     metrics.append('')
     metrics.append('# HELP bifrost_docs_database_connected Database connection status')
     metrics.append('# TYPE bifrost_docs_database_connected gauge')
     metrics.append(f'bifrost_docs_database_connected {1 if db_healthy else 0}')
-    
+
     # User counts
     try:
         user_repo = UserRepository(db)
         user_count = await user_repo.count_users()
     except Exception:
         user_count = 0
-    
+
     metrics.append('')
     metrics.append('# HELP bifrost_docs_users_total Total number of users')
     metrics.append('# TYPE bifrost_docs_users_total gauge')
     metrics.append(f'bifrost_docs_users_total {user_count}')
-    
+
     # Request metrics (if tracking enabled)
     global _request_count, _request_duration_total
     if _request_count > 0:
@@ -78,7 +78,7 @@ async def prometheus_metrics(db: DbSession) -> str:
         metrics.append('# HELP bifrost_docs_requests_total Total requests')
         metrics.append('# TYPE bifrost_docs_requests_total counter')
         metrics.append(f'bifrost_docs_requests_total {_request_count}')
-    
+
     return '\n'.join(metrics)
 
 
@@ -86,7 +86,7 @@ async def prometheus_metrics(db: DbSession) -> str:
 async def detailed_health_check(db: DbSession) -> JSONResponse:
     """
     Detailed health check with all dependencies.
-    
+
     Returns status of:
     - Database connectivity
     - Redis connectivity
@@ -95,7 +95,7 @@ async def detailed_health_check(db: DbSession) -> JSONResponse:
     """
     checks = {}
     overall_healthy = True
-    
+
     # Check database
     try:
         start = time.time()
@@ -111,7 +111,7 @@ async def detailed_health_check(db: DbSession) -> JSONResponse:
             "error": str(e)
         }
         overall_healthy = False
-    
+
     # Check Redis (if configured)
     try:
         from src.core.cache import get_redis
@@ -130,17 +130,17 @@ async def detailed_health_check(db: DbSession) -> JSONResponse:
             "error": str(e),
             "note": "Redis is optional, app can function without it"
         }
-    
+
     # Overall status
     status = "healthy" if overall_healthy else "unhealthy"
     status_code = 200 if overall_healthy else 503
-    
+
     response_data = {
         "status": status,
         "timestamp": datetime.now(UTC).isoformat(),
         "checks": checks
     }
-    
+
     return JSONResponse(
         content=response_data,
         status_code=status_code
@@ -155,7 +155,7 @@ async def status_dashboard(
 ) -> dict:
     """
     Application status dashboard for administrators.
-    
+
     Shows:
     - System health
     - Database statistics
@@ -164,11 +164,11 @@ async def status_dashboard(
     """
     from src.config import get_settings
     settings = get_settings()
-    
+
     # Database stats
     try:
         result = await db.execute(text("""
-            SELECT 
+            SELECT
                 (SELECT count(*) FROM users) as user_count,
                 (SELECT count(*) FROM organizations) as org_count,
                 (SELECT count(*) FROM passwords) as password_count,
@@ -185,16 +185,16 @@ async def status_dashboard(
         }
     except Exception as e:
         db_stats = {"error": str(e)}
-    
+
     # Storage stats (S3)
     try:
         from src.services.file_storage import FileStorageService
-        storage = FileStorageService(db)
+        FileStorageService(db)
         # This would need to be implemented in FileStorageService
         storage_stats = {"status": "connected"}
     except Exception as e:
         storage_stats = {"status": "error", "error": str(e)}
-    
+
     # Application info
     app_info = {
         "version": "1.0.0",
@@ -202,7 +202,7 @@ async def status_dashboard(
         "debug": settings.debug,
         "timestamp": datetime.now(UTC).isoformat()
     }
-    
+
     return {
         "application": app_info,
         "database": db_stats,

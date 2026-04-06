@@ -12,12 +12,13 @@ Provides endpoints for user authentication:
 import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel
 
 from src.config import get_settings
 from src.core.auth import CurrentActiveUser, UserPrincipal
 from src.core.database import DbSession
+from src.core.rate_limiting import RateLimits, limiter
 from src.core.security import (
     create_access_token,
     create_refresh_token,
@@ -129,9 +130,6 @@ class LogoutRequest(BaseModel):
     """Logout request with optional refresh token."""
 
     refresh_token: str | None = None
-
-
-from src.core.rate_limiting import RateLimits, limiter
 
 
 # =============================================================================

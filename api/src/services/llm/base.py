@@ -2,11 +2,11 @@
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
 
-class Role(str, Enum):
+class Role(StrEnum):
     """Message role in a conversation."""
 
     SYSTEM = "system"

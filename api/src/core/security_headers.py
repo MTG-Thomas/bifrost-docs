@@ -14,7 +14,7 @@ from src.config import get_settings
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """
     Middleware to add security headers to all responses.
-    
+
     Headers added:
     - X-Content-Type-Options: nosniff
     - X-Frame-Options: DENY
@@ -30,19 +30,19 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         response = await call_next(request)
         settings = get_settings()
-        
+
         # Prevent MIME type sniffing
         response.headers["X-Content-Type-Options"] = "nosniff"
-        
+
         # Prevent clickjacking
         response.headers["X-Frame-Options"] = "DENY"
-        
+
         # Legacy XSS protection for older browsers
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        
+
         # Referrer policy
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        
+
         # Permissions policy (formerly Feature-Policy)
         response.headers["Permissions-Policy"] = (
             "accelerometer=(), "
@@ -54,13 +54,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "payment=(), "
             "usb=()"
         )
-        
+
         # HSTS (only in production and if using HTTPS)
         if settings.environment == "production":
             response.headers["Strict-Transport-Security"] = (
                 "max-age=31536000; includeSubDomains; preload"
             )
-        
+
         # Content Security Policy
         # More restrictive in production, more permissive in development
         if settings.environment == "production":
@@ -91,16 +91,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "object-src 'none'",
                 "frame-ancestors 'none'",
             ]
-        
+
         response.headers["Content-Security-Policy"] = "; ".join(csp_directives)
-        
+
         return response
 
 
 def add_security_headers(app):
     """
     Add security headers middleware to FastAPI app.
-    
+
     Usage:
         from src.core.security_headers import add_security_headers
         add_security_headers(app)

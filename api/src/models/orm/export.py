@@ -5,7 +5,7 @@ Represents data export jobs for downloading organization data as ZIP files.
 """
 
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from src.models.orm.user import User
 
 
-class ExportStatus(str, Enum):
+class ExportStatus(StrEnum):
     """Status of an export job."""
 
     PENDING = "pending"

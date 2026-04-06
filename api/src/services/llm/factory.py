@@ -1,7 +1,7 @@
 """Factory for creating LLM clients based on configuration."""
 import logging
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from cryptography.fernet import InvalidToken
 from sqlalchemy import select
@@ -22,7 +22,7 @@ EMBEDDINGS_CONFIG_KEY = "embeddings_config"
 INDEXING_CONFIG_KEY = "indexing_config"
 
 
-class LLMProvider(str, Enum):
+class LLMProvider(StrEnum):
     """Supported LLM providers."""
 
     OPENAI = "openai"

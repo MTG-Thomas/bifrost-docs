@@ -1,5 +1,5 @@
 """Mutation request/response contracts."""
-from typing import Annotated, Literal, Union
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -25,7 +25,7 @@ class MutationPreview(BaseModel):
     entity_type: Literal["document", "custom_asset"] = Field(..., description="Type of entity")
     entity_id: UUID = Field(..., description="ID of entity to mutate")
     organization_id: UUID = Field(..., description="Organization ID")
-    mutation: Union[DocumentMutation, AssetMutation] = Field(...)
+    mutation: DocumentMutation | AssetMutation = Field(...)
 
 
 class ApplyMutationRequest(BaseModel):
@@ -36,7 +36,7 @@ class ApplyMutationRequest(BaseModel):
     entity_type: Literal["document", "custom_asset"] = Field(..., description="Type of entity")
     entity_id: UUID = Field(..., description="ID of entity to mutate")
     organization_id: UUID = Field(..., description="Organization ID")
-    mutation: Union[DocumentMutation, AssetMutation] = Field(...)
+    mutation: DocumentMutation | AssetMutation = Field(...)
 
 
 class ApplyMutationResponse(BaseModel):

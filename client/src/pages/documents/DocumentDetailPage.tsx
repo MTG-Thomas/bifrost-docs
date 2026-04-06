@@ -43,7 +43,6 @@ export function DocumentDetailPage() {
   // Initialize edit state when navigating to new document
   // This handles both initial mount and navigation from existing document to new
   // Safe: setEditState doesn't modify isNewDocument or defaultPath, so no infinite loop
-  /* eslint-disable react-compiler/react-compiler */
   useEffect(() => {
     if (isNewDocument) {
       setEditState({ name: "", path: defaultPath, content: "" });
@@ -51,7 +50,6 @@ export function DocumentDetailPage() {
       setEditState(null);
     }
   }, [isNewDocument, defaultPath]);
-  /* eslint-enable react-compiler/react-compiler */
 
   const { data: document, isLoading } = useDocument(orgId!, id!, {
     enabled: !isNewDocument,
