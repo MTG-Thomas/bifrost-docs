@@ -146,7 +146,7 @@ services:
       BIFROST_DOCS_DATABASE_URL: postgresql+asyncpg://bifrost_docs:${POSTGRES_PASSWORD}@pgbouncer:5432/bifrost_docs
       BIFROST_DOCS_DATABASE_URL_SYNC: postgresql://bifrost_docs:${POSTGRES_PASSWORD}@pgbouncer:5432/bifrost_docs
       # Redis
-      BIFROST_DOCS_REDIS_URL: redis://redis:6379/0
+      BIFROST_DOCS_REDIS_URL: redis://valkey:6379/0
       # CORS (only needed if API is accessed directly, not through proxy)
       BIFROST_DOCS_CORS_ORIGINS: ${BIFROST_DOCS_CORS_ORIGINS:-http://localhost:3000}
       # JWT (optional, has defaults)
