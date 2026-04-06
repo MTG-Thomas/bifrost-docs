@@ -16,7 +16,7 @@ import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 
 from src.core.auth import CurrentActiveUser, UserPrincipal
 from src.core.database import DbSession
@@ -59,6 +59,7 @@ router = APIRouter(prefix="/auth/passkeys", tags=["passkeys"])
 )
 @limiter.limit(RateLimits.PASSKEY)
 async def get_registration_options(
+    fastapi_request: Request,
     request: PasskeyRegistrationOptionsRequest,
     user: CurrentActiveUser,
     db: DbSession,
@@ -91,6 +92,7 @@ async def get_registration_options(
 )
 @limiter.limit(RateLimits.PASSKEY)
 async def verify_registration(
+    fastapi_request: Request,
     request: PasskeyRegistrationVerifyRequest,
     user: CurrentActiveUser,
     db: DbSession,
@@ -146,6 +148,7 @@ async def verify_registration(
 )
 @limiter.limit(RateLimits.PASSKEY)
 async def get_authentication_options(
+    fastapi_request: Request,
     request: PasskeyAuthOptionsRequest,
     db: DbSession,
 ) -> PasskeyAuthOptionsResponse:
@@ -178,6 +181,7 @@ async def get_authentication_options(
 )
 @limiter.limit(RateLimits.PASSKEY)
 async def verify_authentication(
+    fastapi_request: Request,
     request: PasskeyAuthVerifyRequest,
     response: Response,
     db: DbSession,
@@ -243,6 +247,7 @@ async def verify_authentication(
 )
 @limiter.limit(RateLimits.API_GENERAL)
 async def list_passkeys(
+    request: Request,
     user: CurrentActiveUser,
     db: DbSession,
 ) -> PasskeyListResponse:
