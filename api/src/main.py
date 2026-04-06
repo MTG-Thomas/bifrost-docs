@@ -37,6 +37,7 @@ from src.routers import (
     locations_router,
     me_router,
     mfa_router,
+    monitoring_router,
     oauth_config_router,
     oauth_sso_router,
     organizations_router,
@@ -285,6 +286,7 @@ def create_app() -> FastAPI:
     # Register Routers
     # ==========================================================================
     app.include_router(health_router)
+    app.include_router(monitoring_router)
     app.include_router(auth_router)
     app.include_router(mfa_router)
     app.include_router(passkeys_router)

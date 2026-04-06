@@ -19,6 +19,7 @@ from src.routers.health import router as health_router
 from src.routers.locations import router as locations_router
 from src.routers.me import router as me_router
 from src.routers.mfa import router as mfa_router
+from src.routers.monitoring import router as monitoring_router
 from src.routers.oauth_config import router as oauth_config_router
 from src.routers.oauth_sso import router as oauth_sso_router
 from src.routers.organizations import router as organizations_router
@@ -31,6 +32,7 @@ from src.routers.websocket import router as websocket_router
 
 __all__ = [
     "health_router",
+    "monitoring_router",
     "auth_router",
     "admin_router",
     "ai_settings_router",

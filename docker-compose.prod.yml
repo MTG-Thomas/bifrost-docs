@@ -1,0 +1,92 @@
+# Production Docker Compose Override
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# This adds production-specific services:
+# - Nginx reverse proxy (TLS termination, load balancing)
+# - Uses pre-built images from GitHub Container Registry
+# - Higher resource limits
+
+services:
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: bifrost-docs-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # For TLS certificates (Let's Encrypt or custom)
+      # - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      client:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # API - Use pre-built image from GitHub Container Registry
+  api:
+    image: ghcr.io/mtg-thomas/bifrost-docs-api:latest
+    pull_policy: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+
+  # Client - Use pre-built image
+  client:
+    image: ghcr.io/mtg-thomas/bifrost-docs-client:latest
+    pull_policy: always
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:80 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # Worker - Use pre-built image
+  worker:
+    image: ghcr.io/mtg-thomas/bifrost-docs-api:latest
+    pull_policy: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    restart: unless-stopped
+
+  # Backup service - runs scheduled backups
+  backup:
+    image: ghcr.io/mtg-thomas/bifrost-docs-api:latest
+    command: >
+      sh -c "
+        echo '0 2 * * * /app/scripts/backup.sh --daily' | crontab - &&
+        echo '0 3 * * 0 /app/scripts/backup.sh --weekly' | crontab - &&
+        crond -f
+      "
+    volumes:
+      - ./scripts:/app/scripts:ro
+    environment:
+      - BIFROST_DOCS_SECRET_KEY=${BIFROST_DOCS_SECRET_KEY}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - BIFROST_DOCS_S3_BUCKET=${BIFROST_DOCS_S3_BUCKET}
+      - BIFROST_DOCS_S3_ENDPOINT=${BIFROST_DOCS_S3_ENDPOINT}
+    depends_on:
+      - postgres
+    restart: unless-stopped
