@@ -30,6 +30,10 @@ from src.models.contracts.auth import (
     TokenResponse,
     UserResponse,
 )
+from src.models.contracts.base import (
+    PublicEntityBase,
+    PublicOrganizationBase,
+)
 from src.models.contracts.chat import (
     ChatMessage,
     ChatRequest,
@@ -113,6 +117,9 @@ from src.models.contracts.user_preferences import (
 )
 
 __all__ = [
+    # Base
+    "PublicEntityBase",
+    "PublicOrganizationBase",
     # Access Tracking
     "FrequentItem",
     "RecentItem",
