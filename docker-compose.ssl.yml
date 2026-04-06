@@ -1,24 +1,33 @@
 version: '3.8'
 
 # SSL/TLS Configuration for dev.docs.midtowntg.com
-# This file adds HTTPS support using Let's Encrypt certificates
+# Adds nginx SSL reverse proxy in front of the client
 
 services:
-  # Client with SSL support - production mode only
-  client:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-      target: production  # Force production target (nginx, not vite dev)
+  # SSL Reverse Proxy - terminates HTTPS and proxies to client
+  ssl-proxy:
+    image: nginx:alpine
+    container_name: bifrost-docs-ssl-proxy
     ports:
-      - "443:443"  # HTTPS port
-    # Mount SSL certificates and config (overrides dev volumes)
+      - "443:443"   # HTTPS
+      - "80:80"     # HTTP (redirects to HTTPS)
     volumes:
+      # SSL certificates
       - /etc/letsencrypt/live/dev.docs.midtowntg.com/fullchain.pem:/etc/nginx/ssl/cert.pem:ro
       - /etc/letsencrypt/live/dev.docs.midtowntg.com/privkey.pem:/etc/nginx/ssl/key.pem:ro
-      - ./client/nginx-ssl.conf:/etc/nginx/conf.d/default.conf:ro
+      # Nginx config
+      - ./config/nginx-ssl-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - client
+      - api
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
-  # Optional: Auto-renewal service for certificates
+  # Auto-renewal service for certificates
   certbot-renew:
     image: certbot/certbot:latest
     container_name: bifrost-docs-certbot-renew
