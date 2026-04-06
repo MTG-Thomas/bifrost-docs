@@ -335,6 +335,7 @@ async def refresh_token(
 @router.get("/me", response_model=UserResponse)
 @limiter.limit(RateLimits.API_GENERAL)
 async def get_current_user_info(
+    request: Request,
     current_user: CurrentActiveUser,
 ) -> UserResponse:
     """
@@ -360,6 +361,7 @@ async def get_current_user_info(
 @router.post("/logout", response_model=LogoutResponse)
 @limiter.limit(RateLimits.API_GENERAL)
 async def logout(
+    request: Request,
     response: Response,
     current_user: CurrentActiveUser,
     db: DbSession,
@@ -395,6 +397,7 @@ async def logout(
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit(RateLimits.AUTH_STRICT)
 async def register_user(
+    request: Request,
     user_data: RegisterRequest,
     db: DbSession,
 ) -> UserResponse:
@@ -486,6 +489,7 @@ async def register_user(
 @router.get("/setup/status", response_model=SetupStatusResponse)
 @limiter.limit(RateLimits.HEALTH)
 async def get_setup_status(
+    request: Request,
     db: DbSession,
 ) -> SetupStatusResponse:
     """
@@ -508,6 +512,7 @@ async def get_setup_status(
 @router.post("/setup/passkey/options", response_model=SetupPasskeyOptionsResponse)
 @limiter.limit(RateLimits.PASSKEY)
 async def setup_passkey_options(
+    request: Request,
     setup_request: SetupPasskeyOptionsRequest,
     db: DbSession,
 ) -> SetupPasskeyOptionsResponse:
@@ -562,6 +567,7 @@ async def setup_passkey_options(
 @router.post("/setup/passkey/verify", response_model=SetupPasskeyVerifyResponse)
 @limiter.limit(RateLimits.PASSKEY)
 async def setup_passkey_verify(
+    request: Request,
     response: Response,
     verify_request: SetupPasskeyVerifyRequest,
     db: DbSession,
