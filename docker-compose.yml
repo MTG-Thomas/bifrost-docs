@@ -196,9 +196,13 @@ services:
       valkey:
         condition: service_healthy
     command: arq src.worker.WorkerSettings
-    # Disable healthcheck - worker runs ARQ (background jobs), not a web server
+    # Custom healthcheck for ARQ worker - verifies process and Redis connectivity
     healthcheck:
-      disable: true
+      test: ["CMD", "python", "/app/scripts/worker_healthcheck.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # Frontend (Vite/React)
   client:
