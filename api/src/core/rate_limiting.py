@@ -17,13 +17,13 @@ except ImportError:
     class Limiter:
         def __init__(self, *args, **kwargs):
             pass
-        
+
         def limit(self, limits):
             """Dummy decorator that does nothing when slowapi not installed."""
             def decorator(f):
                 return f
             return decorator
-    
+
     def get_remote_address(request):
         return "127.0.0.1"
 
