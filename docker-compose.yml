@@ -196,6 +196,9 @@ services:
       valkey:
         condition: service_healthy
     command: arq src.worker.WorkerSettings
+    # Disable healthcheck - worker runs ARQ (background jobs), not a web server
+    healthcheck:
+      disable: true
 
   # Frontend (Vite/React)
   client:
