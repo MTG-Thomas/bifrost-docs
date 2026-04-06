@@ -56,6 +56,7 @@ import { UsersSettings } from "@/pages/settings/UsersSettings";
 import { AISettings } from "@/pages/settings/AISettings";
 import { ExportsSettings } from "@/pages/settings/ExportsSettings";
 import { OAuthSettings } from "@/pages/settings/OAuthSettings";
+import { ApiKeysSettings } from "@/pages/settings/ApiKeysSettings";
 
 // Admin pages
 import { MigrationDashboard } from "@/pages/admin/MigrationDashboard";
