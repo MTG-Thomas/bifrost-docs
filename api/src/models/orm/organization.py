@@ -15,9 +15,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models.orm.base import Base
 
 if TYPE_CHECKING:
+    from src.models.orm.cable import Cable
+    from src.models.orm.circuit import Circuit
     from src.models.orm.custom_asset import CustomAsset
     from src.models.orm.document import Document
     from src.models.orm.location import Location
+    from src.models.orm.patch_panel import PatchPanel
+    from src.models.orm.rack import Rack
     from src.models.orm.user import User
 
 
@@ -51,6 +55,12 @@ class Organization(Base):
     )
 
     # Relationships - passive_deletes=True lets DB CASCADE handle child deletion
+    cables: Mapped[list["Cable"]] = relationship(
+        back_populates="organization", passive_deletes=True
+    )
+    circuits: Mapped[list["Circuit"]] = relationship(
+        back_populates="organization", passive_deletes=True
+    )
     custom_assets: Mapped[list["CustomAsset"]] = relationship(
         back_populates="organization", passive_deletes=True
     )
@@ -58,6 +68,12 @@ class Organization(Base):
         back_populates="organization", passive_deletes=True
     )
     locations: Mapped[list["Location"]] = relationship(
+        back_populates="organization", passive_deletes=True
+    )
+    patch_panels: Mapped[list["PatchPanel"]] = relationship(
+        back_populates="organization", passive_deletes=True
+    )
+    racks: Mapped[list["Rack"]] = relationship(
         back_populates="organization", passive_deletes=True
     )
     updated_by_user: Mapped["User | None"] = relationship()

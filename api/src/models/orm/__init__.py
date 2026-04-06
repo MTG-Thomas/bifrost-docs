@@ -8,6 +8,8 @@ from src.models.orm.api_key import APIKey
 from src.models.orm.attachment import Attachment
 from src.models.orm.audit_log import AuditLog
 from src.models.orm.base import Base
+from src.models.orm.cable import Cable
+from src.models.orm.circuit import Circuit, PoweredDevice
 from src.models.orm.configuration import Configuration
 from src.models.orm.configuration_status import ConfigurationStatus
 from src.models.orm.configuration_type import ConfigurationType
@@ -21,6 +23,8 @@ from src.models.orm.mfa import MFARecoveryCode, UserMFAMethod
 from src.models.orm.organization import Organization
 from src.models.orm.passkey import UserPasskey
 from src.models.orm.password import Password
+from src.models.orm.patch_panel import PatchPanel, PatchPanelPort
+from src.models.orm.rack import Rack, RackDevice
 from src.models.orm.relationship import Relationship
 from src.models.orm.session import Session
 from src.models.orm.system_config import SystemConfig
@@ -72,4 +76,12 @@ __all__ = [
     "ExportStatus",
     # System Config
     "SystemConfig",
+    # DCIM
+    "Rack",
+    "RackDevice",
+    "Circuit",
+    "PoweredDevice",
+    "Cable",
+    "PatchPanel",
+    "PatchPanelPort",
 ]

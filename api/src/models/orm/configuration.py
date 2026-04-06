@@ -15,9 +15,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models.orm.base import Base
 
 if TYPE_CHECKING:
+    from src.models.orm.cable import Cable
+    from src.models.orm.circuit import PoweredDevice
     from src.models.orm.configuration_status import ConfigurationStatus
     from src.models.orm.configuration_type import ConfigurationType
     from src.models.orm.organization import Organization
+    from src.models.orm.rack import RackDevice
     from src.models.orm.user import User
 
 
@@ -73,12 +76,28 @@ class Configuration(Base):
     )
 
     # Relationships
-    organization: Mapped["Organization"] = relationship()
+    cables_as_destination: Mapped[list["Cable"]] = relationship(
+        foreign_keys="Cable.end_b_config_id",
+        back_populates="end_b_config",
+    )
+    cables_as_source: Mapped[list["Cable"]] = relationship(
+        foreign_keys="Cable.end_a_config_id",
+        back_populates="end_a_config",
+    )
     configuration_type: Mapped["ConfigurationType | None"] = relationship(
         back_populates="configurations"
     )
     configuration_status: Mapped["ConfigurationStatus | None"] = relationship(
         back_populates="configurations"
+    )
+    organization: Mapped["Organization"] = relationship()
+    power_connections: Mapped[list["PoweredDevice"]] = relationship(
+        back_populates="configuration",
+        cascade="all, delete-orphan",
+    )
+    rack_device: Mapped["RackDevice | None"] = relationship(
+        back_populates="configuration",
+        uselist=False,
     )
     updated_by_user: Mapped["User | None"] = relationship()
 

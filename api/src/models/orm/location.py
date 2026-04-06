@@ -15,7 +15,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models.orm.base import Base
 
 if TYPE_CHECKING:
+    from src.models.orm.circuit import Circuit
     from src.models.orm.organization import Organization
+    from src.models.orm.patch_panel import PatchPanel
+    from src.models.orm.rack import Rack
     from src.models.orm.user import User
 
 
@@ -61,7 +64,16 @@ class Location(Base):
     )
 
     # Relationships
+    circuits: Mapped[list["Circuit"]] = relationship(
+        back_populates="location", passive_deletes=True
+    )
     organization: Mapped["Organization"] = relationship(back_populates="locations")
+    patch_panels: Mapped[list["PatchPanel"]] = relationship(
+        back_populates="location", passive_deletes=True
+    )
+    racks: Mapped[list["Rack"]] = relationship(
+        back_populates="location", passive_deletes=True
+    )
     updated_by_user: Mapped["User | None"] = relationship()
 
     __table_args__ = (
