@@ -178,8 +178,8 @@ def create_app() -> FastAPI:
 
     if RATE_LIMITING_ENABLED:
         app.state.limiter = limiter
-        # limiter.middleware_class is available when slowapi is installed
-        app.add_middleware(limiter.middleware_class)  # type: ignore[attr-defined]
+        # Note: slowapi works via decorators on routes, not as middleware
+        # The limiter is accessed via request.app.state.limiter in route decorators
         logger.info("Rate limiting enabled (Redis-backed)")
     else:
         logger.info("Rate limiting disabled (slowapi not installed)")
