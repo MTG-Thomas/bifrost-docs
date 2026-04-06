@@ -476,11 +476,11 @@ async def batch_toggle_locations(
     await db.commit()
 
     logger.info(
-        f"Batch toggle locations: {result.rowcount} locations set to is_enabled={request.is_enabled}",
+        f"Batch toggle locations: {result.rowcount} locations set to is_enabled={request.is_enabled}",  # type: ignore[attr-defined]
         extra={
             "org_id": str(org_id),
             "user_id": str(current_user.user_id),
-            "updated_count": result.rowcount,
+            "updated_count": result.rowcount,  # type: ignore[attr-defined]
         },
     )
 
@@ -489,4 +489,4 @@ async def batch_toggle_locations(
     for location_id in location_ids:
         await index_entity_for_search(db, "location", location_id, org_id)
 
-    return BatchToggleResponse(updated_count=result.rowcount)
+    return BatchToggleResponse(updated_count=result.rowcount)  # type: ignore[attr-defined]

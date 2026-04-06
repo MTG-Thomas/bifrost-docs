@@ -337,4 +337,4 @@ class DocumentRepository(BaseRepository[Document]):
         )
 
         await self.session.flush()
-        return result.rowcount
+        return result.rowcount  # type: ignore[attr-defined]

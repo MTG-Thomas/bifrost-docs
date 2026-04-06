@@ -434,10 +434,13 @@ async def _perform_chat(
                         entity = result.scalar_one_or_none()
 
                         if entity:
+                            # Type assertion for CustomAsset properties
+                            entity_name: str = getattr(entity, "name", "")
+                            entity_fields: dict = getattr(entity, "fields", {}) or {}
                             current_entity_context = {
                                 "type": "custom_asset",
                                 "id": str(entity.id),
-                                "name": entity.name,
+                                "name": entity_name,
                                 "organization_id": str(entity.organization_id),
                             }
 
@@ -445,17 +448,20 @@ async def _perform_chat(
                             from src.models.contracts.search import SearchResult
 
                             # Build snippet from custom fields
-                            field_texts = [f"{k}: {v}" for k, v in (entity.fields or {}).items()]
-                            snippet = "\n".join(field_texts) if field_texts else entity.name
+                            field_texts = [f"{k}: {v}" for k, v in entity_fields.items()]
+                            snippet = "\n".join(field_texts) if field_texts else entity_name
+
+                            # Get organization name safely
+                            org_name: str = ""
+                            if entity.organization:
+                                org_name = entity.organization.name  # type: ignore[attr-defined]
 
                             current_asset_result = SearchResult(
                                 entity_type="custom_asset",
                                 entity_id=str(entity.id),
                                 organization_id=str(entity.organization_id),
-                                organization_name=entity.organization.name
-                                if entity.organization
-                                else "Unknown",
-                                name=entity.name,
+                                organization_name=org_name if org_name else "Unknown",
+                                name=entity_name,
                                 snippet=snippet,
                                 score=1.0,
                                 is_enabled=entity.is_enabled,

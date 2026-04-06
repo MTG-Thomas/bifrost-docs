@@ -17,7 +17,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from src.core.auth import CurrentActiveUser
 from src.core.database import DbSession
-from src.repositories.user import UserRepository
 
 router = APIRouter(tags=["monitoring"])
 
@@ -61,8 +60,8 @@ async def prometheus_metrics(db: DbSession) -> str:
 
     # User counts
     try:
-        user_repo = UserRepository(db)
-        user_count = await user_repo.count_users()
+        result = await db.execute(text("SELECT count(*) FROM users"))
+        user_count = result.scalar() or 0
     except Exception:
         user_count = 0
 
@@ -162,6 +161,8 @@ async def status_dashboard(
         """)
         )
         row = result.fetchone()
+        if row is None:
+            raise ValueError("Failed to fetch database stats")
         db_stats = {
             "users": row.user_count,
             "organizations": row.org_count,
@@ -174,9 +175,10 @@ async def status_dashboard(
 
     # Storage stats (S3)
     try:
+        from src.config import get_settings
         from src.services.file_storage import FileStorageService
 
-        FileStorageService(db)
+        FileStorageService(get_settings())
         # This would need to be implemented in FileStorageService
         storage_stats = {"status": "connected"}
     except Exception as e:

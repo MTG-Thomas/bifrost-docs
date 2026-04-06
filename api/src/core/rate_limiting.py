@@ -7,6 +7,11 @@ Different limits for different endpoint types (auth vs API).
 Note: If slowapi is not installed, rate limiting is disabled (development mode).
 """
 
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    pass
+
 try:
     from slowapi import Limiter
     from slowapi.util import get_remote_address
@@ -16,19 +21,22 @@ except ImportError:
     RATE_LIMITING_ENABLED = False
 
     # Create dummy limiter class and decorator for when slowapi is not installed
-    class Limiter:
-        def __init__(self, *args, **kwargs):
+    class Limiter:  # type: ignore[no-redef]
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             pass
 
-        def limit(self, limits):
+        def limit(self, limits: Any) -> Any:
             """Dummy decorator that does nothing when slowapi not installed."""
 
-            def decorator(f):
+            def decorator(f: Any) -> Any:
                 return f
 
             return decorator
 
-    def get_remote_address(request):
+        # Dummy middleware_class attribute for type checking
+        middleware_class: Any = None
+
+    def get_remote_address(request: Any) -> str:  # type: ignore[misc]
         return "127.0.0.1"
 
 

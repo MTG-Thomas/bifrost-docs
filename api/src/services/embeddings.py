@@ -379,7 +379,7 @@ class EmbeddingsService:
                 EmbeddingIndex.entity_id == entity_id,
             )
         )
-        deleted = result.rowcount > 0
+        deleted = result.rowcount > 0  # type: ignore[attr-defined]
         if deleted:
             logger.info(f"Deleted embedding index: {entity_type}/{entity_id}")
         return deleted

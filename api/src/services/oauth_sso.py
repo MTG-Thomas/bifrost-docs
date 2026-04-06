@@ -459,7 +459,7 @@ class OAuthService:
             )
         )
         await self.db.flush()
-        return result.rowcount > 0
+        return result.rowcount > 0  # type: ignore[attr-defined]
 
     async def find_user_by_oauth(
         self,

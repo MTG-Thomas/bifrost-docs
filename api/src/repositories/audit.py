@@ -152,4 +152,4 @@ class AuditRepository:
         """
         stmt = delete(AuditLog).where(AuditLog.created_at < cutoff)
         result = await self.session.execute(stmt)
-        return result.rowcount
+        return result.rowcount  # type: ignore[attr-defined]

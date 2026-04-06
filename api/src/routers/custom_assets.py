@@ -703,12 +703,12 @@ async def batch_toggle_custom_assets(
     await db.commit()
 
     logger.info(
-        f"Batch toggle custom assets: {result.rowcount} assets set to is_enabled={request.is_enabled}",
+        f"Batch toggle custom assets: {result.rowcount} assets set to is_enabled={request.is_enabled}",  # type: ignore[attr-defined]
         extra={
             "org_id": str(org_id),
             "asset_type_id": str(type_id),
             "user_id": str(current_user.user_id),
-            "updated_count": result.rowcount,
+            "updated_count": result.rowcount,  # type: ignore[attr-defined]
         },
     )
 
@@ -717,4 +717,4 @@ async def batch_toggle_custom_assets(
     for asset_id in asset_ids:
         await index_entity_for_search(db, "custom_asset", asset_id, org_id)
 
-    return BatchToggleResponse(updated_count=result.rowcount)
+    return BatchToggleResponse(updated_count=result.rowcount)  # type: ignore[attr-defined]

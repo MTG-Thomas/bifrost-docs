@@ -107,7 +107,7 @@ class UserPreferencesRepository(BaseRepository[UserPreferences]):
                 UserPreferences.entity_type == entity_type,
             )
         )
-        return result.rowcount > 0
+        return result.rowcount > 0  # type: ignore[attr-defined]
 
     async def get_all_for_user(
         self,

@@ -506,11 +506,11 @@ async def batch_toggle_configurations(
     await db.commit()
 
     logger.info(
-        f"Batch toggle configurations: {result.rowcount} configs set to is_enabled={request.is_enabled}",
+        f"Batch toggle configurations: {result.rowcount} configs set to is_enabled={request.is_enabled}",  # type: ignore[attr-defined]
         extra={
             "org_id": str(org_id),
             "user_id": str(current_user.user_id),
-            "updated_count": result.rowcount,
+            "updated_count": result.rowcount,  # type: ignore[attr-defined]
         },
     )
 
@@ -519,4 +519,4 @@ async def batch_toggle_configurations(
     for config_id in config_ids:
         await index_entity_for_search(db, "configuration", config_id, org_id)
 
-    return BatchToggleResponse(updated_count=result.rowcount)
+    return BatchToggleResponse(updated_count=result.rowcount)  # type: ignore[attr-defined]
