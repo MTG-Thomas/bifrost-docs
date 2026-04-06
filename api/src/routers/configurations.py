@@ -45,37 +45,32 @@ router = APIRouter(
 
 def _configuration_to_public(config: Configuration) -> ConfigurationPublic:
     """Convert Configuration ORM model to public response."""
-    return ConfigurationPublic(
-        id=str(config.id),
-        organization_id=str(config.organization_id),
-        configuration_type_id=str(config.configuration_type_id)
-        if config.configuration_type_id
-        else None,
-        configuration_status_id=str(config.configuration_status_id)
-        if config.configuration_status_id
-        else None,
-        name=config.name,
-        serial_number=config.serial_number,
-        asset_tag=config.asset_tag,
-        manufacturer=config.manufacturer,
-        model=config.model,
-        ip_address=config.ip_address,
-        mac_address=config.mac_address,
-        notes=config.notes,
-        metadata=config.metadata_ if isinstance(config.metadata_, dict) else {},
-        interfaces=config.interfaces if isinstance(config.interfaces, list) else [],
-        is_enabled=config.is_enabled,
-        created_at=config.created_at,
-        updated_at=config.updated_at,
-        configuration_type_name=config.configuration_type.name
-        if config.configuration_type
-        else None,
-        configuration_status_name=config.configuration_status.name
-        if config.configuration_status
-        else None,
-        updated_by_user_id=str(config.updated_by_user_id) if config.updated_by_user_id else None,
-        updated_by_user_name=config.updated_by_user.email if config.updated_by_user else None,
-    )
+    # Get base fields from ORM
+    data = {
+        "id": config.id,
+        "organization_id": config.organization_id,
+        "configuration_type_id": config.configuration_type_id,
+        "configuration_status_id": config.configuration_status_id,
+        "name": config.name,
+        "serial_number": config.serial_number,
+        "asset_tag": config.asset_tag,
+        "manufacturer": config.manufacturer,
+        "model": config.model,
+        "ip_address": config.ip_address,
+        "mac_address": config.mac_address,
+        "notes": config.notes,
+        "metadata": config.metadata_ if isinstance(config.metadata_, dict) else {},
+        "interfaces": config.interfaces if isinstance(config.interfaces, list) else [],
+        "is_enabled": config.is_enabled,
+        "created_at": config.created_at,
+        "updated_at": config.updated_at,
+        # Joined fields from relationships
+        "configuration_type_name": config.configuration_type.name if config.configuration_type else None,
+        "configuration_status_name": config.configuration_status.name if config.configuration_status else None,
+        "updated_by_user_id": str(config.updated_by_user_id) if config.updated_by_user_id else None,
+        "updated_by_user_name": config.updated_by_user.email if config.updated_by_user else None,
+    }
+    return ConfigurationPublic.model_validate(data)
 
 
 @router.get("", response_model=ConfigurationListResponse)

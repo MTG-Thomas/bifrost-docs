@@ -1,5 +1,4 @@
-"""
-Configuration contracts (API request/response schemas).
+"""Configuration contracts (API request/response schemas).
 
 Includes contracts for:
 - ConfigurationType
@@ -8,8 +7,11 @@ Includes contracts for:
 """
 
 from datetime import datetime
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field, field_serializer
+
+from src.models.contracts.base import PublicEntityBase
 
 # =============================================================================
 # Configuration Type Contracts
@@ -25,13 +27,15 @@ class ConfigurationTypeCreate(BaseModel):
 class ConfigurationTypePublic(BaseModel):
     """Configuration type public response model (global, not org-scoped)."""
 
-    model_config = ConfigDict(from_attributes=True)
-
     id: str
     name: str
     is_active: bool
     created_at: datetime
     configuration_count: int = 0
+
+    @field_serializer("id")
+    def serialize_uuid(self, v: UUID) -> str:
+        return str(v)
 
 
 # =============================================================================
@@ -48,13 +52,15 @@ class ConfigurationStatusCreate(BaseModel):
 class ConfigurationStatusPublic(BaseModel):
     """Configuration status public response model (global, not org-scoped)."""
 
-    model_config = ConfigDict(from_attributes=True)
-
     id: str
     name: str
     is_active: bool
     created_at: datetime
     configuration_count: int = 0
+
+    @field_serializer("id")
+    def serialize_uuid(self, v: UUID) -> str:
+        return str(v)
 
 
 # =============================================================================
@@ -98,30 +104,27 @@ class ConfigurationUpdate(BaseModel):
     is_enabled: bool | None = None  # Don't change if not provided
 
 
-class ConfigurationPublic(BaseModel):
+class ConfigurationPublic(PublicEntityBase):
     """Configuration public response model."""
 
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    organization_id: str
-    configuration_type_id: str | None
-    configuration_status_id: str | None
+    configuration_type_id: str | None = None
+    configuration_status_id: str | None = None
     name: str
-    serial_number: str | None
-    asset_tag: str | None
-    manufacturer: str | None
-    model: str | None
-    ip_address: str | None
-    mac_address: str | None
-    notes: str | None
-    metadata: dict = Field(default_factory=dict)
+    serial_number: str | None = None
+    asset_tag: str | None = None
+    manufacturer: str | None = None
+    model: str | None = None
+    ip_address: str | None = None
+    mac_address: str | None = None
+    notes: str | None = None
     interfaces: list = Field(default_factory=list)
-    is_enabled: bool = True
-    created_at: datetime
-    updated_at: datetime
-    # Nested type and status names for convenience
+    # Joined fields from relationships (not from ORM directly)
     configuration_type_name: str | None = None
     configuration_status_name: str | None = None
     updated_by_user_id: str | None = None
     updated_by_user_name: str | None = None
+
+    @field_serializer("configuration_type_id", "configuration_status_id")
+    def serialize_fk_uuid(self, v: UUID | None) -> str | None:
+        """Serialize foreign key UUIDs to strings."""
+        return str(v) if v else None

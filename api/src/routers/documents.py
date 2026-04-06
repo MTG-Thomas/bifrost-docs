@@ -68,6 +68,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/organizations/{org_id}/documents", tags=["documents"])
 
 
+def _to_public(doc: Document) -> DocumentPublic:
+    """Convert Document ORM model to public response."""
+    data = {
+        "id": doc.id,
+        "organization_id": doc.organization_id,
+        "path": doc.path,
+        "name": doc.name,
+        "content": doc.content,
+        "metadata": doc.metadata_ if isinstance(doc.metadata_, dict) else {},
+        "is_enabled": doc.is_enabled,
+        "created_at": doc.created_at,
+        "updated_at": doc.updated_at,
+        "updated_by_user_id": str(doc.updated_by_user_id) if doc.updated_by_user_id else None,
+        "updated_by_user_name": (doc.updated_by_user.name or doc.updated_by_user.email)
+        if doc.updated_by_user
+        else None,
+    }
+    return DocumentPublic.model_validate(data)
+
+
 @router.get("", response_model=DocumentListResponse)
 async def list_documents(
     org_id: UUID,
@@ -116,24 +136,7 @@ async def list_documents(
         is_enabled=is_enabled_filter,
     )
 
-    items = [
-        DocumentPublic(
-            id=str(doc.id),
-            organization_id=str(doc.organization_id),
-            path=doc.path,
-            name=doc.name,
-            content=doc.content,
-            metadata=doc.metadata_ if isinstance(doc.metadata_, dict) else {},
-            is_enabled=doc.is_enabled,
-            created_at=doc.created_at,
-            updated_at=doc.updated_at,
-            updated_by_user_id=str(doc.updated_by_user_id) if doc.updated_by_user_id else None,
-            updated_by_user_name=(doc.updated_by_user.name or doc.updated_by_user.email)
-            if doc.updated_by_user
-            else None,
-        )
-        for doc in documents
-    ]
+    items = [_to_public(doc) for doc in documents]
 
     return DocumentListResponse(
         items=items,
@@ -221,21 +224,7 @@ async def create_document(
     # Index for search (async, non-blocking on failure)
     await index_entity_for_search(db, "document", doc.id, org_id)
 
-    return DocumentPublic(
-        id=str(doc.id),
-        organization_id=str(doc.organization_id),
-        path=doc.path,
-        name=doc.name,
-        content=doc.content,
-        metadata=doc.metadata_ if isinstance(doc.metadata_, dict) else {},
-        is_enabled=doc.is_enabled,
-        created_at=doc.created_at,
-        updated_at=doc.updated_at,
-        updated_by_user_id=str(doc.updated_by_user_id) if doc.updated_by_user_id else None,
-        updated_by_user_name=(doc.updated_by_user.name or doc.updated_by_user.email)
-        if doc.updated_by_user
-        else None,
-    )
+    return _to_public(doc)
 
 
 @router.get("/{doc_id}", response_model=DocumentPublic)
@@ -280,21 +269,7 @@ async def get_document(
         dedupe_seconds=60,
     )
 
-    return DocumentPublic(
-        id=str(doc.id),
-        organization_id=str(doc.organization_id),
-        path=doc.path,
-        name=doc.name,
-        content=doc.content,
-        metadata=doc.metadata_ if isinstance(doc.metadata_, dict) else {},
-        is_enabled=doc.is_enabled,
-        created_at=doc.created_at,
-        updated_at=doc.updated_at,
-        updated_by_user_id=str(doc.updated_by_user_id) if doc.updated_by_user_id else None,
-        updated_by_user_name=(doc.updated_by_user.name or doc.updated_by_user.email)
-        if doc.updated_by_user
-        else None,
-    )
+    return _to_public(doc)
 
 
 @router.get("/{doc_id}/preview")
@@ -477,21 +452,7 @@ async def update_document(
     # Update search index (async, non-blocking on failure)
     await index_entity_for_search(db, "document", doc.id, org_id)
 
-    return DocumentPublic(
-        id=str(doc.id),
-        organization_id=str(doc.organization_id),
-        path=doc.path,
-        name=doc.name,
-        content=doc.content,
-        metadata=doc.metadata_ if isinstance(doc.metadata_, dict) else {},
-        is_enabled=doc.is_enabled,
-        created_at=doc.created_at,
-        updated_at=doc.updated_at,
-        updated_by_user_id=str(doc.updated_by_user_id) if doc.updated_by_user_id else None,
-        updated_by_user_name=(doc.updated_by_user.name or doc.updated_by_user.email)
-        if doc.updated_by_user
-        else None,
-    )
+    return _to_public(doc)
 
 
 @router.delete("/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
