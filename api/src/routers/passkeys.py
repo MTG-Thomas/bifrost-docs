@@ -20,6 +20,7 @@ from fastapi import APIRouter, HTTPException, Response, status
 
 from src.core.auth import CurrentActiveUser, UserPrincipal
 from src.core.database import DbSession
+from src.core.rate_limiting import RateLimits, limiter
 from src.core.security import create_access_token, create_refresh_token
 from src.models.contracts.auth import LoginResponse
 from src.models.contracts.passkeys import (
@@ -56,6 +57,7 @@ router = APIRouter(prefix="/auth/passkeys", tags=["passkeys"])
     description="Generate WebAuthn registration options for creating a new passkey. "
     "Returns a challenge and options that should be passed to navigator.credentials.create().",
 )
+@limiter.limit(RateLimits.PASSKEY)
 async def get_registration_options(
     request: PasskeyRegistrationOptionsRequest,
     user: CurrentActiveUser,
@@ -87,6 +89,7 @@ async def get_registration_options(
     description="Verify the passkey registration response from the browser. "
     "This completes the passkey enrollment process.",
 )
+@limiter.limit(RateLimits.PASSKEY)
 async def verify_registration(
     request: PasskeyRegistrationVerifyRequest,
     user: CurrentActiveUser,
@@ -141,6 +144,7 @@ async def verify_registration(
     "If email is provided, limits credentials to that user. "
     "If email is omitted, uses discoverable credentials (passkey autofill).",
 )
+@limiter.limit(RateLimits.PASSKEY)
 async def get_authentication_options(
     request: PasskeyAuthOptionsRequest,
     db: DbSession,
@@ -172,6 +176,7 @@ async def get_authentication_options(
     description="Verify the passkey authentication response and return JWT tokens. "
     "This is the passwordless login endpoint - no password required.",
 )
+@limiter.limit(RateLimits.PASSKEY)
 async def verify_authentication(
     request: PasskeyAuthVerifyRequest,
     response: Response,
@@ -236,6 +241,7 @@ async def verify_authentication(
     summary="List user's passkeys",
     description="Get a list of all passkeys registered for the current user.",
 )
+@limiter.limit(RateLimits.API_GENERAL)
 async def list_passkeys(
     user: CurrentActiveUser,
     db: DbSession,

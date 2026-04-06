@@ -173,6 +173,17 @@ def create_app() -> FastAPI:
     )
 
     # ==========================================================================
+    # Rate Limiting Middleware
+    # ==========================================================================
+    from src.core.rate_limiting import RATE_LIMITING_ENABLED, limiter
+    if RATE_LIMITING_ENABLED:
+        app.state.limiter = limiter
+        app.add_middleware(limiter.middleware_class)
+        logger.info("Rate limiting enabled (Redis-backed)")
+    else:
+        logger.info("Rate limiting disabled (slowapi not installed)")
+
+    # ==========================================================================
     # Global Exception Handlers
     # ==========================================================================
 

@@ -131,12 +131,16 @@ class LogoutRequest(BaseModel):
     refresh_token: str | None = None
 
 
+from src.core.rate_limiting import RateLimits, limiter
+
+
 # =============================================================================
 # Endpoints
 # =============================================================================
 
 
 @router.post("/login", response_model=LoginResponse)
+@limiter.limit(RateLimits.AUTH_LOGIN)
 async def login(
     request: Request,
     response: Response,
@@ -238,6 +242,7 @@ async def login(
 
 
 @router.post("/refresh", response_model=TokenResponse)
+@limiter.limit(RateLimits.API_GENERAL)
 async def refresh_token(
     request: Request,
     response: Response,
@@ -330,6 +335,7 @@ async def refresh_token(
 
 
 @router.get("/me", response_model=UserResponse)
+@limiter.limit(RateLimits.API_GENERAL)
 async def get_current_user_info(
     current_user: CurrentActiveUser,
 ) -> UserResponse:
@@ -354,6 +360,7 @@ async def get_current_user_info(
 
 
 @router.post("/logout", response_model=LogoutResponse)
+@limiter.limit(RateLimits.API_GENERAL)
 async def logout(
     response: Response,
     current_user: CurrentActiveUser,
@@ -388,6 +395,7 @@ async def logout(
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit(RateLimits.AUTH_STRICT)
 async def register_user(
     user_data: RegisterRequest,
     db: DbSession,
@@ -478,6 +486,7 @@ async def register_user(
 
 
 @router.get("/setup/status", response_model=SetupStatusResponse)
+@limiter.limit(RateLimits.HEALTH)
 async def get_setup_status(
     db: DbSession,
 ) -> SetupStatusResponse:
@@ -499,6 +508,7 @@ async def get_setup_status(
 
 
 @router.post("/setup/passkey/options", response_model=SetupPasskeyOptionsResponse)
+@limiter.limit(RateLimits.PASSKEY)
 async def setup_passkey_options(
     setup_request: SetupPasskeyOptionsRequest,
     db: DbSession,
@@ -552,6 +562,7 @@ async def setup_passkey_options(
 
 
 @router.post("/setup/passkey/verify", response_model=SetupPasskeyVerifyResponse)
+@limiter.limit(RateLimits.PASSKEY)
 async def setup_passkey_verify(
     response: Response,
     verify_request: SetupPasskeyVerifyRequest,
