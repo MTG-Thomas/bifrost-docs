@@ -1,7 +1,7 @@
 """Organization contracts (API request/response schemas).
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from src.models.contracts.access_tracking import FrequentItem
 from src.models.contracts.base import PublicOrganizationBase

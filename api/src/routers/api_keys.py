@@ -21,6 +21,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/api-keys", tags=["api-keys"])
 
 
+def _to_public(api_key: APIKey) -> ApiKeyPublic:
+    """Convert APIKey ORM model to public response."""
+    return ApiKeyPublic.model_validate(api_key)
+
+
 @router.get("", response_model=list[ApiKeyPublic])
 async def list_api_keys(
     current_user: CurrentActiveUser,
@@ -39,17 +44,7 @@ async def list_api_keys(
     api_key_repo = ApiKeyRepository(db)
     api_keys = await api_key_repo.get_by_user(current_user.user_id)
 
-    return [
-        ApiKeyPublic(
-            id=str(key.id),
-            user_id=str(key.user_id),
-            name=key.name,
-            last_used_at=key.last_used_at,
-            expires_at=key.expires_at,
-            created_at=key.created_at,
-        )
-        for key in api_keys
-    ]
+    return [_to_public(key) for key in api_keys]
 
 
 @router.post("", response_model=ApiKeyCreated, status_code=status.HTTP_201_CREATED)

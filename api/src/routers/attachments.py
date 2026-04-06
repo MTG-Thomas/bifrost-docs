@@ -101,20 +101,7 @@ async def list_attachments(
         total = len(attachments)  # Simplified; could add count query
 
     return AttachmentList(
-        items=[
-            AttachmentPublic(
-                id=str(att.id),
-                organization_id=str(att.organization_id),
-                entity_type=att.entity_type,
-                entity_id=str(att.entity_id),
-                filename=att.filename,
-                s3_key=att.s3_key,
-                content_type=att.content_type,
-                size_bytes=att.size_bytes,
-                created_at=att.created_at,
-            )
-            for att in attachments
-        ],
+        items=[_to_public(att) for att in attachments],
         total=total,
     )
 

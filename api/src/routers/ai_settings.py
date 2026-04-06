@@ -289,12 +289,7 @@ async def get_ai_settings(
         else DEFAULT_COMPLETIONS_CONFIG
     )
 
-    completions_public = CompletionsConfigPublic(
-        provider=completions_data.get("provider", "openai"),
-        api_key_set=completions_data.get("api_key_encrypted") is not None,
-        model=completions_data.get("model", "gpt-4o-mini"),
-        endpoint=completions_data.get("endpoint"),
-    )
+    completions_public = _completions_to_public(completions_data)
 
     # Get embeddings config
     embeddings_config_row = await repo.get_config(LLM_CATEGORY, EMBEDDINGS_CONFIG_KEY)
@@ -304,10 +299,7 @@ async def get_ai_settings(
         else DEFAULT_EMBEDDINGS_CONFIG
     )
 
-    embeddings_public = EmbeddingsConfigPublic(
-        api_key_set=embeddings_data.get("api_key_encrypted") is not None,
-        model=embeddings_data.get("model", "text-embedding-3-small"),
-    )
+    embeddings_public = _embeddings_to_public(embeddings_data)
 
     # Get indexing config
     indexing_config_row = await repo.get_config(LLM_CATEGORY, INDEXING_CONFIG_KEY)
@@ -317,9 +309,7 @@ async def get_ai_settings(
         else {"enabled": True}  # Default to enabled
     )
 
-    indexing_public = IndexingConfigPublic(
-        enabled=indexing_data.get("enabled", True),
-    )
+    indexing_public = _indexing_to_public(indexing_data)
 
     return AISettingsResponse(
         completions=completions_public,

@@ -38,11 +38,16 @@ from src.models.contracts.passkeys import (
 from src.models.enums import AuditAction
 from src.routers.auth import set_auth_cookies
 from src.services.audit_service import get_audit_service
-from src.services.passkey_service import PasskeyService
+from src.services.passkey_service import PasskeyService, UserPasskey
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth/passkeys", tags=["passkeys"])
+
+
+def _to_public(passkey: UserPasskey) -> PasskeyPublic:
+    """Convert UserPasskey ORM model to public response."""
+    return PasskeyPublic.model_validate(passkey)
 
 
 # =============================================================================
@@ -257,17 +262,7 @@ async def list_passkeys(
     passkeys = await service.list_passkeys(user.user_id)
 
     return PasskeyListResponse(
-        passkeys=[
-            PasskeyPublic(
-                id=p.id,
-                name=p.name,
-                device_type=p.device_type,
-                backed_up=p.backed_up,
-                created_at=p.created_at,
-                last_used_at=p.last_used_at,
-            )
-            for p in passkeys
-        ],
+        passkeys=[_to_public(p) for p in passkeys],
         count=len(passkeys),
     )
 

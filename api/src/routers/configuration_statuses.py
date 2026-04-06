@@ -71,15 +71,7 @@ async def list_configuration_statuses(
     result = []
     for s in statuses:
         config_count = await repo.get_configuration_count(s.id)
-        result.append(
-            ConfigurationStatusPublic(
-                id=str(s.id),
-                name=s.name,
-                is_active=s.is_active,
-                created_at=s.created_at,
-                configuration_count=config_count,
-            )
-        )
+        result.append(_to_public(s, configuration_count=config_count))
     return result
 
 

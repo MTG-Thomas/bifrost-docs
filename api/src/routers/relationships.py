@@ -81,18 +81,7 @@ async def list_relationships(
     repo = RelationshipRepository(db)
     relationships = await repo.get_for_entity(org_id, entity_type, entity_id)
 
-    return [
-        RelationshipPublic(
-            id=str(r.id),
-            organization_id=str(r.organization_id),
-            source_type=r.source_type,
-            source_id=str(r.source_id),
-            target_type=r.target_type,
-            target_id=str(r.target_id),
-            created_at=r.created_at,
-        )
-        for r in relationships
-    ]
+    return [_to_public(r) for r in relationships]
 
 
 @router.post("", response_model=RelationshipPublic, status_code=status.HTTP_201_CREATED)

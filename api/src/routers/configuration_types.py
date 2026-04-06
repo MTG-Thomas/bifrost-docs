@@ -71,15 +71,7 @@ async def list_configuration_types(
     result = []
     for ct in config_types:
         config_count = await repo.get_configuration_count(ct.id)
-        result.append(
-            ConfigurationTypePublic(
-                id=str(ct.id),
-                name=ct.name,
-                is_active=ct.is_active,
-                created_at=ct.created_at,
-                configuration_count=config_count,
-            )
-        )
+        result.append(_to_public(ct, configuration_count=config_count))
     return result
 
 
