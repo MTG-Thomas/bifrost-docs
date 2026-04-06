@@ -8,23 +8,25 @@ Note: If slowapi is not installed, rate limiting is disabled (development mode).
 """
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    # Import types for type checking only
-    from slowapi import Limiter as _SlowapiLimiter
-
-    # Define the Limiter type as a union of the real and dummy types
-    Limiter = _SlowapiLimiter  # noqa: F811
-    get_remote_address: Callable[[Any], str]
-
+# Try to import slowapi - if not available, use dummy implementations
 try:
     from slowapi import Limiter as _Limiter  # noqa: F811
-    from slowapi.util import get_remote_address as _get_remote_address_impl  # noqa: F811
+    from slowapi.util import get_remote_address as _get_remote_address  # noqa: F811
 
     RATE_LIMITING_ENABLED = True
-    Limiter = _Limiter  # type: ignore[misc]
-    get_remote_address = _get_remote_address_impl  # type: ignore[misc]
+
+    # Use the real implementations
+    class Limiter(_Limiter):  # type: ignore[misc, no-redef]
+        """Real Limiter from slowapi."""
+
+        pass
+
+    def get_remote_address(request: Any) -> str:  # type: ignore[misc, no-redef]
+        """Get remote address from request using slowapi."""
+        return _get_remote_address(request)  # type: ignore[no-any-return]
+
 except ImportError:
     RATE_LIMITING_ENABLED = False
 
@@ -46,7 +48,7 @@ except ImportError:
         # Dummy middleware_class attribute for type checking
         middleware_class: Any = None
 
-    def get_remote_address(request: Any) -> str:  # type: ignore[misc]
+    def get_remote_address(request: Any) -> str:  # type: ignore[misc, no-redef]
         """Dummy get_remote_address when slowapi is not installed."""
         return "127.0.0.1"
 
