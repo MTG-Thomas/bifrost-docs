@@ -15,6 +15,7 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5173,
     strictPort: true,
+    allowedHosts: ["dev.docs.midtowntg.com"],
     proxy: {
       "/api": {
         target: process.env.API_URL || "http://localhost:8001",
