@@ -184,6 +184,13 @@ def create_app() -> FastAPI:
         logger.info("Rate limiting disabled (slowapi not installed)")
 
     # ==========================================================================
+    # Security Headers Middleware
+    # ==========================================================================
+    from src.core.security_headers import SecurityHeadersMiddleware
+    app.add_middleware(SecurityHeadersMiddleware)
+    logger.info("Security headers middleware enabled")
+
+    # ==========================================================================
     # Global Exception Handlers
     # ==========================================================================
 
