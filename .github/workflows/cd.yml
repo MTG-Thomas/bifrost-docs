@@ -1,0 +1,149 @@
+name: CD - Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI - Test & Build"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch: # Allow manual deployment
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  API_IMAGE_NAME: ${{ github.repository }}-api
+  CLIENT_IMAGE_NAME: ${{ github.repository }}-client
+
+jobs:
+  # =============================================================================
+  # Deploy to Staging
+  # =============================================================================
+  deploy-staging:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging' || github.event.workflow_run.conclusion == 'success'
+    environment:
+      name: staging
+      url: https://staging.bifrost-docs.example.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging server via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/bifrost-docs
+            
+            # Pull latest images
+            docker pull ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:latest
+            docker pull ${{ env.REGISTRY }}/${{ env.CLIENT_IMAGE_NAME }}:latest
+            
+            # Update docker-compose to use GHCR images
+            export API_IMAGE=${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:latest
+            export CLIENT_IMAGE=${{ env.REGISTRY }}/${{ env.CLIENT_IMAGE_NAME }}:latest
+            
+            # Restart services
+            docker compose down
+            docker compose up -d
+            
+            # Run migrations
+            docker compose run --rm init
+            
+            # Cleanup old images
+            docker image prune -f
+
+      - name: Verify deployment
+        run: |
+          sleep 10
+          curl -sf https://staging.bifrost-docs.example.com/health || exit 1
+
+  # =============================================================================
+  # Deploy to Production (Manual only)
+  # =============================================================================
+  deploy-production:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
+    environment:
+      name: production
+      url: https://docs.example.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to production Kubernetes cluster
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: Update Kubernetes deployments
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          # Update image tags in deployments
+          kubectl set image deployment/bifrost-docs-api \
+            api=${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:latest \
+            -n bifrost-docs
+          
+          kubectl set image deployment/bifrost-docs-client \
+            client=${{ env.REGISTRY }}/${{ env.CLIENT_IMAGE_NAME }}:latest \
+            -n bifrost-docs
+          
+          kubectl set image deployment/bifrost-docs-worker \
+            worker=${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:latest \
+            -n bifrost-docs
+          
+          # Wait for rollout to complete
+          kubectl rollout status deployment/bifrost-docs-api -n bifrost-docs --timeout=300s
+          kubectl rollout status deployment/bifrost-docs-client -n bifrost-docs --timeout=300s
+          kubectl rollout status deployment/bifrost-docs-worker -n bifrost-docs --timeout=300s
+
+      - name: Verify deployment
+        run: |
+          export KUBECONFIG=kubeconfig
+          kubectl get pods -n bifrost-docs
+
+  # =============================================================================
+  # Notify on Deployment
+  # =============================================================================
+  notify:
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    
+    steps:
+      - name: Notify Slack on success
+        if: needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          channel: '#deployments'
+          text: '✅ Bifrost Docs deployed successfully'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Slack on failure
+        if: needs.deploy-staging.result == 'failure' || needs.deploy-production.result == 'failure'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#deployments'
+          text: '❌ Bifrost Docs deployment failed'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
