@@ -33,9 +33,13 @@ FROM nginx:alpine AS production
 # Copy built assets from builder
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+    # Copy nginx configurations
+    COPY nginx.conf /etc/nginx/conf.d/default.conf
+    COPY nginx-ssl.conf /app/nginx-ssl.conf
 
-EXPOSE 80
+    # Create SSL directory
+    RUN mkdir -p /etc/nginx/ssl
+
+    EXPOSE 80 443
 
 CMD ["nginx", "-g", "daemon off;"]
