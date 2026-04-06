@@ -58,7 +58,11 @@ class CustomAssetTypeRepository(BaseRepository[CustomAssetType]):
         query = select(CustomAssetType)
         if not include_inactive:
             query = query.where(CustomAssetType.is_active == True)  # noqa: E712
-        query = query.order_by(CustomAssetType.sort_order, CustomAssetType.name).limit(limit).offset(offset)
+        query = (
+            query.order_by(CustomAssetType.sort_order, CustomAssetType.name)
+            .limit(limit)
+            .offset(offset)
+        )
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
@@ -117,9 +121,7 @@ class CustomAssetTypeRepository(BaseRepository[CustomAssetType]):
             Count of assets using this type
         """
         result = await self.session.execute(
-            select(func.count(CustomAsset.id)).where(
-                CustomAsset.custom_asset_type_id == type_id
-            )
+            select(func.count(CustomAsset.id)).where(CustomAsset.custom_asset_type_id == type_id)
         )
         return result.scalar_one()
 

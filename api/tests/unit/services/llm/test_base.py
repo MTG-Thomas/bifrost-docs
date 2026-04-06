@@ -1,4 +1,5 @@
 """Tests for LLM base types."""
+
 import pytest
 
 from src.services.llm.base import (

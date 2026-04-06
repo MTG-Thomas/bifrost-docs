@@ -65,9 +65,7 @@ def validate_values(
     provided_keys = set(values.keys())
     unknown_keys = provided_keys - valid_keys
     if unknown_keys:
-        raise CustomAssetValidationError(
-            f"Unknown field keys: {', '.join(sorted(unknown_keys))}"
-        )
+        raise CustomAssetValidationError(f"Unknown field keys: {', '.join(sorted(unknown_keys))}")
 
     # Validate each provided value
     for key, value in values.items():

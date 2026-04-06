@@ -23,9 +23,7 @@ class AttachmentRepository(BaseRepository[Attachment]):
     def __init__(self, session: AsyncSession):
         super().__init__(session)
 
-    async def get_by_id_and_org(
-        self, id: UUID, organization_id: UUID
-    ) -> Attachment | None:
+    async def get_by_id_and_org(self, id: UUID, organization_id: UUID) -> Attachment | None:
         """
         Get attachment by ID, scoped to organization.
 
@@ -143,9 +141,7 @@ class AttachmentRepository(BaseRepository[Attachment]):
         Returns:
             Attachment or None if not found
         """
-        result = await self.session.execute(
-            select(Attachment).where(Attachment.s3_key == s3_key)
-        )
+        result = await self.session.execute(select(Attachment).where(Attachment.s3_key == s3_key))
         return result.scalar_one_or_none()
 
     async def delete_by_entity(
@@ -168,9 +164,7 @@ class AttachmentRepository(BaseRepository[Attachment]):
             List of S3 keys that were deleted (for S3 cleanup)
         """
         # Get all attachments first to collect S3 keys
-        attachments = await self.get_by_entity(
-            organization_id, entity_type, entity_id, limit=10000
-        )
+        attachments = await self.get_by_entity(organization_id, entity_type, entity_id, limit=10000)
 
         s3_keys = [att.s3_key for att in attachments]
 

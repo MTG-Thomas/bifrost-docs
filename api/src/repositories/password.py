@@ -55,7 +55,7 @@ class PasswordRepository(BaseRepository[Password]):
         """
         filters = [Password.organization_id == organization_id]
 
-        if is_enabled is not None and hasattr(Password, 'is_enabled'):
+        if is_enabled is not None and hasattr(Password, "is_enabled"):
             filters.append(Password.is_enabled == is_enabled)
 
         if has_totp is not None:
@@ -98,9 +98,7 @@ class PasswordRepository(BaseRepository[Password]):
         )
         return list(result.scalars().all())
 
-    async def get_by_id_and_org(
-        self, id: UUID, organization_id: UUID
-    ) -> Password | None:
+    async def get_by_id_and_org(self, id: UUID, organization_id: UUID) -> Password | None:
         """
         Get a password by ID within an organization scope.
 

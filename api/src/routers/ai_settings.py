@@ -513,11 +513,7 @@ async def list_available_models(
             # Use completions config key
             config_row = await repo.get_config(LLM_CATEGORY, COMPLETIONS_CONFIG_KEY)
 
-        if (
-            config_row
-            and config_row.value_json
-            and config_row.value_json.get("api_key_encrypted")
-        ):
+        if config_row and config_row.value_json and config_row.value_json.get("api_key_encrypted"):
             key_to_use = decrypt_secret(config_row.value_json["api_key_encrypted"])
 
     if not key_to_use:

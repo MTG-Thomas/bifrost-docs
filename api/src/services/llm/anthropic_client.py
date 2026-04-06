@@ -1,4 +1,5 @@
 """Anthropic LLM client implementation."""
+
 from collections.abc import AsyncGenerator
 
 from anthropic import AsyncAnthropic
@@ -160,11 +161,19 @@ class AnthropicClient(BaseLLMClient):
                     if current_tool:
                         try:
                             import json
-                            args = json.loads(current_tool["input_json"]) if current_tool["input_json"] else {}
+
+                            args = (
+                                json.loads(current_tool["input_json"])
+                                if current_tool["input_json"]
+                                else {}
+                            )
                         except json.JSONDecodeError:
                             import logging
+
                             logger = logging.getLogger(__name__)
-                            logger.warning(f"Failed to parse tool input: {current_tool['input_json']}")
+                            logger.warning(
+                                f"Failed to parse tool input: {current_tool['input_json']}"
+                            )
                             args = {}
 
                         yield LLMStreamChunk(

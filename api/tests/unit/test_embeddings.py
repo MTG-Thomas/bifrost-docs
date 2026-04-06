@@ -221,7 +221,9 @@ class TestExtractSearchableText:
         }
 
         # display_field_key is "name" - this is what appears as the display name
-        result = service.extract_searchable_text("custom_asset", asset, fields, display_field_key="name")
+        result = service.extract_searchable_text(
+            "custom_asset", asset, fields, display_field_key="name"
+        )
 
         assert "Custom Server" in result
         assert "Hostname: custom-01" in result

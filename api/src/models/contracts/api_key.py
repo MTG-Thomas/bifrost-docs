@@ -32,4 +32,6 @@ class ApiKeyPublic(BaseModel):
 class ApiKeyCreated(ApiKeyPublic):
     """API key response model returned only on creation (includes the full key)."""
 
-    key: str = Field(..., description="The full API key. Store it securely - it cannot be retrieved again.")
+    key: str = Field(
+        ..., description="The full API key. Store it securely - it cannot be retrieved again."
+    )

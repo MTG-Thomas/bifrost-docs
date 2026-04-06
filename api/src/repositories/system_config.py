@@ -1,4 +1,5 @@
 """Repository for SystemConfig model operations."""
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,9 +22,7 @@ class SystemConfigRepository:
         )
         return result.scalar_one_or_none()
 
-    async def set_config(
-        self, category: str, key: str, value_json: dict
-    ) -> SystemConfig:
+    async def set_config(self, category: str, key: str, value_json: dict) -> SystemConfig:
         """Set a configuration value, creating or updating as needed."""
         config = await self.get_config(category, key)
 

@@ -220,7 +220,12 @@ async def reindex_task(
 
     logger.info(
         f"Starting reindex job {job_id} with {total} entities",
-        extra={"job_id": job_id, "total": total, "entity_type": entity_type, "organization_id": organization_id},
+        extra={
+            "job_id": job_id,
+            "total": total,
+            "entity_type": entity_type,
+            "organization_id": organization_id,
+        },
     )
 
     start_time = time.time()
@@ -253,11 +258,15 @@ async def reindex_task(
                 logger.info(f"Published reindex_failed for job {job_id} (OpenAI not configured)")
                 return
 
-            logger.info(f"Reindex {job_id} - indexing enabled, OpenAI available, starting processing")
+            logger.info(
+                f"Reindex {job_id} - indexing enabled, OpenAI available, starting processing"
+            )
 
             # Define entity types to process
             entity_types: list[str] = (
-                [entity_type] if entity_type else ["password", "configuration", "location", "document", "custom_asset"]
+                [entity_type]
+                if entity_type
+                else ["password", "configuration", "location", "document", "custom_asset"]
             )
 
             # Entity model mapping for building queries
@@ -317,7 +326,9 @@ async def reindex_task(
                         return
 
                     try:
-                        await embeddings_service.index_entity(db, typed_etype, entity_id, entity_org_id)
+                        await embeddings_service.index_entity(
+                            db, typed_etype, entity_id, entity_org_id
+                        )
                         processed += 1
                         counts_by_type[etype] += 1
                     except Exception as e:
@@ -337,7 +348,9 @@ async def reindex_task(
 
                     # Log every 10 entities to avoid log spam
                     if processed % 10 == 0:
-                        logger.info(f"Reindex {job_id} progress: {current_progress}/{total} ({etype})")
+                        logger.info(
+                            f"Reindex {job_id} progress: {current_progress}/{total} ({etype})"
+                        )
 
                     # Small delay to avoid overwhelming OpenAI API
                     await asyncio.sleep(0.1)
@@ -347,7 +360,9 @@ async def reindex_task(
         # Complete
         duration = time.time() - start_time
         await state_service.complete_job(job_id)
-        await publish_reindex_completed(job_id=job_id, counts=counts_by_type, duration_seconds=duration)
+        await publish_reindex_completed(
+            job_id=job_id, counts=counts_by_type, duration_seconds=duration
+        )
 
         logger.info(
             f"Reindex {job_id} completed - published completion event",

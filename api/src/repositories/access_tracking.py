@@ -38,9 +38,7 @@ class AccessTrackingRepository:
         """Initialize repository with database session."""
         self.session = session
 
-    async def get_recent_for_user(
-        self, user_id: UUID, limit: int = 10
-    ) -> list[RecentItem]:
+    async def get_recent_for_user(self, user_id: UUID, limit: int = 10) -> list[RecentItem]:
         """
         Get recently viewed entities for a user.
 
@@ -196,9 +194,7 @@ class AccessTrackingRepository:
 
         return frequent_items
 
-    async def _get_entity_name(
-        self, entity_type: str, entity_id: UUID
-    ) -> str | None:
+    async def _get_entity_name(self, entity_type: str, entity_id: UUID) -> str | None:
         """
         Get the display name for an entity.
 

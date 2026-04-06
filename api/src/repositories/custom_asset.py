@@ -87,6 +87,7 @@ class CustomAssetRepository(BaseRepository[CustomAsset]):
                     query = query.order_by(CustomAsset.values[jsonb_key].astext.asc())
             elif hasattr(CustomAsset, sort_by):
                 from sqlalchemy import asc, desc
+
                 order_func = desc if sort_dir == "desc" else asc
                 query = query.order_by(order_func(getattr(CustomAsset, sort_by)))
 
@@ -102,9 +103,7 @@ class CustomAssetRepository(BaseRepository[CustomAsset]):
 
         return items, total
 
-    async def get_by_id_and_org(
-        self, id: UUID, organization_id: UUID
-    ) -> CustomAsset | None:
+    async def get_by_id_and_org(self, id: UUID, organization_id: UUID) -> CustomAsset | None:
         """
         Get custom asset by ID within an organization.
 

@@ -58,9 +58,7 @@ class EntityResolver:
         else:
             return None
 
-    async def _get_password_name(
-        self, organization_id: UUID, entity_id: UUID
-    ) -> str | None:
+    async def _get_password_name(self, organization_id: UUID, entity_id: UUID) -> str | None:
         """Get password name by ID."""
         result = await self.session.execute(
             select(Password.name).where(
@@ -70,9 +68,7 @@ class EntityResolver:
         )
         return result.scalar_one_or_none()
 
-    async def _get_configuration_name(
-        self, organization_id: UUID, entity_id: UUID
-    ) -> str | None:
+    async def _get_configuration_name(self, organization_id: UUID, entity_id: UUID) -> str | None:
         """Get configuration name by ID."""
         result = await self.session.execute(
             select(Configuration.name).where(
@@ -82,9 +78,7 @@ class EntityResolver:
         )
         return result.scalar_one_or_none()
 
-    async def _get_location_name(
-        self, organization_id: UUID, entity_id: UUID
-    ) -> str | None:
+    async def _get_location_name(self, organization_id: UUID, entity_id: UUID) -> str | None:
         """Get location name by ID."""
         result = await self.session.execute(
             select(Location.name).where(
@@ -94,9 +88,7 @@ class EntityResolver:
         )
         return result.scalar_one_or_none()
 
-    async def _get_document_name(
-        self, organization_id: UUID, entity_id: UUID
-    ) -> str | None:
+    async def _get_document_name(self, organization_id: UUID, entity_id: UUID) -> str | None:
         """Get document name by ID."""
         result = await self.session.execute(
             select(Document.name).where(
@@ -106,9 +98,7 @@ class EntityResolver:
         )
         return result.scalar_one_or_none()
 
-    async def _get_custom_asset_name(
-        self, organization_id: UUID, entity_id: UUID
-    ) -> str | None:
+    async def _get_custom_asset_name(self, organization_id: UUID, entity_id: UUID) -> str | None:
         """Get custom asset name by ID (from values JSONB field).
 
         Values are stored with UUID keys (field definition IDs), not human-readable

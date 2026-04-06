@@ -59,7 +59,7 @@ class DocumentRepository(BaseRepository[Document]):
         if path is not None:
             filters.append(Document.path == path)
 
-        if is_enabled is not None and hasattr(Document, 'is_enabled'):
+        if is_enabled is not None and hasattr(Document, "is_enabled"):
             filters.append(Document.is_enabled == is_enabled)
 
         return await self.get_paginated(
@@ -73,9 +73,7 @@ class DocumentRepository(BaseRepository[Document]):
             options=[selectinload(Document.updated_by_user)],
         )
 
-    async def get_by_id_and_org(
-        self, id: UUID, organization_id: UUID
-    ) -> Document | None:
+    async def get_by_id_and_org(self, id: UUID, organization_id: UUID) -> Document | None:
         """
         Get document by ID, scoped to organization.
 
@@ -172,9 +170,7 @@ class DocumentRepository(BaseRepository[Document]):
         )
         return [row[0] for row in result.fetchall()]
 
-    async def get_paths_with_counts(
-        self, organization_id: UUID
-    ) -> list[tuple[str, int]]:
+    async def get_paths_with_counts(self, organization_id: UUID) -> list[tuple[str, int]]:
         """
         Get all folder paths with document counts for an organization.
 
@@ -194,9 +190,7 @@ class DocumentRepository(BaseRepository[Document]):
         )
         return [(row[0], row[1]) for row in result.fetchall()]
 
-    async def delete_by_id_and_org(
-        self, id: UUID, organization_id: UUID
-    ) -> bool:
+    async def delete_by_id_and_org(self, id: UUID, organization_id: UUID) -> bool:
         """
         Delete document by ID, scoped to organization.
 
@@ -270,8 +264,7 @@ class DocumentRepository(BaseRepository[Document]):
                 and_(
                     Document.organization_id == organization_id,
                     # Match exact path or paths that start with old_prefix/
-                    (Document.path == old_prefix)
-                    | (Document.path.like(f"{old_prefix}/%")),
+                    (Document.path == old_prefix) | (Document.path.like(f"{old_prefix}/%")),
                 )
             )
             .subquery()
@@ -284,8 +277,7 @@ class DocumentRepository(BaseRepository[Document]):
                 and_(
                     Document.organization_id == organization_id,
                     # Match documents at the new path locations
-                    (Document.path == new_prefix)
-                    | (Document.path.like(f"{new_prefix}/%")),
+                    (Document.path == new_prefix) | (Document.path.like(f"{new_prefix}/%")),
                     # Check if there's a moving doc with same name and path
                     Document.name.in_(
                         select(moving_docs_subquery.c.name).where(

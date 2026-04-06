@@ -25,10 +25,8 @@ from src.models.orm.user import User
 
 
 def create_mock_user(
-    user_id=None,
-    role=UserRole.CONTRIBUTOR,
-    email="test@example.com",
-    name="Test User") -> UserPrincipal:
+    user_id=None, role=UserRole.CONTRIBUTOR, email="test@example.com", name="Test User"
+) -> UserPrincipal:
     """Create a mock UserPrincipal for testing."""
     return UserPrincipal(
         user_id=user_id or uuid4(),
@@ -36,15 +34,14 @@ def create_mock_user(
         name=name,
         role=role,
         is_active=True,
-        is_verified=True)
+        is_verified=True,
+    )
 
 
 @pytest_asyncio.fixture
 async def client():
     """Create an async HTTP client for testing."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
 
@@ -63,17 +60,13 @@ def owner_user(test_org_id):
 @pytest.fixture
 def admin_user(test_org_id):
     """Create an ADMINISTRATOR user."""
-    return create_mock_user(
-        role=UserRole.ADMINISTRATOR, email="admin@example.com"
-    )
+    return create_mock_user(role=UserRole.ADMINISTRATOR, email="admin@example.com")
 
 
 @pytest.fixture
 def contributor_user(test_org_id):
     """Create a CONTRIBUTOR user."""
-    return create_mock_user(
-        role=UserRole.CONTRIBUTOR, email="contributor@example.com"
-    )
+    return create_mock_user(role=UserRole.CONTRIBUTOR, email="contributor@example.com")
 
 
 @pytest.fixture
@@ -104,8 +97,8 @@ class TestAdminEndpointsAccessControl:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 with patch("src.routers.admin.UserRepository", return_value=mock_user_repo):
                     response = await test_client.get("/api/admin/users")
 
@@ -122,8 +115,8 @@ class TestAdminEndpointsAccessControl:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 with patch("src.routers.admin.UserRepository", return_value=mock_user_repo):
                     response = await test_client.get("/api/admin/users")
 
@@ -137,8 +130,8 @@ class TestAdminEndpointsAccessControl:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.get("/api/admin/users")
 
             assert response.status_code == 403
@@ -152,8 +145,8 @@ class TestAdminEndpointsAccessControl:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.get("/api/admin/users")
 
             assert response.status_code == 403
@@ -167,11 +160,12 @@ class TestAdminEndpointsAccessControl:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.post(
                     "/api/admin/users/invite",
-                    json={"email": "newuser@example.com", "role": "contributor"})
+                    json={"email": "newuser@example.com", "role": "contributor"},
+                )
 
             assert response.status_code == 200
         finally:
@@ -185,11 +179,12 @@ class TestAdminEndpointsAccessControl:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.post(
                     "/api/admin/users/invite",
-                    json={"email": "newuser@example.com", "role": "contributor"})
+                    json={"email": "newuser@example.com", "role": "contributor"},
+                )
 
             assert response.status_code == 403
         finally:
@@ -201,11 +196,12 @@ class TestAdminEndpointsAccessControl:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.post(
                     "/api/admin/users/invite",
-                    json={"email": "newuser@example.com", "role": "contributor"})
+                    json={"email": "newuser@example.com", "role": "contributor"},
+                )
 
             assert response.status_code == 403
         finally:
@@ -227,8 +223,8 @@ class TestAdminEndpointsAccessControl:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 with patch("src.routers.admin.UserRepository", return_value=mock_user_repo):
                     response = await test_client.delete(f"/api/admin/users/{target_user_id}")
 
@@ -245,8 +241,8 @@ class TestAdminEndpointsAccessControl:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.delete(f"/api/admin/users/{target_user_id}")
 
             assert response.status_code == 403
@@ -260,8 +256,8 @@ class TestAdminEndpointsAccessControl:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.delete(f"/api/admin/users/{target_user_id}")
 
             assert response.status_code == 403
@@ -305,12 +301,12 @@ class TestOwnerEndpointsAccessControl:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 with patch("src.routers.admin.UserRepository", return_value=mock_user_repo):
                     response = await test_client.post(
-                        "/api/admin/transfer-ownership",
-                        json={"user_id": str(new_owner_id)})
+                        "/api/admin/transfer-ownership", json={"user_id": str(new_owner_id)}
+                    )
 
             assert response.status_code == 200
             assert "transferred" in response.json()["message"].lower()
@@ -324,11 +320,11 @@ class TestOwnerEndpointsAccessControl:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.post(
-                    "/api/admin/transfer-ownership",
-                    json={"user_id": str(new_owner_id)})
+                    "/api/admin/transfer-ownership", json={"user_id": str(new_owner_id)}
+                )
 
             assert response.status_code == 403
             assert "owner" in response.json()["detail"].lower()
@@ -344,11 +340,11 @@ class TestOwnerEndpointsAccessControl:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.post(
-                    "/api/admin/transfer-ownership",
-                    json={"user_id": str(new_owner_id)})
+                    "/api/admin/transfer-ownership", json={"user_id": str(new_owner_id)}
+                )
 
             assert response.status_code == 403
         finally:
@@ -361,11 +357,11 @@ class TestOwnerEndpointsAccessControl:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.post(
-                    "/api/admin/transfer-ownership",
-                    json={"user_id": str(new_owner_id)})
+                    "/api/admin/transfer-ownership", json={"user_id": str(new_owner_id)}
+                )
 
             assert response.status_code == 403
         finally:
@@ -386,12 +382,12 @@ class TestOwnerEndpointsAccessControl:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 with patch("src.routers.admin.UserRepository", return_value=mock_user_repo):
                     response = await test_client.patch(
-                        f"/api/admin/users/{target_user_id}",
-                        json={"role": "owner"})
+                        f"/api/admin/users/{target_user_id}", json={"role": "owner"}
+                    )
 
             assert response.status_code == 403
             assert "owner" in response.json()["detail"].lower()
@@ -427,12 +423,12 @@ class TestOwnerEndpointsAccessControl:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 with patch("src.routers.admin.UserRepository", return_value=mock_user_repo):
                     response = await test_client.patch(
-                        f"/api/admin/users/{target_user_id}",
-                        json={"role": "owner"})
+                        f"/api/admin/users/{target_user_id}", json={"role": "owner"}
+                    )
 
             assert response.status_code == 200
             assert response.json()["role"] == "owner"
@@ -462,15 +458,16 @@ class TestReaderRestrictions:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.post(
                     f"/api/organizations/{test_org_id}/passwords",
                     json={
                         "name": "Test Password",
                         "username": "testuser",
                         "password": "secret123",
-                    })
+                    },
+                )
 
             assert response.status_code == 403
             assert "contributor" in response.json()["detail"].lower()
@@ -486,11 +483,12 @@ class TestReaderRestrictions:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.put(
                     f"/api/organizations/{test_org_id}/passwords/{password_id}",
-                    json={"name": "Updated Password"})
+                    json={"name": "Updated Password"},
+                )
 
             assert response.status_code == 403
             assert "contributor" in response.json()["detail"].lower()
@@ -506,8 +504,8 @@ class TestReaderRestrictions:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.delete(
                     f"/api/organizations/{test_org_id}/passwords/{password_id}"
                 )
@@ -525,15 +523,16 @@ class TestReaderRestrictions:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.post(
                     f"/api/organizations/{test_org_id}/documents",
                     json={
                         "path": "/Test",
                         "name": "Test Document",
                         "content": "Test content",
-                    })
+                    },
+                )
 
             assert response.status_code == 403
             assert "contributor" in response.json()["detail"].lower()
@@ -549,11 +548,12 @@ class TestReaderRestrictions:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.put(
                     f"/api/organizations/{test_org_id}/documents/{doc_id}",
-                    json={"name": "Updated Document"})
+                    json={"name": "Updated Document"},
+                )
 
             assert response.status_code == 403
             assert "contributor" in response.json()["detail"].lower()
@@ -569,8 +569,8 @@ class TestReaderRestrictions:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.delete(
                     f"/api/organizations/{test_org_id}/documents/{doc_id}"
                 )
@@ -589,14 +589,15 @@ class TestReaderRestrictions:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.post(
                     f"/api/organizations/{test_org_id}/configurations",
                     json={
                         "name": "Test Configuration",
                         "configuration_type_id": str(config_type_id),
-                    })
+                    },
+                )
 
             assert response.status_code == 403
             assert "contributor" in response.json()["detail"].lower()
@@ -612,8 +613,8 @@ class TestReaderRestrictions:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.delete(
                     f"/api/organizations/{test_org_id}/configurations/{config_id}"
                 )
@@ -632,14 +633,12 @@ class TestReaderRestrictions:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
-                    response = await test_client.get(
-                        f"/api/organizations/{test_org_id}/passwords"
-                    )
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
+                    response = await test_client.get(f"/api/organizations/{test_org_id}/passwords")
 
             assert response.status_code == 200
         finally:
@@ -654,14 +653,10 @@ class TestReaderRestrictions:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
-                with patch(
-                    "src.routers.documents.DocumentRepository", return_value=mock_doc_repo
-                ):
-                    response = await test_client.get(
-                        f"/api/organizations/{test_org_id}/documents"
-                    )
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
+                with patch("src.routers.documents.DocumentRepository", return_value=mock_doc_repo):
+                    response = await test_client.get(f"/api/organizations/{test_org_id}/documents")
 
             assert response.status_code == 200
         finally:
@@ -727,12 +722,14 @@ class TestContributorAccess:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
-                with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo
-                ), patch("src.routers.passwords.index_entity_for_search", new_callable=AsyncMock):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
+                with (
+                    patch(
+                        "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                    ),
+                    patch("src.routers.passwords.index_entity_for_search", new_callable=AsyncMock),
+                ):
                     response = await test_client.post(
                         f"/api/organizations/{test_org_id}/passwords",
                         json={
@@ -741,7 +738,8 @@ class TestContributorAccess:
                             "password": "secret123",
                             "url": "https://example.com",
                             "notes": "Test notes",
-                        })
+                        },
+                    )
 
             assert response.status_code == 201
             data = response.json()
@@ -772,15 +770,18 @@ class TestContributorAccess:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
-                with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo
-                ), patch("src.routers.passwords.index_entity_for_search", new_callable=AsyncMock):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
+                with (
+                    patch(
+                        "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                    ),
+                    patch("src.routers.passwords.index_entity_for_search", new_callable=AsyncMock),
+                ):
                     response = await test_client.put(
                         f"/api/organizations/{test_org_id}/passwords/{password_id}",
-                        json={"name": "Updated Password"})
+                        json={"name": "Updated Password"},
+                    )
 
             assert response.status_code == 200
         finally:
@@ -803,13 +804,15 @@ class TestContributorAccess:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
-                with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo
-                ), patch(
-                    "src.routers.passwords.remove_entity_from_search", new_callable=AsyncMock
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
+                with (
+                    patch(
+                        "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                    ),
+                    patch(
+                        "src.routers.passwords.remove_entity_from_search", new_callable=AsyncMock
+                    ),
                 ):
                     response = await test_client.delete(
                         f"/api/organizations/{test_org_id}/passwords/{password_id}"
@@ -839,18 +842,20 @@ class TestContributorAccess:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
-                with patch(
-                    "src.routers.documents.DocumentRepository", return_value=mock_doc_repo
-                ), patch("src.routers.documents.index_entity_for_search", new_callable=AsyncMock):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
+                with (
+                    patch("src.routers.documents.DocumentRepository", return_value=mock_doc_repo),
+                    patch("src.routers.documents.index_entity_for_search", new_callable=AsyncMock),
+                ):
                     response = await test_client.post(
                         f"/api/organizations/{test_org_id}/documents",
                         json={
                             "path": "/Infrastructure",
                             "name": "Network Docs",
                             "content": "# Network Documentation",
-                        })
+                        },
+                    )
 
             assert response.status_code == 201
         finally:
@@ -878,14 +883,16 @@ class TestContributorAccess:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
-                with patch(
-                    "src.routers.documents.DocumentRepository", return_value=mock_doc_repo
-                ), patch("src.routers.documents.index_entity_for_search", new_callable=AsyncMock):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
+                with (
+                    patch("src.routers.documents.DocumentRepository", return_value=mock_doc_repo),
+                    patch("src.routers.documents.index_entity_for_search", new_callable=AsyncMock),
+                ):
                     response = await test_client.put(
                         f"/api/organizations/{test_org_id}/documents/{doc_id}",
-                        json={"name": "Updated Docs", "content": "# Updated Content"})
+                        json={"name": "Updated Docs", "content": "# Updated Content"},
+                    )
 
             assert response.status_code == 200
         finally:
@@ -903,14 +910,17 @@ class TestContributorAccess:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
-                with patch(
-                    "src.routers.configurations.ConfigurationRepository",
-                    return_value=mock_config_repo
-                ), patch(
-                    "src.routers.configurations.remove_entity_from_search",
-                    new_callable=AsyncMock
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
+                with (
+                    patch(
+                        "src.routers.configurations.ConfigurationRepository",
+                        return_value=mock_config_repo,
+                    ),
+                    patch(
+                        "src.routers.configurations.remove_entity_from_search",
+                        new_callable=AsyncMock,
+                    ),
                 ):
                     response = await test_client.delete(
                         f"/api/organizations/{test_org_id}/configurations/{config_id}"
@@ -943,8 +953,8 @@ class TestRoleHierarchy:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 with patch("src.routers.admin.UserRepository", return_value=mock_user_repo):
                     response = await test_client.get("/api/admin/users")
 
@@ -952,9 +962,7 @@ class TestRoleHierarchy:
         finally:
             app.dependency_overrides.pop(get_current_active_user, None)
 
-    async def test_admin_has_contributor_access(
-        self, client: AsyncClient, admin_user, test_org_id
-    ):
+    async def test_admin_has_contributor_access(self, client: AsyncClient, admin_user, test_org_id):
         """Test that ADMINISTRATOR has contributor-level access (can create resources)."""
         app.dependency_overrides[get_current_active_user] = lambda: admin_user
 
@@ -973,19 +981,22 @@ class TestRoleHierarchy:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
-                with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo
-                ), patch("src.routers.passwords.index_entity_for_search", new_callable=AsyncMock):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
+                with (
+                    patch(
+                        "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                    ),
+                    patch("src.routers.passwords.index_entity_for_search", new_callable=AsyncMock),
+                ):
                     response = await test_client.post(
                         f"/api/organizations/{test_org_id}/passwords",
                         json={
                             "name": "Admin Created Password",
                             "username": "admin",
                             "password": "secret123",
-                        })
+                        },
+                    )
 
             assert response.status_code == 201
         finally:
@@ -1000,14 +1011,12 @@ class TestRoleHierarchy:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
-                    response = await test_client.get(
-                        f"/api/organizations/{test_org_id}/passwords"
-                    )
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
+                    response = await test_client.get(f"/api/organizations/{test_org_id}/passwords")
 
             assert response.status_code == 200
         finally:
@@ -1024,14 +1033,12 @@ class TestRoleHierarchy:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
-                    response = await test_client.get(
-                        f"/api/organizations/{test_org_id}/passwords"
-                    )
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
+                    response = await test_client.get(f"/api/organizations/{test_org_id}/passwords")
 
             assert response.status_code == 200
         finally:
@@ -1053,24 +1060,22 @@ class TestAdminConfigEndpoints:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.get("/api/admin/config")
 
             assert response.status_code == 200
         finally:
             app.dependency_overrides.pop(get_current_active_user, None)
 
-    async def test_get_config_as_contributor_forbidden(
-        self, client: AsyncClient, contributor_user
-    ):
+    async def test_get_config_as_contributor_forbidden(self, client: AsyncClient, contributor_user):
         """Test that CONTRIBUTOR cannot access GET /api/admin/config (403)."""
         app.dependency_overrides[get_current_active_user] = lambda: contributor_user
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.get("/api/admin/config")
 
             assert response.status_code == 403
@@ -1083,8 +1088,8 @@ class TestAdminConfigEndpoints:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.get("/api/admin/config")
 
             assert response.status_code == 403
@@ -1097,11 +1102,11 @@ class TestAdminConfigEndpoints:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.patch(
-                    "/api/admin/config",
-                    json={"embedding_model": "text-embedding-3-large"})
+                    "/api/admin/config", json={"embedding_model": "text-embedding-3-large"}
+                )
 
             assert response.status_code == 200
         finally:
@@ -1115,11 +1120,11 @@ class TestAdminConfigEndpoints:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.patch(
-                    "/api/admin/config",
-                    json={"embedding_model": "text-embedding-3-large"})
+                    "/api/admin/config", json={"embedding_model": "text-embedding-3-large"}
+                )
 
             assert response.status_code == 403
         finally:
@@ -1141,8 +1146,8 @@ class TestReindexEndpoints:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.get("/api/admin/reindex/status")
 
             assert response.status_code == 200
@@ -1157,8 +1162,8 @@ class TestReindexEndpoints:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.get("/api/admin/reindex/status")
 
             assert response.status_code == 403
@@ -1171,8 +1176,8 @@ class TestReindexEndpoints:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as test_client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as test_client:
                 response = await test_client.get("/api/admin/reindex/status")
 
             assert response.status_code == 403

@@ -136,14 +136,22 @@ async def search(
     try:
         match effective_mode:
             case "text":
-                results = await embeddings_service.text_search(db, q, org_ids, limit=limit, show_disabled=show_disabled)
+                results = await embeddings_service.text_search(
+                    db, q, org_ids, limit=limit, show_disabled=show_disabled
+                )
             case "semantic":
-                results = await embeddings_service.search(db, q, org_ids, limit=limit, show_disabled=show_disabled)
+                results = await embeddings_service.search(
+                    db, q, org_ids, limit=limit, show_disabled=show_disabled
+                )
             case "hybrid":
-                results = await embeddings_service.hybrid_search(db, q, org_ids, limit=limit, show_disabled=show_disabled)
+                results = await embeddings_service.hybrid_search(
+                    db, q, org_ids, limit=limit, show_disabled=show_disabled
+                )
             case _:
                 # Should not happen due to Literal type, but handle gracefully
-                results = await embeddings_service.hybrid_search(db, q, org_ids, limit=limit, show_disabled=show_disabled)
+                results = await embeddings_service.hybrid_search(
+                    db, q, org_ids, limit=limit, show_disabled=show_disabled
+                )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -193,9 +201,7 @@ async def _perform_ai_search(
             embeddings_service = get_embeddings_service(db)
 
             try:
-                search_results = await embeddings_service.search(
-                    db, query, org_ids, limit=30
-                )
+                search_results = await embeddings_service.search(db, query, org_ids, limit=30)
             except Exception as e:
                 logger.error(f"Search for AI context failed: {e}", exc_info=True)
                 await publish_search_error(request_id, "Failed to retrieve search context")
@@ -298,14 +304,10 @@ async def ai_search(
 
     if not org_ids:
         # Still start background task to send empty response
-        background_tasks.add_task(
-            _send_empty_ai_response, request_id
-        )
+        background_tasks.add_task(_send_empty_ai_response, request_id)
     else:
         # Start background task to perform AI search
-        background_tasks.add_task(
-            _perform_ai_search, request_id, request.query, org_ids
-        )
+        background_tasks.add_task(_perform_ai_search, request_id, request.query, org_ids)
 
     query_preview = request.query[:50] + "..." if len(request.query) > 50 else request.query
     logger.info(
@@ -376,7 +378,11 @@ async def _perform_chat(
                         from sqlalchemy.orm import selectinload
 
                         # Eager load organization to avoid lazy loading issues
-                        stmt = select(Document).where(Document.id == current_entity_id).options(selectinload(Document.organization))
+                        stmt = (
+                            select(Document)
+                            .where(Document.id == current_entity_id)
+                            .options(selectinload(Document.organization))
+                        )
                         result = await db.execute(stmt)
                         entity = result.scalar_one_or_none()
 
@@ -390,11 +396,14 @@ async def _perform_chat(
 
                             # Add current document to search results
                             from src.models.contracts.search import SearchResult
+
                             current_doc_result = SearchResult(
                                 entity_type="document",
                                 entity_id=str(entity.id),
                                 organization_id=str(entity.organization_id),
-                                organization_name=entity.organization.name if entity.organization else "Unknown",
+                                organization_name=entity.organization.name
+                                if entity.organization
+                                else "Unknown",
                                 name=entity.name,
                                 snippet=entity.content or "",  # Full document content
                                 score=1.0,  # Highest score since it's the current document
@@ -403,8 +412,11 @@ async def _perform_chat(
 
                             # Remove current document from search results if it's already there
                             search_results = [
-                                r for r in search_results
-                                if not (r.entity_type == "document" and r.entity_id == str(entity.id))
+                                r
+                                for r in search_results
+                                if not (
+                                    r.entity_type == "document" and r.entity_id == str(entity.id)
+                                )
                             ]
                             # Prepend with full content
                             search_results = [current_doc_result] + search_results
@@ -413,7 +425,11 @@ async def _perform_chat(
                         from sqlalchemy.orm import selectinload
 
                         # Eager load organization to avoid lazy loading issues
-                        stmt = select(CustomAsset).where(CustomAsset.id == current_entity_id).options(selectinload(CustomAsset.organization))
+                        stmt = (
+                            select(CustomAsset)
+                            .where(CustomAsset.id == current_entity_id)
+                            .options(selectinload(CustomAsset.organization))
+                        )
                         result = await db.execute(stmt)
                         entity = result.scalar_one_or_none()
 
@@ -427,6 +443,7 @@ async def _perform_chat(
 
                             # Add current asset to search results
                             from src.models.contracts.search import SearchResult
+
                             # Build snippet from custom fields
                             field_texts = [f"{k}: {v}" for k, v in (entity.fields or {}).items()]
                             snippet = "\n".join(field_texts) if field_texts else entity.name
@@ -435,7 +452,9 @@ async def _perform_chat(
                                 entity_type="custom_asset",
                                 entity_id=str(entity.id),
                                 organization_id=str(entity.organization_id),
-                                organization_name=entity.organization.name if entity.organization else "Unknown",
+                                organization_name=entity.organization.name
+                                if entity.organization
+                                else "Unknown",
                                 name=entity.name,
                                 snippet=snippet,
                                 score=1.0,
@@ -444,8 +463,12 @@ async def _perform_chat(
 
                             # Remove current asset from search results if it's already there
                             search_results = [
-                                r for r in search_results
-                                if not (r.entity_type == "custom_asset" and r.entity_id == str(entity.id))
+                                r
+                                for r in search_results
+                                if not (
+                                    r.entity_type == "custom_asset"
+                                    and r.entity_id == str(entity.id)
+                                )
                             ]
                             # Prepend with full content
                             search_results = [current_asset_result] + search_results
@@ -478,9 +501,9 @@ async def _perform_chat(
                     elif isinstance(chunk, dict) and chunk.get("type") == "mutation_pending":
                         # Send pending state for immediate UI feedback
                         from src.core.pubsub import publish_mutation_pending
+
                         await publish_mutation_pending(
-                            request_id,
-                            tool_call_id=chunk.get("tool_call_id", "")
+                            request_id, tool_call_id=chunk.get("tool_call_id", "")
                         )
                     elif isinstance(chunk, dict) and chunk.get("type") == "tool_call":
                         # Parse tool call and convert to mutation_preview format
@@ -493,7 +516,7 @@ async def _perform_chat(
                             tool_call = ToolCall(
                                 id=tool_call_data["id"],
                                 name=tool_call_data["name"],
-                                arguments=tool_call_data["arguments"]
+                                arguments=tool_call_data["arguments"],
                             )
                             mutation_preview = parse_mutation_tool_call(tool_call)
 
@@ -505,22 +528,25 @@ async def _perform_chat(
                                 "organization_id": str(mutation_preview.organization_id),
                                 "mutation": {
                                     "summary": mutation_preview.mutation.summary,
-                                }
+                                },
                             }
 
                             # Add content or field_updates based on type
                             if isinstance(mutation_preview.mutation, DocumentMutation):
-                                preview_data["mutation"]["content"] = mutation_preview.mutation.content
+                                preview_data["mutation"]["content"] = (
+                                    mutation_preview.mutation.content
+                                )
                             elif isinstance(mutation_preview.mutation, AssetMutation):
-                                preview_data["mutation"]["field_updates"] = mutation_preview.mutation.field_updates
+                                preview_data["mutation"]["field_updates"] = (
+                                    mutation_preview.mutation.field_updates
+                                )
 
                             await publish_mutation_preview(request_id, preview_data)
                         except Exception as e:
                             logger.error(f"Failed to parse tool call: {e}", exc_info=True)
                             # Send user-friendly error instead of raw JSON
                             await publish_mutation_error(
-                                request_id,
-                                "Unable to preview this action"
+                                request_id, "Unable to preview this action"
                             )
                     # Small delay to prevent overwhelming WebSocket
                     await asyncio.sleep(0.01)

@@ -1,4 +1,5 @@
 """Tests for WebSocket entity update broadcasting."""
+
 from uuid import uuid4
 
 import pytest

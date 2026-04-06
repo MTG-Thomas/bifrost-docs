@@ -312,7 +312,9 @@ async def list_global_configurations(
             organization_id=str(c.organization_id),
             organization_name=c.organization.name if c.organization else "Unknown",
             configuration_type_id=str(c.configuration_type_id) if c.configuration_type_id else None,
-            configuration_status_id=str(c.configuration_status_id) if c.configuration_status_id else None,
+            configuration_status_id=str(c.configuration_status_id)
+            if c.configuration_status_id
+            else None,
             name=c.name,
             serial_number=c.serial_number,
             asset_tag=c.asset_tag,
@@ -324,7 +326,9 @@ async def list_global_configurations(
             created_at=c.created_at.isoformat(),
             updated_at=c.updated_at.isoformat(),
             configuration_type_name=c.configuration_type.name if c.configuration_type else None,
-            configuration_status_name=c.configuration_status.name if c.configuration_status else None,
+            configuration_status_name=c.configuration_status.name
+            if c.configuration_status
+            else None,
         )
         for c in configs
     ]
@@ -538,6 +542,7 @@ async def list_global_custom_assets(
                 query = query.order_by(CustomAsset.values[jsonb_key].astext.asc())
         elif hasattr(CustomAsset, sort_by):
             from sqlalchemy import asc, desc
+
             order_func = desc if sort_dir == "desc" else asc
             query = query.order_by(order_func(getattr(CustomAsset, sort_by)))
     else:
@@ -632,9 +637,7 @@ async def get_global_sidebar_data(
             )
         )
         count = count_result.scalar_one()
-        configuration_types.append(
-            GlobalSidebarItemCount(id=str(ct.id), name=ct.name, count=count)
-        )
+        configuration_types.append(GlobalSidebarItemCount(id=str(ct.id), name=ct.name, count=count))
 
     # Get custom asset types with aggregated counts
     asset_type_repo = CustomAssetTypeRepository(db)
@@ -649,9 +652,7 @@ async def get_global_sidebar_data(
             )
         )
         count = count_result.scalar_one()
-        custom_asset_types.append(
-            GlobalSidebarItemCount(id=str(at.id), name=at.name, count=count)
-        )
+        custom_asset_types.append(GlobalSidebarItemCount(id=str(at.id), name=at.name, count=count))
 
     return GlobalSidebarData(
         passwords_count=passwords_count,

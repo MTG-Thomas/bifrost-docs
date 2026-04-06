@@ -520,7 +520,9 @@ class PasskeyService:
     async def _get_user_passkeys(self, user_id: UUID) -> list[UserPasskey]:
         """Get all passkeys for a user."""
         result = await self.db.execute(
-            select(UserPasskey).where(UserPasskey.user_id == user_id).order_by(UserPasskey.created_at.desc())
+            select(UserPasskey)
+            .where(UserPasskey.user_id == user_id)
+            .order_by(UserPasskey.created_at.desc())
         )
         return list(result.scalars().all())
 

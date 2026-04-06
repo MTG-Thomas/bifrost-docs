@@ -154,7 +154,7 @@ class TestAccessTrackingRepository:
             audit_result,
             name_result_1,  # First entity - deleted
             name_result_2,  # Second entity - exists
-            org_result,     # Org name for second entity
+            org_result,  # Org name for second entity
         ]
 
         repo = AccessTrackingRepository(mock_session)
@@ -357,7 +357,7 @@ class TestAccessTrackingRepository:
         query_result.one_or_none.return_value = (
             {"hostname": "server-01", "ip": "192.168.1.1"},  # values
             "hostname",  # display_field_key
-            "Server",   # type name
+            "Server",  # type name
         )
         mock_session.execute.return_value = query_result
 
@@ -376,7 +376,7 @@ class TestAccessTrackingRepository:
         query_result.one_or_none.return_value = (
             {"some_field": "value"},  # values
             None,  # no display_field_key
-            "CustomType",   # type name
+            "CustomType",  # type name
         )
         mock_session.execute.return_value = query_result
 

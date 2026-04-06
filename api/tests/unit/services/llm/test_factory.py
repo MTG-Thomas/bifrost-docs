@@ -1,4 +1,5 @@
 """Tests for LLM factory."""
+
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -65,9 +66,7 @@ class TestGetLLMClient:
 
         with patch("src.services.llm.factory.OpenAIClient") as mock_client:
             get_llm_client(config)
-            mock_client.assert_called_once_with(
-                "test-key", "llama3", "http://localhost:11434/v1"
-            )
+            mock_client.assert_called_once_with("test-key", "llama3", "http://localhost:11434/v1")
 
 
 @pytest.mark.unit

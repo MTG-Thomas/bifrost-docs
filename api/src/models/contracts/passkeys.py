@@ -72,9 +72,7 @@ class PasskeyAuthOptionsRequest(BaseModel):
 class PasskeyAuthOptionsResponse(BaseModel):
     """Response with WebAuthn authentication options for the browser."""
 
-    challenge_id: str = Field(
-        description="Challenge ID to include in the verify request"
-    )
+    challenge_id: str = Field(description="Challenge ID to include in the verify request")
     options: dict[str, Any] = Field(
         description="WebAuthn authentication options JSON for navigator.credentials.get()"
     )

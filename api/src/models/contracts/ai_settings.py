@@ -156,5 +156,3 @@ class TestConnectionResponse(BaseModel):
         default_factory=list, description="Available models (new format)"
     )
     error: str | None = Field(default=None, description="Error message if failed")
-
-

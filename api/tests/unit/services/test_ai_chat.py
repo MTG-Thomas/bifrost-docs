@@ -1,4 +1,5 @@
 """Tests for AI chat service with multi-provider support."""
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -87,9 +88,7 @@ class TestAIChatService:
             with patch("src.services.ai_chat.get_llm_client") as mock_factory:
                 mock_config.return_value = MagicMock()
                 mock_client = MagicMock()
-                mock_client.complete = AsyncMock(
-                    return_value=LLMResponse(content=None)
-                )
+                mock_client.complete = AsyncMock(return_value=LLMResponse(content=None))
                 mock_factory.return_value = mock_client
 
                 service = AIChatService(mock_session)

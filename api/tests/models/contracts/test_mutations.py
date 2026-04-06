@@ -1,4 +1,5 @@
 """Tests for mutation contracts."""
+
 from uuid import uuid4
 
 import pytest
@@ -16,8 +17,7 @@ from src.models.contracts.mutations import (
 def test_document_mutation_valid():
     """Test valid document mutation."""
     mutation = DocumentMutation(
-        content="# Updated content\n\nNew paragraph.",
-        summary="Added introduction paragraph"
+        content="# Updated content\n\nNew paragraph.", summary="Added introduction paragraph"
     )
     assert mutation.content == "# Updated content\n\nNew paragraph."
     assert mutation.summary == "Added introduction paragraph"
@@ -27,7 +27,7 @@ def test_asset_mutation_valid():
     """Test valid asset mutation."""
     mutation = AssetMutation(
         field_updates={"ip_address": "10.0.0.5", "location": "DC2"},
-        summary="Updated IP and location"
+        summary="Updated IP and location",
     )
     assert mutation.field_updates == {"ip_address": "10.0.0.5", "location": "DC2"}
     assert mutation.summary == "Updated IP and location"
@@ -42,10 +42,7 @@ def test_mutation_preview_document():
         entity_type="document",
         entity_id=entity_id,
         organization_id=org_id,
-        mutation=DocumentMutation(
-            content="# Test\n\nContent",
-            summary="Test summary"
-        )
+        mutation=DocumentMutation(content="# Test\n\nContent", summary="Test summary"),
     )
 
     assert preview.entity_type == "document"
@@ -62,10 +59,7 @@ def test_mutation_preview_asset():
         entity_type="custom_asset",
         entity_id=entity_id,
         organization_id=org_id,
-        mutation=AssetMutation(
-            field_updates={"field": "value"},
-            summary="Updated field"
-        )
+        mutation=AssetMutation(field_updates={"field": "value"}, summary="Updated field"),
     )
 
     assert preview.entity_type == "custom_asset"
@@ -83,10 +77,7 @@ def test_apply_mutation_request_document():
         entity_type="document",
         entity_id=entity_id,
         organization_id=org_id,
-        mutation=DocumentMutation(
-            content="# New content",
-            summary="Summary"
-        )
+        mutation=DocumentMutation(content="# New content", summary="Summary"),
     )
 
     assert request.entity_type == "document"
@@ -99,9 +90,7 @@ def test_apply_mutation_response():
     org_id = uuid4()
 
     response = ApplyMutationResponse(
-        success=True,
-        entity_id=entity_id,
-        link=f"entity://documents/{org_id}/{entity_id}"
+        success=True, entity_id=entity_id, link=f"entity://documents/{org_id}/{entity_id}"
     )
 
     assert response.success is True
@@ -119,7 +108,7 @@ def test_invalid_entity_type():
             entity_type="invalid_type",
             entity_id=entity_id,
             organization_id=org_id,
-            mutation=DocumentMutation(content="test", summary="test")
+            mutation=DocumentMutation(content="test", summary="test"),
         )
 
 
@@ -192,7 +181,7 @@ def test_apply_mutation_response_failure():
         success=False,
         entity_id=entity_id,
         link=f"entity://documents/{org_id}/{entity_id}",
-        error="Permission denied"
+        error="Permission denied",
     )
 
     assert response.success is False

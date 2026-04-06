@@ -213,9 +213,7 @@ class ConnectionManager:
             for channel in channels:
                 self._channel_subscribers[channel].add(connection_id)
 
-        logger.info(
-            f"WebSocket connected: {connection_id} (user: {user_id}, channels: {channels})"
-        )
+        logger.info(f"WebSocket connected: {connection_id} (user: {user_id}, channels: {channels})")
 
     async def disconnect(self, connection_id: str) -> None:
         """
@@ -342,11 +340,7 @@ class ConnectionManager:
         json_message = message.to_json()
 
         async with self._lock:
-            connections = [
-                info
-                for info in self._connections.values()
-                if info.user_id == user_id
-            ]
+            connections = [info for info in self._connections.values() if info.user_id == user_id]
 
         for info in connections:
             try:

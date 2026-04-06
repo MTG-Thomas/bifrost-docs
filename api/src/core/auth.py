@@ -88,9 +88,7 @@ class ExecutionContext:
         return self.user.is_platform_admin
 
 
-async def _authenticate_api_key(
-    db: "AsyncSession", api_key: str
-) -> UserPrincipal | None:
+async def _authenticate_api_key(db: "AsyncSession", api_key: str) -> UserPrincipal | None:
     """
     Authenticate using an API key.
 
@@ -202,8 +200,7 @@ async def get_current_user_optional(
 
     # Tokens MUST have email claim
     if "email" not in payload:
-        logger.warning(
-            f"Token for user {user_id} missing required email claim.")
+        logger.warning(f"Token for user {user_id} missing required email claim.")
         return None
 
     # Get role from token (default to CONTRIBUTOR for backwards compatibility)
@@ -275,8 +272,7 @@ async def get_current_active_user(
         HTTPException: If user is inactive
     """
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
     return user
 
 
@@ -385,12 +381,9 @@ CurrentAdmin = Annotated[UserPrincipal, Depends(get_current_admin)]
 Context = Annotated[ExecutionContext, Depends(get_execution_context)]
 
 # Role-based dependencies
-RequireReader = Annotated[UserPrincipal,
-                          Depends(require_role(UserRole.READER))]
-RequireContributor = Annotated[UserPrincipal,
-                               Depends(require_role(UserRole.CONTRIBUTOR))]
-RequireAdmin = Annotated[UserPrincipal, Depends(
-    require_role(UserRole.ADMINISTRATOR))]
+RequireReader = Annotated[UserPrincipal, Depends(require_role(UserRole.READER))]
+RequireContributor = Annotated[UserPrincipal, Depends(require_role(UserRole.CONTRIBUTOR))]
+RequireAdmin = Annotated[UserPrincipal, Depends(require_role(UserRole.ADMINISTRATOR))]
 RequireOwner = Annotated[UserPrincipal, Depends(require_role(UserRole.OWNER))]
 
 # Keep backward compatibility

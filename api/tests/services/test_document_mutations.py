@@ -1,4 +1,5 @@
 """Tests for document mutation service."""
+
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -85,9 +86,7 @@ async def test_generate_cleaned_content():
     instruction = "clean this up"
 
     content, summary = await service.generate_cleaned_content(
-        original_content=original,
-        document_name=title,
-        user_instruction=instruction
+        original_content=original, document_name=title, user_instruction=instruction
     )
 
     assert len(content) > 0
@@ -105,9 +104,7 @@ async def test_generate_cleaned_content_llm_error():
 
     with pytest.raises(Exception):  # noqa: B017
         await service.generate_cleaned_content(
-            original_content="content",
-            document_name="Test",
-            user_instruction="clean"
+            original_content="content", document_name="Test", user_instruction="clean"
         )
 
 
@@ -123,9 +120,7 @@ async def test_generate_cleaned_content_empty_response():
 
     with pytest.raises(ValueError, match="empty response"):
         await service.generate_cleaned_content(
-            original_content="content",
-            document_name="Test",
-            user_instruction="clean"
+            original_content="content", document_name="Test", user_instruction="clean"
         )
 
 
@@ -141,7 +136,5 @@ async def test_generate_cleaned_content_empty_string_response():
 
     with pytest.raises(ValueError, match="empty response"):
         await service.generate_cleaned_content(
-            original_content="content",
-            document_name="Test",
-            user_instruction="clean"
+            original_content="content", document_name="Test", user_instruction="clean"
         )

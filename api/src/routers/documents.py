@@ -62,6 +62,7 @@ class CleanDocumentResponse(BaseModel):
     summary: str
     suggested_name: str | None = None
 
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/organizations/{org_id}/documents", tags=["documents"])
@@ -127,7 +128,9 @@ async def list_documents(
             created_at=doc.created_at,
             updated_at=doc.updated_at,
             updated_by_user_id=str(doc.updated_by_user_id) if doc.updated_by_user_id else None,
-            updated_by_user_name=(doc.updated_by_user.name or doc.updated_by_user.email) if doc.updated_by_user else None,
+            updated_by_user_name=(doc.updated_by_user.name or doc.updated_by_user.email)
+            if doc.updated_by_user
+            else None,
         )
         for doc in documents
     ]
@@ -161,9 +164,7 @@ async def list_folders(
     paths_with_counts = await doc_repo.get_paths_with_counts(org_id)
 
     return FolderList(
-        folders=[
-            FolderCount(path=path, count=count) for path, count in paths_with_counts
-        ]
+        folders=[FolderCount(path=path, count=count) for path, count in paths_with_counts]
     )
 
 
@@ -231,7 +232,9 @@ async def create_document(
         created_at=doc.created_at,
         updated_at=doc.updated_at,
         updated_by_user_id=str(doc.updated_by_user_id) if doc.updated_by_user_id else None,
-        updated_by_user_name=(doc.updated_by_user.name or doc.updated_by_user.email) if doc.updated_by_user else None,
+        updated_by_user_name=(doc.updated_by_user.name or doc.updated_by_user.email)
+        if doc.updated_by_user
+        else None,
     )
 
 
@@ -288,7 +291,9 @@ async def get_document(
         created_at=doc.created_at,
         updated_at=doc.updated_at,
         updated_by_user_id=str(doc.updated_by_user_id) if doc.updated_by_user_id else None,
-        updated_by_user_name=(doc.updated_by_user.name or doc.updated_by_user.email) if doc.updated_by_user else None,
+        updated_by_user_name=(doc.updated_by_user.name or doc.updated_by_user.email)
+        if doc.updated_by_user
+        else None,
     )
 
 
@@ -483,7 +488,9 @@ async def update_document(
         created_at=doc.created_at,
         updated_at=doc.updated_at,
         updated_by_user_id=str(doc.updated_by_user_id) if doc.updated_by_user_id else None,
-        updated_by_user_name=(doc.updated_by_user.name or doc.updated_by_user.email) if doc.updated_by_user else None,
+        updated_by_user_name=(doc.updated_by_user.name or doc.updated_by_user.email)
+        if doc.updated_by_user
+        else None,
     )
 
 

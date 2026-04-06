@@ -109,8 +109,7 @@ class TestJWTTokens:
         from src.core.security import create_access_token, decode_token
 
         # Create token that expires immediately
-        token = create_access_token(
-            {"sub": "user-123"}, expires_delta=timedelta(seconds=-1))
+        token = create_access_token({"sub": "user-123"}, expires_delta=timedelta(seconds=-1))
 
         # Should return None for expired token
         payload = decode_token(token)

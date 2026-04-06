@@ -26,12 +26,15 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 # Set environment variables BEFORE any imports that might load settings
 # This must happen at module level, not in fixtures, to run before test collection
 os.environ.setdefault("BIFROST_DOCS_ENVIRONMENT", "testing")
-os.environ.setdefault("BIFROST_DOCS_SECRET_KEY",
-                      "test-secret-key-for-testing-must-be-32-chars")
-os.environ.setdefault("BIFROST_DOCS_DATABASE_URL",
-                      "postgresql+asyncpg://bifrost_docs:bifrost_docstest@localhost:5433/bifrost_docs_test")
-os.environ.setdefault("BIFROST_DOCS_DATABASE_URL_SYNC",
-                      "postgresql://bifrost_docs:bifrost_docstest@localhost:5433/bifrost_docs_test")
+os.environ.setdefault("BIFROST_DOCS_SECRET_KEY", "test-secret-key-for-testing-must-be-32-chars")
+os.environ.setdefault(
+    "BIFROST_DOCS_DATABASE_URL",
+    "postgresql+asyncpg://bifrost_docs:bifrost_docstest@localhost:5433/bifrost_docs_test",
+)
+os.environ.setdefault(
+    "BIFROST_DOCS_DATABASE_URL_SYNC",
+    "postgresql://bifrost_docs:bifrost_docstest@localhost:5433/bifrost_docs_test",
+)
 os.environ.setdefault("BIFROST_DOCS_REDIS_URL", "redis://localhost:6380/0")
 
 
@@ -195,9 +198,6 @@ def sample_org_data() -> dict[str, Any]:
 
 def pytest_configure(config):
     """Register custom pytest markers."""
-    config.addinivalue_line(
-        "markers", "unit: Unit tests (fast, mocked dependencies)")
-    config.addinivalue_line(
-        "markers", "integration: Integration tests (real database)"
-    )
+    config.addinivalue_line("markers", "unit: Unit tests (fast, mocked dependencies)")
+    config.addinivalue_line("markers", "integration: Integration tests (real database)")
     config.addinivalue_line("markers", "slow: Tests that take >1 second")

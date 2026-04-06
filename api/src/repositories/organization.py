@@ -4,7 +4,6 @@ Organization Repository
 Provides database operations for Organization model.
 """
 
-
 from uuid import UUID
 
 from sqlalchemy import select
@@ -40,7 +39,9 @@ class OrganizationRepository(BaseRepository[Organization]):
         )
         return result.scalar_one_or_none()
 
-    async def get_all(self, limit: int = 100, offset: int = 0, is_enabled: bool | None = None) -> list[Organization]:
+    async def get_all(
+        self, limit: int = 100, offset: int = 0, is_enabled: bool | None = None
+    ) -> list[Organization]:
         """
         Get all organizations with eager loading of relationships.
 
@@ -54,7 +55,7 @@ class OrganizationRepository(BaseRepository[Organization]):
         """
         query = select(Organization).options(selectinload(Organization.updated_by_user))
 
-        if is_enabled is not None and hasattr(Organization, 'is_enabled'):
+        if is_enabled is not None and hasattr(Organization, "is_enabled"):
             query = query.where(Organization.is_enabled == is_enabled)
 
         query = query.limit(limit).offset(offset)

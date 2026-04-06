@@ -160,9 +160,7 @@ class TestGetAISettings:
         self, mock_superuser, mock_db_session
     ):
         """Test that defaults are returned when no config exists."""
-        with patch(
-            "src.routers.ai_settings.SystemConfigRepository"
-        ) as MockRepo:
+        with patch("src.routers.ai_settings.SystemConfigRepository") as MockRepo:
             mock_repo_instance = AsyncMock()
             mock_repo_instance.get_config.return_value = None
             MockRepo.return_value = mock_repo_instance
@@ -188,9 +186,7 @@ class TestGetAISettings:
         mock_embeddings_config,
     ):
         """Test that stored config is returned correctly."""
-        with patch(
-            "src.routers.ai_settings.SystemConfigRepository"
-        ) as MockRepo:
+        with patch("src.routers.ai_settings.SystemConfigRepository") as MockRepo:
             mock_repo_instance = AsyncMock()
 
             # Create mock config rows
@@ -220,9 +216,7 @@ class TestGetAISettings:
             assert result.embeddings.model == "text-embedding-3-small"
 
     @pytest.mark.asyncio
-    async def test_get_ai_settings_blocks_non_admin(
-        self, mock_regular_user, mock_db_session
-    ):
+    async def test_get_ai_settings_blocks_non_admin(self, mock_regular_user, mock_db_session):
         """Test that non-admins cannot access AI settings."""
         with pytest.raises(HTTPException) as exc_info:
             await get_ai_settings(mock_regular_user, mock_db_session)
@@ -256,9 +250,7 @@ class TestUpdateCompletionsConfig:
 
             update_data = CompletionsConfigUpdate(model="gpt-4o")
 
-            result = await update_completions_config(
-                update_data, mock_superuser, mock_db_session
-            )
+            result = await update_completions_config(update_data, mock_superuser, mock_db_session)
 
             assert result.model == "gpt-4o"
             assert result.provider == "openai"  # Unchanged
@@ -282,9 +274,7 @@ class TestUpdateCompletionsConfig:
 
             update_data = CompletionsConfigUpdate(api_key="sk-new-key")
 
-            result = await update_completions_config(
-                update_data, mock_superuser, mock_db_session
-            )
+            result = await update_completions_config(update_data, mock_superuser, mock_db_session)
 
             mock_encrypt.assert_called_once_with("sk-new-key")
             assert result.api_key_set is True
@@ -302,9 +292,7 @@ class TestUpdateCompletionsConfig:
             update_data = CompletionsConfigUpdate(provider="openai_compatible")
 
             with pytest.raises(HTTPException) as exc_info:
-                await update_completions_config(
-                    update_data, mock_superuser, mock_db_session
-                )
+                await update_completions_config(update_data, mock_superuser, mock_db_session)
 
             assert exc_info.value.status_code == 400
             assert "Endpoint is required" in exc_info.value.detail
@@ -329,9 +317,7 @@ class TestUpdateCompletionsConfig:
                 api_key="my-key",
             )
 
-            result = await update_completions_config(
-                update_data, mock_superuser, mock_db_session
-            )
+            result = await update_completions_config(update_data, mock_superuser, mock_db_session)
 
             assert result.provider == "openai_compatible"
             assert result.endpoint == "https://my-llm.example.com/v1"
@@ -360,9 +346,7 @@ class TestUpdateEmbeddingsConfig:
 
             update_data = EmbeddingsConfigUpdate(model="text-embedding-3-large")
 
-            result = await update_embeddings_config(
-                update_data, mock_superuser, mock_db_session
-            )
+            result = await update_embeddings_config(update_data, mock_superuser, mock_db_session)
 
             assert result.model == "text-embedding-3-large"
 
@@ -384,9 +368,7 @@ class TestUpdateEmbeddingsConfig:
 
             update_data = EmbeddingsConfigUpdate(api_key="sk-new-key")
 
-            result = await update_embeddings_config(
-                update_data, mock_superuser, mock_db_session
-            )
+            result = await update_embeddings_config(update_data, mock_superuser, mock_db_session)
 
             mock_encrypt.assert_called_once_with("sk-new-key")
             assert result.api_key_set is True
@@ -469,9 +451,7 @@ class TestListAvailableModels:
             assert any("claude" in m for m in model_ids)
 
     @pytest.mark.asyncio
-    async def test_list_models_uses_provided_api_key(
-        self, mock_superuser, mock_db_session
-    ):
+    async def test_list_models_uses_provided_api_key(self, mock_superuser, mock_db_session):
         """Test that provided API key is used for fetching models."""
         with (
             patch("src.routers.ai_settings.SystemConfigRepository") as MockRepo,
@@ -560,9 +540,7 @@ class TestAIConnection:
     @pytest.mark.asyncio
     async def test_connection_anthropic_success(self, mock_superuser):
         """Test successful Anthropic connection test."""
-        with patch(
-            "src.routers.ai_settings._fetch_anthropic_models"
-        ) as mock_fetch:
+        with patch("src.routers.ai_settings._fetch_anthropic_models") as mock_fetch:
             mock_fetch.return_value = [
                 ModelInfo(id="claude-3-5-sonnet", display_name="Claude 3 5 Sonnet"),
             ]
@@ -576,9 +554,7 @@ class TestAIConnection:
     @pytest.mark.asyncio
     async def test_connection_openai_compatible_requires_endpoint(self, mock_superuser):
         """Test that openai_compatible requires endpoint."""
-        request = TestConnectionRequest(
-            provider="openai_compatible", api_key="my-key"
-        )
+        request = TestConnectionRequest(provider="openai_compatible", api_key="my-key")
 
         with pytest.raises(HTTPException) as exc_info:
             await router_test_ai_connection(request, mock_superuser)
@@ -614,9 +590,7 @@ class TestAIConnection:
     @pytest.mark.asyncio
     async def test_connection_failure_invalid_key(self, mock_superuser):
         """Test connection failure with invalid API key."""
-        with patch(
-            "src.routers.ai_settings._fetch_openai_models"
-        ) as mock_fetch:
+        with patch("src.routers.ai_settings._fetch_openai_models") as mock_fetch:
             mock_fetch.side_effect = Exception("Incorrect API key provided")
 
             request = TestConnectionRequest(provider="openai", api_key="sk-invalid")
@@ -629,9 +603,7 @@ class TestAIConnection:
     @pytest.mark.asyncio
     async def test_connection_failure_rate_limit(self, mock_superuser):
         """Test connection failure due to rate limit."""
-        with patch(
-            "src.routers.ai_settings._fetch_openai_models"
-        ) as mock_fetch:
+        with patch("src.routers.ai_settings._fetch_openai_models") as mock_fetch:
             mock_fetch.side_effect = Exception("Rate limit exceeded")
 
             request = TestConnectionRequest(provider="openai", api_key="sk-test")
@@ -644,9 +616,7 @@ class TestAIConnection:
     @pytest.mark.asyncio
     async def test_connection_failure_network(self, mock_superuser):
         """Test connection failure due to network issues."""
-        with patch(
-            "src.routers.ai_settings._fetch_openai_models"
-        ) as mock_fetch:
+        with patch("src.routers.ai_settings._fetch_openai_models") as mock_fetch:
             mock_fetch.side_effect = Exception("Connection timeout")
 
             request = TestConnectionRequest(provider="openai", api_key="sk-test")

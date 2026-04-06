@@ -27,15 +27,14 @@ def create_mock_user(user_id=None, role=None):
         name="Test User",
         role=role or UserRole.CONTRIBUTOR,
         is_active=True,
-        is_verified=True)
+        is_verified=True,
+    )
 
 
 @pytest_asyncio.fixture
 async def client():
     """Create an async HTTP client for testing."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
 
@@ -47,9 +46,7 @@ async def authenticated_client():
     # Override the auth dependency
     app.dependency_overrides[get_current_active_user] = lambda: mock_user
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac, mock_user
 
     # Clean up
@@ -83,8 +80,8 @@ class TestLocationsEndpointAuth:
         """Test that creating locations requires authentication."""
         org_id = uuid4()
         response = await client.post(
-            f"/api/organizations/{org_id}/locations",
-            json={"name": "Test Location"})
+            f"/api/organizations/{org_id}/locations", json={"name": "Test Location"}
+        )
         assert response.status_code == 401
 
     async def test_unauthenticated_get_location(self, client: AsyncClient):
@@ -99,8 +96,8 @@ class TestLocationsEndpointAuth:
         org_id = uuid4()
         location_id = uuid4()
         response = await client.put(
-            f"/api/organizations/{org_id}/locations/{location_id}",
-            json={"name": "Updated Name"})
+            f"/api/organizations/{org_id}/locations/{location_id}", json={"name": "Updated Name"}
+        )
         assert response.status_code == 401
 
     async def test_unauthenticated_delete_location(self, client: AsyncClient):
@@ -131,8 +128,8 @@ class TestLocationsOrgMembership:
         org_id = uuid4()  # Different org than the user's
 
         response = await client.post(
-            f"/api/organizations/{org_id}/locations",
-            json={"name": "Test Location"})
+            f"/api/organizations/{org_id}/locations", json={"name": "Test Location"}
+        )
 
         assert response.status_code == 404
         assert response.json()["detail"] == "Organization not found"
@@ -174,7 +171,8 @@ class TestLocationsCRUD:
         with patch("src.routers.locations.LocationRepository", return_value=mock_location_repo):
             response = await client.post(
                 f"/api/organizations/{org_id}/locations",
-                json={"name": "Test Location", "notes": "Some notes"})
+                json={"name": "Test Location", "notes": "Some notes"},
+            )
 
         assert response.status_code == 201
         data = response.json()
@@ -240,7 +238,8 @@ class TestLocationsCRUD:
         with patch("src.routers.locations.LocationRepository", return_value=mock_location_repo):
             response = await client.put(
                 f"/api/organizations/{org_id}/locations/{location_id}",
-                json={"name": "Updated Location", "notes": "Updated notes"})
+                json={"name": "Updated Location", "notes": "Updated notes"},
+            )
 
         assert response.status_code == 200
         data = response.json()
@@ -261,7 +260,8 @@ class TestLocationsCRUD:
         with patch("src.routers.locations.LocationRepository", return_value=mock_location_repo):
             response = await client.put(
                 f"/api/organizations/{org_id}/locations/{location_id}",
-                json={"name": "Updated Location"})
+                json={"name": "Updated Location"},
+            )
 
         assert response.status_code == 404
         assert response.json()["detail"] == "Location not found"
@@ -310,9 +310,7 @@ class TestLocationValidation:
         client, mock_user = authenticated_client
         org_id = mock_location.organization_id
 
-        response = await client.post(
-            f"/api/organizations/{org_id}/locations",
-            json={"name": ""})
+        response = await client.post(f"/api/organizations/{org_id}/locations", json={"name": ""})
 
         assert response.status_code == 422
 
@@ -321,8 +319,6 @@ class TestLocationValidation:
         client, mock_user = authenticated_client
         org_id = mock_location.organization_id
 
-        response = await client.post(
-            f"/api/organizations/{org_id}/locations",
-            json={})
+        response = await client.post(f"/api/organizations/{org_id}/locations", json={})
 
         assert response.status_code == 422

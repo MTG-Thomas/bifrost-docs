@@ -1,4 +1,5 @@
 """Integration tests for full mutation flow."""
+
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -35,18 +36,14 @@ def create_mock_user(
 @pytest_asyncio.fixture
 async def client():
     """Create an async HTTP client for testing."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
 
 @pytest.fixture
 def contributor_user():
     """Create a CONTRIBUTOR user."""
-    return create_mock_user(
-        role=UserRole.CONTRIBUTOR, email="contributor@example.com"
-    )
+    return create_mock_user(role=UserRole.CONTRIBUTOR, email="contributor@example.com")
 
 
 @pytest.mark.integration
@@ -54,9 +51,7 @@ class TestFullDocumentMutationFlow:
     """Test complete flow: chat with mutation intent → preview → apply."""
 
     @pytest.mark.asyncio
-    async def test_full_document_mutation_flow(
-        self, client: AsyncClient, contributor_user
-    ):
+    async def test_full_document_mutation_flow(self, client: AsyncClient, contributor_user):
         """Test complete flow: chat with mutation intent → preview → apply → verify changes."""
 
         # Setup test data
@@ -89,8 +84,10 @@ class TestFullDocumentMutationFlow:
 
         # Mock database dependency
         from src.core.database import get_db
+
         async def mock_get_db():
             yield mock_db
+
         app.dependency_overrides[get_db] = mock_get_db
 
         try:
@@ -113,9 +110,9 @@ class TestFullDocumentMutationFlow:
                             "organization_id": str(org_id),
                             "intent": "cleanup",
                             "changes_summary": "Fixed formatting and structure",
-                            "content": "# Clean Document\n\nNice formatting."
-                        }
-                    )
+                            "content": "# Clean Document\n\nNice formatting.",
+                        },
+                    ),
                 )
                 # Then signal completion
                 yield LLMStreamChunk(type="done")
@@ -135,7 +132,9 @@ class TestFullDocumentMutationFlow:
                         mock_embeddings_svc.return_value = mock_embeddings
 
                         # Mock organization repository
-                        with patch("src.routers.search.OrganizationRepository") as mock_org_repo_cls:
+                        with patch(
+                            "src.routers.search.OrganizationRepository"
+                        ) as mock_org_repo_cls:
                             mock_org_repo = mock_org_repo_cls.return_value
                             mock_org_repo.get_by_id = AsyncMock(return_value=mock_org)
                             mock_org_repo.get_all = AsyncMock(return_value=[mock_org])
@@ -147,8 +146,8 @@ class TestFullDocumentMutationFlow:
                                     "message": "Can you clean up this document?",
                                     "conversation_id": None,
                                     "history": [],
-                                    "org_id": str(org_id)
-                                }
+                                    "org_id": str(org_id),
+                                },
                             )
 
                             assert chat_response.status_code == 200
@@ -182,9 +181,9 @@ class TestFullDocumentMutationFlow:
                             "organization_id": str(org_id),
                             "mutation": {
                                 "content": "# Clean Document\n\nNice formatting.",
-                                "summary": "Fixed formatting and structure"
-                            }
-                        }
+                                "summary": "Fixed formatting and structure",
+                            },
+                        },
                     )
 
                     assert apply_response.status_code == 200
@@ -245,8 +244,10 @@ class TestFullDocumentMutationFlow:
         app.dependency_overrides[get_current_active_user] = lambda: contributor_user
 
         from src.core.database import get_db
+
         async def mock_get_db():
             yield mock_db
+
         app.dependency_overrides[get_db] = mock_get_db
 
         try:
@@ -264,9 +265,9 @@ class TestFullDocumentMutationFlow:
                             "organization_id": str(org_id),
                             "intent": "enhancement",
                             "changes_summary": "Added authentication section as requested",
-                            "content": "# API\n\n## Authentication\n\nUse Bearer tokens.\n\n## Endpoints\n\nEndpoints here"
-                        }
-                    )
+                            "content": "# API\n\n## Authentication\n\nUse Bearer tokens.\n\n## Endpoints\n\nEndpoints here",
+                        },
+                    ),
                 )
                 yield LLMStreamChunk(type="done")
 
@@ -282,7 +283,9 @@ class TestFullDocumentMutationFlow:
                         mock_embeddings.search = AsyncMock(return_value=[])
                         mock_embeddings_svc.return_value = mock_embeddings
 
-                        with patch("src.routers.search.OrganizationRepository") as mock_org_repo_cls:
+                        with patch(
+                            "src.routers.search.OrganizationRepository"
+                        ) as mock_org_repo_cls:
                             mock_org_repo = mock_org_repo_cls.return_value
                             mock_org_repo.get_by_id = AsyncMock(return_value=mock_org)
                             mock_org_repo.get_all = AsyncMock(return_value=[mock_org])
@@ -295,10 +298,13 @@ class TestFullDocumentMutationFlow:
                                     "conversation_id": str(uuid4()),
                                     "history": [
                                         {"role": "user", "content": "Show me the API docs"},
-                                        {"role": "assistant", "content": "Here's the API documentation..."}
+                                        {
+                                            "role": "assistant",
+                                            "content": "Here's the API documentation...",
+                                        },
                                     ],
-                                    "org_id": str(org_id)
-                                }
+                                    "org_id": str(org_id),
+                                },
                             )
 
                             assert chat_response.status_code == 200
@@ -325,9 +331,9 @@ class TestFullDocumentMutationFlow:
                             "organization_id": str(org_id),
                             "mutation": {
                                 "content": "# API\n\n## Authentication\n\nUse Bearer tokens.\n\n## Endpoints\n\nEndpoints here",
-                                "summary": "Added authentication section as requested"
-                            }
-                        }
+                                "summary": "Added authentication section as requested",
+                            },
+                        },
                     )
 
                     assert apply_response.status_code == 200
@@ -348,9 +354,7 @@ class TestFullAssetMutationFlow:
     """Test complete flow for custom asset mutations."""
 
     @pytest.mark.asyncio
-    async def test_full_asset_mutation_flow(
-        self, client: AsyncClient, contributor_user
-    ):
+    async def test_full_asset_mutation_flow(self, client: AsyncClient, contributor_user):
         """Test complete flow: chat with asset mutation intent → apply → verify changes."""
 
         # Setup test data
@@ -369,11 +373,7 @@ class TestFullAssetMutationFlow:
         mock_asset.id = asset_id
         mock_asset.custom_asset_type_id = asset_type_id
         mock_asset.organization_id = org_id
-        mock_asset.values = {
-            "ip_address": "10.0.0.1",
-            "location": "DC1",
-            "status": "active"
-        }
+        mock_asset.values = {"ip_address": "10.0.0.1", "location": "DC1", "status": "active"}
         mock_asset.updated_by_user_id = contributor_user.user_id
         mock_asset.is_enabled = True
 
@@ -386,8 +386,10 @@ class TestFullAssetMutationFlow:
         app.dependency_overrides[get_current_active_user] = lambda: contributor_user
 
         from src.core.database import get_db
+
         async def mock_get_db():
             yield mock_db
+
         app.dependency_overrides[get_db] = mock_get_db
 
         try:
@@ -408,12 +410,9 @@ class TestFullAssetMutationFlow:
                             "organization_id": str(org_id),
                             "intent": "update",
                             "changes_summary": "Updated IP address and moved to DC2",
-                            "field_updates": {
-                                "ip_address": "10.0.0.5",
-                                "location": "DC2"
-                            }
-                        }
-                    )
+                            "field_updates": {"ip_address": "10.0.0.5", "location": "DC2"},
+                        },
+                    ),
                 )
                 yield LLMStreamChunk(type="done")
 
@@ -429,7 +428,9 @@ class TestFullAssetMutationFlow:
                         mock_embeddings.search = AsyncMock(return_value=[])
                         mock_embeddings_svc.return_value = mock_embeddings
 
-                        with patch("src.routers.search.OrganizationRepository") as mock_org_repo_cls:
+                        with patch(
+                            "src.routers.search.OrganizationRepository"
+                        ) as mock_org_repo_cls:
                             mock_org_repo = mock_org_repo_cls.return_value
                             mock_org_repo.get_by_id = AsyncMock(return_value=mock_org)
                             mock_org_repo.get_all = AsyncMock(return_value=[mock_org])
@@ -440,8 +441,8 @@ class TestFullAssetMutationFlow:
                                     "message": "Update the server IP to 10.0.0.5 and move it to DC2",
                                     "conversation_id": None,
                                     "history": [],
-                                    "org_id": str(org_id)
-                                }
+                                    "org_id": str(org_id),
+                                },
                             )
 
                             assert chat_response.status_code == 200
@@ -470,13 +471,10 @@ class TestFullAssetMutationFlow:
                             "entity_id": str(asset_id),
                             "organization_id": str(org_id),
                             "mutation": {
-                                "field_updates": {
-                                    "ip_address": "10.0.0.5",
-                                    "location": "DC2"
-                                },
-                                "summary": "Updated IP address and moved to DC2"
-                            }
-                        }
+                                "field_updates": {"ip_address": "10.0.0.5", "location": "DC2"},
+                                "summary": "Updated IP address and moved to DC2",
+                            },
+                        },
                     )
 
                     assert apply_response.status_code == 200
@@ -539,11 +537,8 @@ class TestMutationFlowErrorHandling:
                             "entity_type": "document",
                             "entity_id": str(doc_id),
                             "organization_id": str(org_id),
-                            "mutation": {
-                                "content": "# Test",
-                                "summary": "Test update"
-                            }
-                        }
+                            "mutation": {"content": "# Test", "summary": "Test update"},
+                        },
                     )
 
                     assert response.status_code == 404
@@ -552,9 +547,7 @@ class TestMutationFlowErrorHandling:
             app.dependency_overrides.pop(get_current_active_user, None)
 
     @pytest.mark.asyncio
-    async def test_apply_mutation_wrong_organization(
-        self, client: AsyncClient, contributor_user
-    ):
+    async def test_apply_mutation_wrong_organization(self, client: AsyncClient, contributor_user):
         """Test applying mutation to document from different org returns 404."""
         org_id = uuid4()
         wrong_org_id = uuid4()
@@ -590,11 +583,8 @@ class TestMutationFlowErrorHandling:
                             "entity_type": "document",
                             "entity_id": str(doc_id),
                             "organization_id": str(org_id),
-                            "mutation": {
-                                "content": "# Test",
-                                "summary": "Test update"
-                            }
-                        }
+                            "mutation": {"content": "# Test", "summary": "Test update"},
+                        },
                     )
 
                     assert response.status_code == 404

@@ -362,7 +362,9 @@ class TestPasswordFieldEncryption:
         storage_values = values_key_to_id(fields_with_password, original_values)
 
         # Transform back to API format (key-based, decrypted)
-        restored_values = values_id_to_key(fields_with_password, storage_values, decrypt_secrets=True)
+        restored_values = values_id_to_key(
+            fields_with_password, storage_values, decrypt_secrets=True
+        )
 
         # Should match original
         assert restored_values == original_values
@@ -375,15 +377,9 @@ class TestDefaultValues:
     def fields_with_defaults(self) -> list[FieldDefinition]:
         """Field definitions with default values."""
         return [
-            FieldDefinition(
-                key="name", name="Name", type="text", required=True
-            ),
-            FieldDefinition(
-                key="port", name="Port", type="number", default_value="443"
-            ),
-            FieldDefinition(
-                key="enabled", name="Enabled", type="checkbox", default_value="true"
-            ),
+            FieldDefinition(key="name", name="Name", type="text", required=True),
+            FieldDefinition(key="port", name="Port", type="number", default_value="443"),
+            FieldDefinition(key="enabled", name="Enabled", type="checkbox", default_value="true"),
             FieldDefinition(
                 key="env",
                 name="Environment",

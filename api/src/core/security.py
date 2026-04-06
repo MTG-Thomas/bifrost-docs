@@ -73,8 +73,7 @@ def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = 
     if expires_delta:
         expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.now(
-            UTC) + timedelta(minutes=settings.access_token_expire_minutes)
+        expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
 
     to_encode.update(
         {
@@ -85,13 +84,14 @@ def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = 
         }
     )
 
-    encoded_jwt = jwt.encode(
-        to_encode, settings.secret_key, algorithm=settings.algorithm)
+    encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
     return encoded_jwt
 
 
-def create_refresh_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> tuple[str, str]:
+def create_refresh_token(
+    data: dict[str, Any], expires_delta: timedelta | None = None
+) -> tuple[str, str]:
     """
     Create a JWT refresh token with JTI for revocation support.
 
@@ -113,8 +113,7 @@ def create_refresh_token(data: dict[str, Any], expires_delta: timedelta | None =
     if expires_delta:
         expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.now(
-            UTC) + timedelta(days=settings.refresh_token_expire_days)
+        expire = datetime.now(UTC) + timedelta(days=settings.refresh_token_expire_days)
 
     to_encode.update(
         {
@@ -126,8 +125,7 @@ def create_refresh_token(data: dict[str, Any], expires_delta: timedelta | None =
         }
     )
 
-    encoded_jwt = jwt.encode(
-        to_encode, settings.secret_key, algorithm=settings.algorithm)
+    encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
     return encoded_jwt, jti
 

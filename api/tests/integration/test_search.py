@@ -166,9 +166,7 @@ class TestSearchIndexingHelper:
         """Test that removal silently handles errors."""
         from src.services.search_indexing import remove_entity_from_search
 
-        with patch(
-            "src.services.indexing_queue.enqueue_remove_entity"
-        ) as mock_enqueue:
+        with patch("src.services.indexing_queue.enqueue_remove_entity") as mock_enqueue:
             # Mock enqueue to raise an error
             mock_enqueue.side_effect = Exception("Redis Error")
 
@@ -184,15 +182,11 @@ class TestSearchIndexingHelper:
         """Test that indexing skips when indexing_enabled is False."""
         from src.services.search_indexing import index_entity_for_search
 
-        with patch(
-            "src.services.search_indexing.is_indexing_enabled"
-        ) as mock_is_indexing_enabled:
+        with patch("src.services.search_indexing.is_indexing_enabled") as mock_is_indexing_enabled:
             # Mock is_indexing_enabled to return False
             mock_is_indexing_enabled.return_value = False
 
-            with patch(
-                "src.services.indexing_queue.enqueue_index_entity"
-            ) as mock_enqueue:
+            with patch("src.services.indexing_queue.enqueue_index_entity") as mock_enqueue:
                 # Should not call enqueue when indexing disabled
                 await index_entity_for_search(
                     db=AsyncMock(),
@@ -209,15 +203,11 @@ class TestSearchIndexingHelper:
         """Test that indexing proceeds when indexing_enabled is True."""
         from src.services.search_indexing import index_entity_for_search
 
-        with patch(
-            "src.services.search_indexing.is_indexing_enabled"
-        ) as mock_is_indexing_enabled:
+        with patch("src.services.search_indexing.is_indexing_enabled") as mock_is_indexing_enabled:
             # Mock is_indexing_enabled to return True
             mock_is_indexing_enabled.return_value = True
 
-            with patch(
-                "src.services.indexing_queue.enqueue_index_entity"
-            ) as mock_enqueue:
+            with patch("src.services.indexing_queue.enqueue_index_entity") as mock_enqueue:
                 await index_entity_for_search(
                     db=AsyncMock(),
                     entity_type="password",

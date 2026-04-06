@@ -132,7 +132,9 @@ async def create_export(
     repo = ExportRepository(db)
 
     # Convert UUID list to string list for JSONB storage
-    org_ids_str = [str(org_id) for org_id in request.organization_ids] if request.organization_ids else None
+    org_ids_str = (
+        [str(org_id) for org_id in request.organization_ids] if request.organization_ids else None
+    )
 
     export = Export(
         user_id=user.user_id,

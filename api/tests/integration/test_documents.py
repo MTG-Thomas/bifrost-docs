@@ -24,9 +24,7 @@ from src.models.enums import UserRole
 @pytest_asyncio.fixture
 async def client():
     """Create an async HTTP client for testing."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
 
@@ -52,7 +50,8 @@ def mock_superuser_principal():
         name="Admin User",
         role=UserRole.OWNER,
         is_active=True,
-        is_verified=True)
+        is_verified=True,
+    )
 
 
 @pytest_asyncio.fixture
@@ -64,9 +63,7 @@ async def authenticated_client(mock_user_principal):
 
     app.dependency_overrides[get_current_active_user] = override_get_current_active_user
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
     # Clean up
@@ -82,9 +79,7 @@ async def superuser_client(mock_superuser_principal):
 
     app.dependency_overrides[get_current_active_user] = override_get_current_active_user
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
     # Clean up
@@ -106,7 +101,8 @@ class TestDocumentsEndpointAuth:
         org_id = uuid4()
         response = await client.post(
             f"/api/organizations/{org_id}/documents",
-            json={"path": "/Test", "name": "Test Doc", "content": "# Test"})
+            json={"path": "/Test", "name": "Test Doc", "content": "# Test"},
+        )
         assert response.status_code == 401
 
     async def test_unauthenticated_get_document(self, client: AsyncClient):
@@ -145,16 +141,15 @@ class TestDocumentsCRUD:
         mock_doc_repo = AsyncMock()
         mock_doc_repo.create = AsyncMock(return_value=mock_doc)
 
-        with patch(
-                "src.routers.documents.DocumentRepository", return_value=mock_doc_repo
-            ):
+        with patch("src.routers.documents.DocumentRepository", return_value=mock_doc_repo):
             response = await authenticated_client.post(
                 f"/api/organizations/{org_id}/documents",
                 json={
                     "path": "/Infrastructure/Network",
                     "name": "Network Diagram",
                     "content": "# Network Diagram\n\nDescription here.",
-                })
+                },
+            )
 
         assert response.status_code == 201
         data = response.json()
@@ -162,9 +157,7 @@ class TestDocumentsCRUD:
         assert data["name"] == "Network Diagram"
         assert "id" in data
 
-    async def test_list_documents_success(
-        self, authenticated_client: AsyncClient
-    ):
+    async def test_list_documents_success(self, authenticated_client: AsyncClient):
         """Test listing documents for an organization."""
         org_id = uuid4()
 
@@ -189,19 +182,14 @@ class TestDocumentsCRUD:
         mock_doc_repo = AsyncMock()
         mock_doc_repo.get_all_by_org = AsyncMock(return_value=[mock_doc1, mock_doc2])
 
-        with patch(
-                "src.routers.documents.DocumentRepository", return_value=mock_doc_repo
-            ):
-            response = await authenticated_client.get(
-                f"/api/organizations/{org_id}/documents")
+        with patch("src.routers.documents.DocumentRepository", return_value=mock_doc_repo):
+            response = await authenticated_client.get(f"/api/organizations/{org_id}/documents")
 
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 2
 
-    async def test_list_documents_with_path_filter(
-        self, authenticated_client: AsyncClient
-    ):
+    async def test_list_documents_with_path_filter(self, authenticated_client: AsyncClient):
         """Test listing documents filtered by path."""
         org_id = uuid4()
 
@@ -217,21 +205,17 @@ class TestDocumentsCRUD:
         mock_doc_repo = AsyncMock()
         mock_doc_repo.get_by_path = AsyncMock(return_value=[mock_doc])
 
-        with patch(
-                "src.routers.documents.DocumentRepository", return_value=mock_doc_repo
-            ):
+        with patch("src.routers.documents.DocumentRepository", return_value=mock_doc_repo):
             response = await authenticated_client.get(
-                f"/api/organizations/{org_id}/documents",
-                params={"path": "/Infrastructure/Network"})
+                f"/api/organizations/{org_id}/documents", params={"path": "/Infrastructure/Network"}
+            )
 
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
         assert data[0]["path"] == "/Infrastructure/Network"
 
-    async def test_get_folders_success(
-        self, authenticated_client: AsyncClient
-    ):
+    async def test_get_folders_success(self, authenticated_client: AsyncClient):
         """Test getting distinct folder paths."""
         org_id = uuid4()
 
@@ -240,11 +224,10 @@ class TestDocumentsCRUD:
             return_value=["/Infrastructure", "/Infrastructure/Network", "/Policies"]
         )
 
-        with patch(
-                "src.routers.documents.DocumentRepository", return_value=mock_doc_repo
-            ):
+        with patch("src.routers.documents.DocumentRepository", return_value=mock_doc_repo):
             response = await authenticated_client.get(
-                f"/api/organizations/{org_id}/documents/folders")
+                f"/api/organizations/{org_id}/documents/folders"
+            )
 
         assert response.status_code == 200
         data = response.json()
@@ -253,9 +236,7 @@ class TestDocumentsCRUD:
         assert "/Infrastructure" in data["folders"]
         assert "/Policies" in data["folders"]
 
-    async def test_get_document_success(
-        self, authenticated_client: AsyncClient
-    ):
+    async def test_get_document_success(self, authenticated_client: AsyncClient):
         """Test getting a single document by ID."""
         org_id = uuid4()
         doc_id = uuid4()
@@ -272,20 +253,17 @@ class TestDocumentsCRUD:
         mock_doc_repo = AsyncMock()
         mock_doc_repo.get_by_id_and_org = AsyncMock(return_value=mock_doc)
 
-        with patch(
-                "src.routers.documents.DocumentRepository", return_value=mock_doc_repo
-            ):
+        with patch("src.routers.documents.DocumentRepository", return_value=mock_doc_repo):
             response = await authenticated_client.get(
-                f"/api/organizations/{org_id}/documents/{doc_id}")
+                f"/api/organizations/{org_id}/documents/{doc_id}"
+            )
 
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Overview"
         assert data["content"] == "# Overview\n\nThis is the overview."
 
-    async def test_get_document_not_found(
-        self, authenticated_client: AsyncClient
-    ):
+    async def test_get_document_not_found(self, authenticated_client: AsyncClient):
         """Test getting a non-existent document returns 404."""
         org_id = uuid4()
         doc_id = uuid4()
@@ -293,17 +271,14 @@ class TestDocumentsCRUD:
         mock_doc_repo = AsyncMock()
         mock_doc_repo.get_by_id_and_org = AsyncMock(return_value=None)
 
-        with patch(
-                "src.routers.documents.DocumentRepository", return_value=mock_doc_repo
-            ):
+        with patch("src.routers.documents.DocumentRepository", return_value=mock_doc_repo):
             response = await authenticated_client.get(
-                f"/api/organizations/{org_id}/documents/{doc_id}")
+                f"/api/organizations/{org_id}/documents/{doc_id}"
+            )
 
         assert response.status_code == 404
 
-    async def test_update_document_success(
-        self, authenticated_client: AsyncClient
-    ):
+    async def test_update_document_success(self, authenticated_client: AsyncClient):
         """Test updating a document."""
         org_id = uuid4()
         doc_id = uuid4()
@@ -321,18 +296,15 @@ class TestDocumentsCRUD:
         mock_doc_repo.get_by_id_and_org = AsyncMock(return_value=mock_doc)
         mock_doc_repo.update = AsyncMock(return_value=mock_doc)
 
-        with patch(
-                "src.routers.documents.DocumentRepository", return_value=mock_doc_repo
-            ):
+        with patch("src.routers.documents.DocumentRepository", return_value=mock_doc_repo):
             response = await authenticated_client.put(
                 f"/api/organizations/{org_id}/documents/{doc_id}",
-                json={"name": "Updated Overview", "content": "# Updated Content"})
+                json={"name": "Updated Overview", "content": "# Updated Content"},
+            )
 
         assert response.status_code == 200
 
-    async def test_move_document_by_updating_path(
-        self, authenticated_client: AsyncClient
-    ):
+    async def test_move_document_by_updating_path(self, authenticated_client: AsyncClient):
         """Test moving a document by updating its path."""
         org_id = uuid4()
         doc_id = uuid4()
@@ -356,20 +328,16 @@ class TestDocumentsCRUD:
 
         mock_doc_repo.update = AsyncMock(side_effect=update_doc)
 
-        with patch(
-                "src.routers.documents.DocumentRepository", return_value=mock_doc_repo
-            ):
+        with patch("src.routers.documents.DocumentRepository", return_value=mock_doc_repo):
             response = await authenticated_client.put(
-                f"/api/organizations/{org_id}/documents/{doc_id}",
-                json={"path": "/NewPath"})
+                f"/api/organizations/{org_id}/documents/{doc_id}", json={"path": "/NewPath"}
+            )
 
         assert response.status_code == 200
         data = response.json()
         assert data["path"] == "/NewPath"
 
-    async def test_delete_document_success(
-        self, authenticated_client: AsyncClient
-    ):
+    async def test_delete_document_success(self, authenticated_client: AsyncClient):
         """Test deleting a document."""
         org_id = uuid4()
         doc_id = uuid4()
@@ -377,17 +345,14 @@ class TestDocumentsCRUD:
         mock_doc_repo = AsyncMock()
         mock_doc_repo.delete_by_id_and_org = AsyncMock(return_value=True)
 
-        with patch(
-                "src.routers.documents.DocumentRepository", return_value=mock_doc_repo
-            ):
+        with patch("src.routers.documents.DocumentRepository", return_value=mock_doc_repo):
             response = await authenticated_client.delete(
-                f"/api/organizations/{org_id}/documents/{doc_id}")
+                f"/api/organizations/{org_id}/documents/{doc_id}"
+            )
 
         assert response.status_code == 204
 
-    async def test_delete_document_not_found(
-        self, authenticated_client: AsyncClient
-    ):
+    async def test_delete_document_not_found(self, authenticated_client: AsyncClient):
         """Test deleting a non-existent document returns 404."""
         org_id = uuid4()
         doc_id = uuid4()
@@ -395,11 +360,10 @@ class TestDocumentsCRUD:
         mock_doc_repo = AsyncMock()
         mock_doc_repo.delete_by_id_and_org = AsyncMock(return_value=False)
 
-        with patch(
-                "src.routers.documents.DocumentRepository", return_value=mock_doc_repo
-            ):
+        with patch("src.routers.documents.DocumentRepository", return_value=mock_doc_repo):
             response = await authenticated_client.delete(
-                f"/api/organizations/{org_id}/documents/{doc_id}")
+                f"/api/organizations/{org_id}/documents/{doc_id}"
+            )
 
         assert response.status_code == 404
 
@@ -408,38 +372,30 @@ class TestDocumentsCRUD:
 class TestDocumentsOrganizationAccess:
     """Tests for organization access after removing membership checks."""
 
-    async def test_user_can_access_any_org_documents(
-        self, authenticated_client: AsyncClient
-    ):
+    async def test_user_can_access_any_org_documents(self, authenticated_client: AsyncClient):
         """Test that users can access documents from any organization (no membership check)."""
         other_org_id = uuid4()  # Different from user's org
 
         mock_doc_repo = AsyncMock()
         mock_doc_repo.get_all_by_org = AsyncMock(return_value=[])
 
-        with patch(
-                "src.routers.documents.DocumentRepository", return_value=mock_doc_repo
-            ):
+        with patch("src.routers.documents.DocumentRepository", return_value=mock_doc_repo):
             response = await authenticated_client.get(
-                f"/api/organizations/{other_org_id}/documents")
+                f"/api/organizations/{other_org_id}/documents"
+            )
 
         # Users can now access any organization
         assert response.status_code == 200
 
-    async def test_superuser_can_access_any_org_documents(
-        self, superuser_client: AsyncClient
-    ):
+    async def test_superuser_can_access_any_org_documents(self, superuser_client: AsyncClient):
         """Test that superusers can access documents from any organization."""
         any_org_id = uuid4()
 
         mock_doc_repo = AsyncMock()
         mock_doc_repo.get_all_by_org = AsyncMock(return_value=[])
 
-        with patch(
-                "src.routers.documents.DocumentRepository", return_value=mock_doc_repo
-            ):
-            response = await superuser_client.get(
-                f"/api/organizations/{any_org_id}/documents")
+        with patch("src.routers.documents.DocumentRepository", return_value=mock_doc_repo):
+            response = await superuser_client.get(f"/api/organizations/{any_org_id}/documents")
 
         # Superuser can access
         assert response.status_code == 200

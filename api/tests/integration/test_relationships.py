@@ -44,15 +44,14 @@ def test_user(test_org_id):
         name="Test User",
         role=UserRole.CONTRIBUTOR,
         is_active=True,
-        is_verified=True)
+        is_verified=True,
+    )
 
 
 @pytest_asyncio.fixture
 async def client():
     """Create an async HTTP client for testing (unauthenticated)."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
 
@@ -65,7 +64,8 @@ class TestRelationshipsEndpointsUnauthenticated:
         entity_id = uuid4()
         response = await client.get(
             f"/api/organizations/{test_org_id}/relationships",
-            params={"entity_type": "password", "entity_id": str(entity_id)})
+            params={"entity_type": "password", "entity_id": str(entity_id)},
+        )
         assert response.status_code == 401
 
     async def test_create_relationship_unauthenticated(self, client: AsyncClient, test_org_id):
@@ -77,7 +77,8 @@ class TestRelationshipsEndpointsUnauthenticated:
                 "source_id": str(uuid4()),
                 "target_type": "configuration",
                 "target_id": str(uuid4()),
-            })
+            },
+        )
         assert response.status_code == 401
 
     async def test_delete_relationship_unauthenticated(self, client: AsyncClient, test_org_id):
@@ -93,7 +94,8 @@ class TestRelationshipsEndpointsUnauthenticated:
         entity_id = uuid4()
         response = await client.get(
             f"/api/organizations/{test_org_id}/relationships/resolved",
-            params={"entity_type": "password", "entity_id": str(entity_id)})
+            params={"entity_type": "password", "entity_id": str(entity_id)},
+        )
         assert response.status_code == 401
 
 
@@ -125,10 +127,15 @@ class TestRelationshipsCreate:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
-                with patch("src.routers.relationships.RelationshipRepository", return_value=mock_rel_repo), \
-                     patch("src.routers.relationships.EntityResolver", return_value=mock_resolver):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                with (
+                    patch(
+                        "src.routers.relationships.RelationshipRepository",
+                        return_value=mock_rel_repo,
+                    ),
+                    patch("src.routers.relationships.EntityResolver", return_value=mock_resolver),
+                ):
                     response = await client.post(
                         f"/api/organizations/{test_org_id}/relationships",
                         json={
@@ -136,7 +143,8 @@ class TestRelationshipsCreate:
                             "source_id": str(password_id),
                             "target_type": "configuration",
                             "target_id": str(config_id),
-                        })
+                        },
+                    )
 
             assert response.status_code == 201
             data = response.json()
@@ -164,10 +172,15 @@ class TestRelationshipsCreate:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
-                with patch("src.routers.relationships.RelationshipRepository", return_value=mock_rel_repo), \
-                     patch("src.routers.relationships.EntityResolver", return_value=mock_resolver):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                with (
+                    patch(
+                        "src.routers.relationships.RelationshipRepository",
+                        return_value=mock_rel_repo,
+                    ),
+                    patch("src.routers.relationships.EntityResolver", return_value=mock_resolver),
+                ):
                     response = await client.post(
                         f"/api/organizations/{test_org_id}/relationships",
                         json={
@@ -175,7 +188,8 @@ class TestRelationshipsCreate:
                             "source_id": str(password_id),
                             "target_type": "configuration",
                             "target_id": str(config_id),
-                        })
+                        },
+                    )
 
             assert response.status_code == 409
             assert "already exists" in response.json()["detail"]
@@ -190,8 +204,8 @@ class TestRelationshipsCreate:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 response = await client.post(
                     f"/api/organizations/{test_org_id}/relationships",
                     json={
@@ -199,7 +213,8 @@ class TestRelationshipsCreate:
                         "source_id": str(entity_id),
                         "target_type": "password",
                         "target_id": str(entity_id),
-                    })
+                    },
+                )
 
             assert response.status_code == 400
             assert "itself" in response.json()["detail"]
@@ -212,8 +227,8 @@ class TestRelationshipsCreate:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 response = await client.post(
                     f"/api/organizations/{test_org_id}/relationships",
                     json={
@@ -221,7 +236,8 @@ class TestRelationshipsCreate:
                         "source_id": str(uuid4()),
                         "target_type": "password",
                         "target_id": str(uuid4()),
-                    })
+                    },
+                )
 
             assert response.status_code == 400
             assert "Invalid entity type" in response.json()["detail"]
@@ -238,8 +254,8 @@ class TestRelationshipsCreate:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch("src.routers.relationships.EntityResolver", return_value=mock_resolver):
                     response = await client.post(
                         f"/api/organizations/{test_org_id}/relationships",
@@ -248,7 +264,8 @@ class TestRelationshipsCreate:
                             "source_id": str(uuid4()),
                             "target_type": "configuration",
                             "target_id": str(uuid4()),
-                        })
+                        },
+                    )
 
             assert response.status_code == 404
             assert "Source entity not found" in response.json()["detail"]
@@ -282,12 +299,15 @@ class TestRelationshipsBidirectional:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
-                with patch("src.routers.relationships.RelationshipRepository", return_value=mock_rel_repo):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                with patch(
+                    "src.routers.relationships.RelationshipRepository", return_value=mock_rel_repo
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/relationships",
-                        params={"entity_type": "password", "entity_id": str(password_id)})
+                        params={"entity_type": "password", "entity_id": str(password_id)},
+                    )
 
             assert response.status_code == 200
             data = response.json()
@@ -318,12 +338,15 @@ class TestRelationshipsBidirectional:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
-                with patch("src.routers.relationships.RelationshipRepository", return_value=mock_rel_repo):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                with patch(
+                    "src.routers.relationships.RelationshipRepository", return_value=mock_rel_repo
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/relationships",
-                        params={"entity_type": "configuration", "entity_id": str(config_id)})
+                        params={"entity_type": "configuration", "entity_id": str(config_id)},
+                    )
 
             assert response.status_code == 200
             data = response.json()
@@ -362,13 +385,19 @@ class TestRelationshipsResolved:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
-                with patch("src.routers.relationships.RelationshipRepository", return_value=mock_rel_repo), \
-                     patch("src.routers.relationships.EntityResolver", return_value=mock_resolver):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                with (
+                    patch(
+                        "src.routers.relationships.RelationshipRepository",
+                        return_value=mock_rel_repo,
+                    ),
+                    patch("src.routers.relationships.EntityResolver", return_value=mock_resolver),
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/relationships/resolved",
-                        params={"entity_type": "password", "entity_id": str(password_id)})
+                        params={"entity_type": "password", "entity_id": str(password_id)},
+                    )
 
             assert response.status_code == 200
             data = response.json()
@@ -406,13 +435,19 @@ class TestRelationshipsResolved:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
-                with patch("src.routers.relationships.RelationshipRepository", return_value=mock_rel_repo), \
-                     patch("src.routers.relationships.EntityResolver", return_value=mock_resolver):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                with (
+                    patch(
+                        "src.routers.relationships.RelationshipRepository",
+                        return_value=mock_rel_repo,
+                    ),
+                    patch("src.routers.relationships.EntityResolver", return_value=mock_resolver),
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/relationships/resolved",
-                        params={"entity_type": "password", "entity_id": str(password_id)})
+                        params={"entity_type": "password", "entity_id": str(password_id)},
+                    )
 
             assert response.status_code == 200
             data = response.json()
@@ -444,9 +479,11 @@ class TestRelationshipsDelete:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
-                with patch("src.routers.relationships.RelationshipRepository", return_value=mock_rel_repo):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                with patch(
+                    "src.routers.relationships.RelationshipRepository", return_value=mock_rel_repo
+                ):
                     response = await client.delete(
                         f"/api/organizations/{test_org_id}/relationships/{relationship_id}"
                     )
@@ -466,9 +503,11 @@ class TestRelationshipsDelete:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
-                with patch("src.routers.relationships.RelationshipRepository", return_value=mock_rel_repo):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                with patch(
+                    "src.routers.relationships.RelationshipRepository", return_value=mock_rel_repo
+                ):
                     response = await client.delete(
                         f"/api/organizations/{test_org_id}/relationships/{relationship_id}"
                     )
@@ -490,11 +529,12 @@ class TestRelationshipsOrganizationIsolation:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 response = await client.get(
                     f"/api/organizations/{other_org_id}/relationships",
-                    params={"entity_type": "password", "entity_id": str(entity_id)})
+                    params={"entity_type": "password", "entity_id": str(entity_id)},
+                )
 
             assert response.status_code == 404
         finally:
@@ -506,8 +546,8 @@ class TestRelationshipsOrganizationIsolation:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 response = await client.post(
                     f"/api/organizations/{other_org_id}/relationships",
                     json={
@@ -515,7 +555,8 @@ class TestRelationshipsOrganizationIsolation:
                         "source_id": str(uuid4()),
                         "target_type": "configuration",
                         "target_id": str(uuid4()),
-                    })
+                    },
+                )
 
             assert response.status_code == 404
         finally:
@@ -529,8 +570,8 @@ class TestRelationshipsOrganizationIsolation:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 response = await client.delete(
                     f"/api/organizations/{other_org_id}/relationships/{relationship_id}"
                 )

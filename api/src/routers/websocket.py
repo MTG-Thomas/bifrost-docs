@@ -104,8 +104,7 @@ async def authenticate_websocket(websocket: WebSocket) -> UserPrincipal | None:
 
     # Tokens MUST have email claim
     if "email" not in payload:
-        logger.warning(
-            f"WebSocket token for user {user_id} missing required email claim.")
+        logger.warning(f"WebSocket token for user {user_id} missing required email claim.")
         return None
 
     # Get role from token (default to CONTRIBUTOR for backwards compatibility)
@@ -124,6 +123,7 @@ async def authenticate_websocket(websocket: WebSocket) -> UserPrincipal | None:
         is_active=True,
         is_verified=True,
     )
+
 
 # Ping interval in seconds
 PING_INTERVAL = 15
@@ -343,9 +343,7 @@ async def websocket_connect(
         if can_subscribe_to_channel(user.user_id, channel):
             valid_channels.append(channel)
         else:
-            logger.warning(
-                f"User {user.user_id} denied access to channel {channel}"
-            )
+            logger.warning(f"User {user.user_id} denied access to channel {channel}")
 
     # Accept connection and subscribe to channels
     try:
@@ -357,9 +355,7 @@ async def websocket_connect(
         )
 
         # Start ping loop
-        ping_task = asyncio.create_task(
-            ping_loop(websocket, connection_id, manager)
-        )
+        ping_task = asyncio.create_task(ping_loop(websocket, connection_id, manager))
 
         try:
             # Handle incoming messages

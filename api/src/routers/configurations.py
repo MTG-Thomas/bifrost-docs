@@ -34,6 +34,7 @@ class ConfigurationListResponse(BaseModel):
     limit: int
     offset: int
 
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
@@ -47,8 +48,12 @@ def _configuration_to_public(config: Configuration) -> ConfigurationPublic:
     return ConfigurationPublic(
         id=str(config.id),
         organization_id=str(config.organization_id),
-        configuration_type_id=str(config.configuration_type_id) if config.configuration_type_id else None,
-        configuration_status_id=str(config.configuration_status_id) if config.configuration_status_id else None,
+        configuration_type_id=str(config.configuration_type_id)
+        if config.configuration_type_id
+        else None,
+        configuration_status_id=str(config.configuration_status_id)
+        if config.configuration_status_id
+        else None,
         name=config.name,
         serial_number=config.serial_number,
         asset_tag=config.asset_tag,
@@ -62,8 +67,12 @@ def _configuration_to_public(config: Configuration) -> ConfigurationPublic:
         is_enabled=config.is_enabled,
         created_at=config.created_at,
         updated_at=config.updated_at,
-        configuration_type_name=config.configuration_type.name if config.configuration_type else None,
-        configuration_status_name=config.configuration_status.name if config.configuration_status else None,
+        configuration_type_name=config.configuration_type.name
+        if config.configuration_type
+        else None,
+        configuration_status_name=config.configuration_status.name
+        if config.configuration_status
+        else None,
         updated_by_user_id=str(config.updated_by_user_id) if config.updated_by_user_id else None,
         updated_by_user_name=config.updated_by_user.email if config.updated_by_user else None,
     )
@@ -148,8 +157,12 @@ async def create_configuration(
     repo = ConfigurationRepository(db)
     config = Configuration(
         organization_id=org_id,
-        configuration_type_id=UUID(data.configuration_type_id) if data.configuration_type_id else None,
-        configuration_status_id=UUID(data.configuration_status_id) if data.configuration_status_id else None,
+        configuration_type_id=UUID(data.configuration_type_id)
+        if data.configuration_type_id
+        else None,
+        configuration_status_id=UUID(data.configuration_status_id)
+        if data.configuration_status_id
+        else None,
         name=data.name,
         serial_number=data.serial_number,
         asset_tag=data.asset_tag,
@@ -343,9 +356,13 @@ async def update_configuration(
     if data.name is not None:
         config.name = data.name
     if data.configuration_type_id is not None:
-        config.configuration_type_id = UUID(data.configuration_type_id) if data.configuration_type_id else None
+        config.configuration_type_id = (
+            UUID(data.configuration_type_id) if data.configuration_type_id else None
+        )
     if data.configuration_status_id is not None:
-        config.configuration_status_id = UUID(data.configuration_status_id) if data.configuration_status_id else None
+        config.configuration_status_id = (
+            UUID(data.configuration_status_id) if data.configuration_status_id else None
+        )
     if data.serial_number is not None:
         config.serial_number = data.serial_number
     if data.asset_tag is not None:

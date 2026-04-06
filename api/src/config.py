@@ -51,8 +51,7 @@ class Settings(BaseSettings):
         description="Sync PostgreSQL connection URL (for Alembic)",
     )
 
-    database_pool_size: int = Field(
-        default=5, description="Database connection pool size")
+    database_pool_size: int = Field(default=5, description="Database connection pool size")
 
     database_max_overflow: int = Field(
         default=10, description="Max overflow connections beyond pool size"
@@ -61,8 +60,7 @@ class Settings(BaseSettings):
     # ==========================================================================
     # Redis
     # ==========================================================================
-    redis_url: str = Field(default="redis://localhost:6380/0",
-                           description="Redis connection URL")
+    redis_url: str = Field(default="redis://localhost:6380/0", description="Redis connection URL")
 
     # ==========================================================================
     # Security
@@ -72,8 +70,7 @@ class Settings(BaseSettings):
         min_length=32,
     )
 
-    algorithm: str = Field(
-        default="HS256", description="JWT signing algorithm")
+    algorithm: str = Field(default="HS256", description="JWT signing algorithm")
 
     access_token_expire_minutes: int = Field(
         default=30, description="Access token expiration time in minutes"
@@ -127,8 +124,7 @@ class Settings(BaseSettings):
         default=True, description="Whether MFA is required for password authentication"
     )
 
-    mfa_totp_issuer: str = Field(
-        default="BifrostDocs", description="Issuer name for TOTP QR codes")
+    mfa_totp_issuer: str = Field(default="BifrostDocs", description="Issuer name for TOTP QR codes")
 
     mfa_recovery_code_count: int = Field(
         default=10, description="Number of recovery codes to generate for MFA"
@@ -197,13 +193,9 @@ class Settings(BaseSettings):
         default=None, description="S3 secret key (required for S3 operations)"
     )
 
-    s3_bucket: str = Field(
-        default="bifrost-docs", description="S3 bucket name for file storage"
-    )
+    s3_bucket: str = Field(default="bifrost-docs", description="S3 bucket name for file storage")
 
-    s3_region: str = Field(
-        default="us-east-1", description="S3 region (use us-east-1 for MinIO)"
-    )
+    s3_region: str = Field(default="us-east-1", description="S3 region (use us-east-1 for MinIO)")
 
     s3_presigned_url_expiry: int = Field(
         default=600, description="Presigned URL expiry in seconds (default 10 minutes)"

@@ -104,9 +104,7 @@ class OAuthService:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(discovery_url)
             if response.status_code != 200:
-                raise OAuthError(
-                    f"Failed to fetch OIDC discovery: HTTP {response.status_code}"
-                )
+                raise OAuthError(f"Failed to fetch OIDC discovery: HTTP {response.status_code}")
 
             data = response.json()
 
@@ -114,9 +112,7 @@ class OAuthService:
             required = ["authorization_endpoint", "token_endpoint", "issuer"]
             missing = [f for f in required if f not in data]
             if missing:
-                raise OAuthError(
-                    f"OIDC discovery missing required fields: {', '.join(missing)}"
-                )
+                raise OAuthError(f"OIDC discovery missing required fields: {', '.join(missing)}")
 
             self._oidc_discovery_cache[discovery_url] = data
             return data
@@ -277,9 +273,7 @@ class OAuthService:
             if response.status_code != 200:
                 error_data = (
                     response.json()
-                    if response.headers.get("content-type", "").startswith(
-                        "application/json"
-                    )
+                    if response.headers.get("content-type", "").startswith("application/json")
                     else {}
                 )
                 error_msg = error_data.get(
@@ -319,9 +313,7 @@ class OAuthService:
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 config["userinfo_url"],
-                headers={
-                    "Authorization": f"{tokens.token_type} {tokens.access_token}"
-                },
+                headers={"Authorization": f"{tokens.token_type} {tokens.access_token}"},
             )
 
             if response.status_code != 200:

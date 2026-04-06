@@ -31,7 +31,9 @@ async def list_audit_logs(
     actor_user_id: UUID | None = Query(None, description="Filter by actor user"),
     start_date: datetime | None = Query(None, description="Filter by start date"),
     end_date: datetime | None = Query(None, description="Filter by end date"),
-    search: str | None = Query(None, description="Search by org name, actor, entity type, or action"),
+    search: str | None = Query(
+        None, description="Search by org name, actor, entity type, or action"
+    ),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),
 ) -> AuditLogListResponse:
@@ -67,8 +69,10 @@ async def list_audit_logs(
             actor_type=log.actor_type,
             actor_user_id=str(log.actor_user_id) if log.actor_user_id else None,
             actor_display_name=(
-                log.actor_user.email if log.actor_user
-                else log.actor_api_key.name if log.actor_api_key
+                log.actor_user.email
+                if log.actor_user
+                else log.actor_api_key.name
+                if log.actor_api_key
                 else log.actor_label
             ),
             actor_label=log.actor_label,
@@ -136,8 +140,10 @@ async def list_org_audit_logs(
             actor_type=log.actor_type,
             actor_user_id=str(log.actor_user_id) if log.actor_user_id else None,
             actor_display_name=(
-                log.actor_user.email if log.actor_user
-                else log.actor_api_key.name if log.actor_api_key
+                log.actor_user.email
+                if log.actor_user
+                else log.actor_api_key.name
+                if log.actor_api_key
                 else log.actor_label
             ),
             actor_label=log.actor_label,

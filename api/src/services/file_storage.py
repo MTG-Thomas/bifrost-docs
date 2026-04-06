@@ -226,8 +226,7 @@ class FileStorageService:
             logger.info(f"Deleted file from S3: {s3_key}")
             return True
         except Exception as e:
-            logger.error(
-                f"Failed to delete file from S3: {s3_key}, error: {e}")
+            logger.error(f"Failed to delete file from S3: {s3_key}, error: {e}")
             return False
 
     async def upload_file(
@@ -255,8 +254,7 @@ class FileStorageService:
                     Body=content,
                     ContentType=content_type,
                 )
-            logger.info(
-                f"Uploaded file to S3: {s3_key} ({len(content)} bytes)")
+            logger.info(f"Uploaded file to S3: {s3_key} ({len(content)} bytes)")
             return True
         except Exception as e:
             logger.error(f"Failed to upload file to S3: {s3_key}, error: {e}")
@@ -299,8 +297,7 @@ class FileStorageService:
                 except Exception:
                     # Bucket doesn't exist, create it
                     await s3.create_bucket(Bucket=self.settings.s3_bucket)
-                    logger.info(
-                        f"Created S3 bucket: {self.settings.s3_bucket}")
+                    logger.info(f"Created S3 bucket: {self.settings.s3_bucket}")
                     return True
         except Exception as e:
             logger.error(f"Failed to ensure bucket exists: {e}")

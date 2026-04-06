@@ -1,4 +1,5 @@
 """OpenAI LLM client implementation."""
+
 import json
 from collections.abc import AsyncGenerator
 

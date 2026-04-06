@@ -21,9 +21,7 @@ class ApiKeyRepository(BaseRepository[APIKey]):
     def __init__(self, session: AsyncSession):
         super().__init__(session)
 
-    async def get_by_user(
-        self, user_id: UUID, limit: int = 100, offset: int = 0
-    ) -> list[APIKey]:
+    async def get_by_user(self, user_id: UUID, limit: int = 100, offset: int = 0) -> list[APIKey]:
         """
         Get all API keys for a user.
 
@@ -73,7 +71,5 @@ class ApiKeyRepository(BaseRepository[APIKey]):
         Returns:
             APIKey if found, None otherwise
         """
-        result = await self.session.execute(
-            select(APIKey).where(APIKey.key_hash == key_hash)
-        )
+        result = await self.session.execute(select(APIKey).where(APIKey.key_hash == key_hash))
         return result.scalar_one_or_none()

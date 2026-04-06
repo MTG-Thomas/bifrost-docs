@@ -24,9 +24,7 @@ from src.services.entity_resolver import VALID_ENTITY_TYPES, EntityResolver
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
-    prefix="/api/organizations/{org_id}/relationships", tags=["relationships"]
-)
+router = APIRouter(prefix="/api/organizations/{org_id}/relationships", tags=["relationships"])
 
 
 def _validate_entity_type(entity_type: str) -> None:

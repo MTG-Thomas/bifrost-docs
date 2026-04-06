@@ -120,8 +120,7 @@ async def create_default_user() -> None:
         # Check if default user exists
         existing = await user_repo.get_by_email(settings.default_user_email)
         if existing:
-            logger.info(
-                f"Default user already exists: {settings.default_user_email}")
+            logger.info(f"Default user already exists: {settings.default_user_email}")
             return
 
         # Create default admin user with owner role
@@ -139,8 +138,7 @@ async def create_default_user() -> None:
         org = Organization(name="Default Organization")
         org = await org_repo.create(org)
 
-        logger.info(
-            f"Created default admin user: {user.email} (id: {user.id})")
+        logger.info(f"Created default admin user: {user.email} (id: {user.id})")
 
 
 def create_app() -> FastAPI:
@@ -177,6 +175,7 @@ def create_app() -> FastAPI:
     # Rate Limiting Middleware
     # ==========================================================================
     from src.core.rate_limiting import RATE_LIMITING_ENABLED, limiter
+
     if RATE_LIMITING_ENABLED:
         app.state.limiter = limiter
         app.add_middleware(limiter.middleware_class)
@@ -188,6 +187,7 @@ def create_app() -> FastAPI:
     # Security Headers Middleware
     # ==========================================================================
     from src.core.security_headers import SecurityHeadersMiddleware
+
     app.add_middleware(SecurityHeadersMiddleware)
     logger.info("Security headers middleware enabled")
 
@@ -201,8 +201,7 @@ def create_app() -> FastAPI:
     ) -> JSONResponse:
         """Pydantic model validation errors -> 422."""
         errors = exc.errors()
-        field_errors = {".".join(str(loc)
-                                 for loc in e["loc"]): e["msg"] for e in errors}
+        field_errors = {".".join(str(loc) for loc in e["loc"]): e["msg"] for e in errors}
         return JSONResponse(
             status_code=422,
             content=ErrorResponse(

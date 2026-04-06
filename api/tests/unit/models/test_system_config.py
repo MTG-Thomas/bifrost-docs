@@ -1,4 +1,5 @@
 """Tests for SystemConfig ORM model."""
+
 from datetime import UTC, datetime
 from uuid import uuid4
 

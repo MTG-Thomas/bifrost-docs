@@ -27,9 +27,7 @@ async def test_org(db_session: AsyncSession) -> Organization:
 
 
 @pytest_asyncio.fixture
-async def test_attachment(
-    db_session: AsyncSession, test_org: Organization
-) -> Attachment:
+async def test_attachment(db_session: AsyncSession, test_org: Organization) -> Attachment:
     """Create a test attachment."""
     repo = AttachmentRepository(db_session)
     attachment = Attachment(
@@ -49,9 +47,7 @@ class TestAttachmentRepository:
     """Integration tests for AttachmentRepository."""
 
     @pytest.mark.asyncio
-    async def test_create_attachment(
-        self, db_session: AsyncSession, test_org: Organization
-    ):
+    async def test_create_attachment(self, db_session: AsyncSession, test_org: Organization):
         """Test creating an attachment."""
         repo = AttachmentRepository(db_session)
         entity_id = uuid4()
@@ -78,9 +74,7 @@ class TestAttachmentRepository:
         assert created.created_at is not None
 
     @pytest.mark.asyncio
-    async def test_get_by_id(
-        self, db_session: AsyncSession, test_attachment: Attachment
-    ):
+    async def test_get_by_id(self, db_session: AsyncSession, test_attachment: Attachment):
         """Test getting attachment by ID."""
         repo = AttachmentRepository(db_session)
 
@@ -216,9 +210,7 @@ class TestAttachmentRepository:
         assert len(all_attachments) >= 3
 
         # Filter by entity type
-        doc_attachments = await repo.get_all_for_org(
-            test_org.id, entity_type=EntityType.DOCUMENT
-        )
+        doc_attachments = await repo.get_all_for_org(test_org.id, entity_type=EntityType.DOCUMENT)
         assert all(a.entity_type == EntityType.DOCUMENT for a in doc_attachments)
 
     @pytest.mark.asyncio

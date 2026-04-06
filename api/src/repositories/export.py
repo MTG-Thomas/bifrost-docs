@@ -22,9 +22,7 @@ class ExportRepository(BaseRepository[Export]):
     def __init__(self, session: AsyncSession):
         super().__init__(session)
 
-    async def get_by_user(
-        self, user_id: UUID, limit: int = 100, offset: int = 0
-    ) -> list[Export]:
+    async def get_by_user(self, user_id: UUID, limit: int = 100, offset: int = 0) -> list[Export]:
         """
         Get all exports for a user, ordered by creation date descending.
 
@@ -45,9 +43,7 @@ class ExportRepository(BaseRepository[Export]):
         )
         return list(result.scalars().all())
 
-    async def get_by_id_and_user(
-        self, id: UUID, user_id: UUID
-    ) -> Export | None:
+    async def get_by_id_and_user(self, id: UUID, user_id: UUID) -> Export | None:
         """
         Get an export by ID within a user scope.
 
@@ -74,9 +70,7 @@ class ExportRepository(BaseRepository[Export]):
             List of pending exports
         """
         result = await self.session.execute(
-            select(Export)
-            .where(Export.status == ExportStatus.PENDING)
-            .order_by(Export.created_at)
+            select(Export).where(Export.status == ExportStatus.PENDING).order_by(Export.created_at)
         )
         return list(result.scalars().all())
 

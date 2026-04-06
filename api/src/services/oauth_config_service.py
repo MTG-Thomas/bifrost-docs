@@ -148,9 +148,7 @@ class OAuthConfigService:
     # Provider Configuration CRUD
     # =========================================================================
 
-    async def get_provider_config(
-        self, provider: OAuthSSOProvider
-    ) -> OAuthProviderConfig | None:
+    async def get_provider_config(self, provider: OAuthSSOProvider) -> OAuthProviderConfig | None:
         """
         Get OAuth configuration for a provider.
 
@@ -249,9 +247,7 @@ class OAuthConfigService:
         await self._set_config_value(
             OAUTH_OIDC_DISCOVERY_URL, config.discovery_url, updated_by=updated_by
         )
-        await self._set_config_value(
-            OAUTH_OIDC_CLIENT_ID, config.client_id, updated_by=updated_by
-        )
+        await self._set_config_value(OAUTH_OIDC_CLIENT_ID, config.client_id, updated_by=updated_by)
         await self._set_config_value(
             OAUTH_OIDC_CLIENT_SECRET,
             config.client_secret,
@@ -355,7 +351,9 @@ class OAuthConfigService:
             tenant_id = tenant_id or config.tenant_id
 
         tenant = tenant_id or "common"
-        discovery_url = f"https://login.microsoftonline.com/{tenant}/v2.0/.well-known/openid-configuration"
+        discovery_url = (
+            f"https://login.microsoftonline.com/{tenant}/v2.0/.well-known/openid-configuration"
+        )
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:

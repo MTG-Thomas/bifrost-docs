@@ -79,9 +79,7 @@ class TestCustomAssetTypeRepository:
         assert "Software License" in created.name
         assert len(created.fields) == 3
 
-    async def test_get_by_id(
-        self, db_session: AsyncSession, asset_type: CustomAssetType
-    ):
+    async def test_get_by_id(self, db_session: AsyncSession, asset_type: CustomAssetType):
         """Test getting asset type by ID."""
         repo = CustomAssetTypeRepository(db_session)
 
@@ -91,9 +89,7 @@ class TestCustomAssetTypeRepository:
         assert found.id == asset_type.id
         assert found.name == asset_type.name
 
-    async def test_get_by_name(
-        self, db_session: AsyncSession, asset_type: CustomAssetType
-    ):
+    async def test_get_by_name(self, db_session: AsyncSession, asset_type: CustomAssetType):
         """Test getting asset type by name."""
         repo = CustomAssetTypeRepository(db_session)
 
@@ -103,7 +99,9 @@ class TestCustomAssetTypeRepository:
         assert found.id == asset_type.id
 
     async def test_get_all_ordered(
-        self, db_session: AsyncSession, asset_type: CustomAssetType  # noqa: ARG002
+        self,
+        db_session: AsyncSession,
+        asset_type: CustomAssetType,  # noqa: ARG002
     ):
         """Test listing all asset types ordered by name."""
         repo = CustomAssetTypeRepository(db_session)
@@ -210,9 +208,7 @@ class TestCustomAssetRepository:
         """Test getting asset by ID, type, and organization."""
         repo = CustomAssetRepository(db_session)
 
-        found = await repo.get_by_id_type_and_org(
-            custom_asset.id, asset_type.id, test_org.id
-        )
+        found = await repo.get_by_id_type_and_org(custom_asset.id, asset_type.id, test_org.id)
 
         assert found is not None
         assert found.id == custom_asset.id
@@ -228,7 +224,9 @@ class TestCustomAssetRepository:
         repo = CustomAssetRepository(db_session)
 
         found = await repo.get_by_id_type_and_org(
-            custom_asset.id, uuid4(), test_org.id  # Wrong type ID
+            custom_asset.id,
+            uuid4(),
+            test_org.id,  # Wrong type ID
         )
 
         assert found is None
@@ -342,9 +340,7 @@ class TestPasswordFieldHandling:
     """Integration tests for password field encryption in custom assets."""
 
     @pytest_asyncio.fixture
-    async def asset_type_with_passwords(
-        self, db_session: AsyncSession
-    ) -> CustomAssetType:
+    async def asset_type_with_passwords(self, db_session: AsyncSession) -> CustomAssetType:
         """Create an asset type with password fields (global)."""
         repo = CustomAssetTypeRepository(db_session)
         asset_type = CustomAssetType(

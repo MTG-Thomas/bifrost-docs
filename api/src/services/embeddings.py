@@ -542,7 +542,9 @@ class EmbeddingsService:
             key = ("password", str(entity.id))
             if key not in seen_entities:
                 seen_entities.add(key)
-                snippet = self._build_snippet(entity.name, entity.username, entity.url, entity.notes)
+                snippet = self._build_snippet(
+                    entity.name, entity.username, entity.url, entity.notes
+                )
                 results.append(
                     SearchResult(
                         entity_type="password",
@@ -821,16 +823,24 @@ class EmbeddingsService:
         # If OpenAI is not available, use text search only
         if not await self.check_openai_available():
             logger.info("OpenAI not configured, using text search only")
-            return await self.text_search(db, query, org_ids, limit=limit, show_disabled=show_disabled)
+            return await self.text_search(
+                db, query, org_ids, limit=limit, show_disabled=show_disabled
+            )
 
         # Run both searches
         try:
-            semantic_results = await self.search(db, query, org_ids, limit=limit, show_disabled=show_disabled)
+            semantic_results = await self.search(
+                db, query, org_ids, limit=limit, show_disabled=show_disabled
+            )
         except Exception as e:
             logger.warning(f"Semantic search failed, falling back to text search: {e}")
-            return await self.text_search(db, query, org_ids, limit=limit, show_disabled=show_disabled)
+            return await self.text_search(
+                db, query, org_ids, limit=limit, show_disabled=show_disabled
+            )
 
-        text_results = await self.text_search(db, query, org_ids, limit=limit, show_disabled=show_disabled)
+        text_results = await self.text_search(
+            db, query, org_ids, limit=limit, show_disabled=show_disabled
+        )
 
         # Combine and deduplicate results
         seen: set[tuple[str, str]] = set()

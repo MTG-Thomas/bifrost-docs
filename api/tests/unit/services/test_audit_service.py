@@ -38,9 +38,7 @@ def mock_actor():
 class TestAuditServiceDedupe:
     """Tests for audit service dedupe functionality."""
 
-    async def test_log_with_dedupe_skips_duplicate(
-        self, audit_service, mock_db, mock_actor
-    ):
+    async def test_log_with_dedupe_skips_duplicate(self, audit_service, mock_db, mock_actor):
         """Should skip logging if same entity was viewed within dedupe window."""
         entity_id = uuid4()
         org_id = uuid4()
@@ -62,9 +60,7 @@ class TestAuditServiceDedupe:
         # Should NOT add a new log entry
         mock_db.add.assert_not_called()
 
-    async def test_log_with_dedupe_logs_when_no_recent(
-        self, audit_service, mock_db, mock_actor
-    ):
+    async def test_log_with_dedupe_logs_when_no_recent(self, audit_service, mock_db, mock_actor):
         """Should log if no recent view found within dedupe window."""
         entity_id = uuid4()
         org_id = uuid4()
@@ -86,9 +82,7 @@ class TestAuditServiceDedupe:
         # Should add a new log entry
         mock_db.add.assert_called_once()
 
-    async def test_log_without_dedupe_always_logs(
-        self, audit_service, mock_db, mock_actor
-    ):
+    async def test_log_without_dedupe_always_logs(self, audit_service, mock_db, mock_actor):
         """Should always log when dedupe_seconds is 0 (default)."""
         entity_id = uuid4()
         org_id = uuid4()
@@ -106,9 +100,7 @@ class TestAuditServiceDedupe:
         # execute should NOT be called (no dedupe check)
         mock_db.execute.assert_not_called()
 
-    async def test_log_with_dedupe_but_no_actor_always_logs(
-        self, audit_service, mock_db
-    ):
+    async def test_log_with_dedupe_but_no_actor_always_logs(self, audit_service, mock_db):
         """Should always log when dedupe is enabled but no actor provided."""
         entity_id = uuid4()
         org_id = uuid4()

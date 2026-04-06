@@ -1,4 +1,5 @@
 """Tests for mutation application endpoint."""
+
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -34,18 +35,14 @@ def create_mock_user(
 @pytest_asyncio.fixture
 async def client():
     """Create an async HTTP client for testing."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
 
 @pytest.fixture
 def contributor_user():
     """Create a CONTRIBUTOR user."""
-    return create_mock_user(
-        role=UserRole.CONTRIBUTOR, email="contributor@example.com"
-    )
+    return create_mock_user(role=UserRole.CONTRIBUTOR, email="contributor@example.com")
 
 
 @pytest.fixture
@@ -59,9 +56,7 @@ class TestApplyDocumentMutation:
     """Tests for applying document mutations."""
 
     @pytest.mark.asyncio
-    async def test_apply_document_mutation_success(
-        self, client: AsyncClient, contributor_user
-    ):
+    async def test_apply_document_mutation_success(self, client: AsyncClient, contributor_user):
         """Test successfully applying a document mutation."""
         # Arrange
         org_id = uuid4()
@@ -105,8 +100,10 @@ class TestApplyDocumentMutation:
 
         # Mock database dependency
         from src.core.database import get_db
+
         async def mock_get_db():
             yield mock_db
+
         app.dependency_overrides[get_db] = mock_get_db
 
         try:
@@ -133,13 +130,8 @@ class TestApplyDocumentMutation:
                     assert f"documents/{org_id}/{doc_id}" in data["link"]
 
                     # Verify document content was updated
-                    assert (
-                        mock_document.content
-                        == request_payload["mutation"]["content"]
-                    )
-                    assert (
-                        mock_document.updated_by_user_id == contributor_user.user_id
-                    )
+                    assert mock_document.content == request_payload["mutation"]["content"]
+                    assert mock_document.updated_by_user_id == contributor_user.user_id
 
                     # Verify db.commit and db.refresh were called
                     mock_db.commit.assert_called_once()
@@ -177,9 +169,7 @@ class TestApplyDocumentMutation:
             app.dependency_overrides.pop(get_current_active_user, None)
 
     @pytest.mark.asyncio
-    async def test_apply_mutation_entity_not_found(
-        self, client: AsyncClient, contributor_user
-    ):
+    async def test_apply_mutation_entity_not_found(self, client: AsyncClient, contributor_user):
         """Test applying mutation to non-existent entity."""
         org_id = uuid4()
         doc_id = uuid4()
@@ -203,9 +193,7 @@ class TestApplyDocumentMutation:
 
         try:
             with patch("src.routers.search.OrganizationRepository") as mock_org_repo_cls:
-                with patch(
-                    "src.routers.search.DocumentRepository"
-                ) as mock_doc_repo_cls:
+                with patch("src.routers.search.DocumentRepository") as mock_doc_repo_cls:
                     mock_org_repo = mock_org_repo_cls.return_value
                     mock_org_repo.get_by_id = AsyncMock(return_value=mock_org)
 
@@ -223,9 +211,7 @@ class TestApplyDocumentMutation:
             app.dependency_overrides.pop(get_current_active_user, None)
 
     @pytest.mark.asyncio
-    async def test_apply_mutation_wrong_organization(
-        self, client: AsyncClient, contributor_user
-    ):
+    async def test_apply_mutation_wrong_organization(self, client: AsyncClient, contributor_user):
         """Test applying mutation to entity from different org."""
         org_id = uuid4()
         wrong_org_id = uuid4()
@@ -260,9 +246,7 @@ class TestApplyDocumentMutation:
 
         try:
             with patch("src.routers.search.OrganizationRepository") as mock_org_repo_cls:
-                with patch(
-                    "src.routers.search.DocumentRepository"
-                ) as mock_doc_repo_cls:
+                with patch("src.routers.search.DocumentRepository") as mock_doc_repo_cls:
                     mock_org_repo = mock_org_repo_cls.return_value
                     mock_org_repo.get_by_id = AsyncMock(return_value=mock_org)
 
@@ -286,9 +270,7 @@ class TestApplyAssetMutation:
     """Tests for applying custom asset mutations."""
 
     @pytest.mark.asyncio
-    async def test_apply_asset_mutation_success(
-        self, client: AsyncClient, contributor_user
-    ):
+    async def test_apply_asset_mutation_success(self, client: AsyncClient, contributor_user):
         """Test successfully applying a custom asset mutation."""
         org_id = uuid4()
         asset_id = uuid4()
@@ -329,15 +311,15 @@ class TestApplyAssetMutation:
 
         # Mock database dependency
         from src.core.database import get_db
+
         async def mock_get_db():
             yield mock_db
+
         app.dependency_overrides[get_db] = mock_get_db
 
         try:
             with patch("src.routers.search.OrganizationRepository") as mock_org_repo_cls:
-                with patch(
-                    "src.routers.search.CustomAssetRepository"
-                ) as mock_asset_repo_cls:
+                with patch("src.routers.search.CustomAssetRepository") as mock_asset_repo_cls:
                     mock_org_repo = mock_org_repo_cls.return_value
                     mock_org_repo.get_by_id = AsyncMock(return_value=mock_org)
 

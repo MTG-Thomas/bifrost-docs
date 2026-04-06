@@ -58,9 +58,7 @@ def _oauth_state_key(state: str) -> str:
 # =============================================================================
 
 
-def _set_oauth_auth_cookies(
-    response: Response, access_token: str, refresh_token: str
-) -> None:
+def _set_oauth_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
     """
     Set HttpOnly authentication cookies for OAuth login.
 
@@ -277,11 +275,7 @@ async def oauth_callback(
     if not state_data_raw:
         logger.warning(
             "OAuth callback with invalid or expired state",
-            extra={
-                "state": callback_data.state[:8] + "..."
-                if callback_data.state
-                else "none"
-            },
+            extra={"state": callback_data.state[:8] + "..." if callback_data.state else "none"},
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -209,9 +209,7 @@ class TestUpsertPreferences:
         entity_type = f"custom_asset_{custom_type_id}"
 
         mock_prefs = MagicMock()
-        mock_prefs.preferences = {
-            "columns": {"visible": ["name"], "order": ["name"], "widths": {}}
-        }
+        mock_prefs.preferences = {"columns": {"visible": ["name"], "order": ["name"], "widths": {}}}
 
         try:
             with patch("src.routers.preferences.UserPreferencesRepository") as MockRepo:

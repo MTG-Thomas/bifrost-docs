@@ -144,9 +144,7 @@ class TestCustomAssetTypeSoftDelete:
         assert data["is_active"] is False
         mock_repo.deactivate.assert_called_once_with(type_id)
 
-    async def test_activate_sets_is_active_true(
-        self, admin_client: AsyncClient, mock_admin_user
-    ):
+    async def test_activate_sets_is_active_true(self, admin_client: AsyncClient, mock_admin_user):
         """Test that POST /activate sets is_active to True."""
         type_id = uuid4()
         mock_type = create_mock_custom_asset_type(type_id=type_id, is_active=False)
@@ -232,9 +230,7 @@ class TestCustomAssetTypeSoftDelete:
         data = response.json()
         assert "cannot" in data["detail"].lower() or "assets" in data["detail"].lower()
 
-    async def test_can_delete_without_assets(
-        self, admin_client: AsyncClient, mock_admin_user
-    ):
+    async def test_can_delete_without_assets(self, admin_client: AsyncClient, mock_admin_user):
         """Test that DELETE works when no assets exist."""
         type_id = uuid4()
         mock_type = create_mock_custom_asset_type(type_id=type_id)
@@ -320,9 +316,7 @@ class TestConfigurationTypeSoftDelete:
         assert data["is_active"] is False
         mock_repo.deactivate.assert_called_once_with(type_id)
 
-    async def test_activate_sets_is_active_true(
-        self, admin_client: AsyncClient, mock_admin_user
-    ):
+    async def test_activate_sets_is_active_true(self, admin_client: AsyncClient, mock_admin_user):
         """Test that POST /activate sets is_active to True."""
         type_id = uuid4()
         mock_type = create_mock_configuration_type(type_id=type_id, is_active=False)
@@ -498,9 +492,7 @@ class TestConfigurationStatusSoftDelete:
         assert data["is_active"] is False
         mock_repo.deactivate.assert_called_once_with(status_id)
 
-    async def test_activate_sets_is_active_true(
-        self, admin_client: AsyncClient, mock_admin_user
-    ):
+    async def test_activate_sets_is_active_true(self, admin_client: AsyncClient, mock_admin_user):
         """Test that POST /activate sets is_active to True."""
         status_id = uuid4()
         mock_status = create_mock_configuration_status(status_id=status_id, is_active=False)

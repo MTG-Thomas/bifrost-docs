@@ -99,19 +99,18 @@ class AuditRepository:
             )
 
         # Build base query with joins for search
-        base_query = select(AuditLog).outerjoin(
-            Organization, AuditLog.organization_id == Organization.id
-        ).outerjoin(
-            User, AuditLog.actor_user_id == User.id
+        base_query = (
+            select(AuditLog)
+            .outerjoin(Organization, AuditLog.organization_id == Organization.id)
+            .outerjoin(User, AuditLog.actor_user_id == User.id)
         )
 
         # Count query
-        count_stmt = select(func.count(AuditLog.id)).select_from(
-            AuditLog
-        ).outerjoin(
-            Organization, AuditLog.organization_id == Organization.id
-        ).outerjoin(
-            User, AuditLog.actor_user_id == User.id
+        count_stmt = (
+            select(func.count(AuditLog.id))
+            .select_from(AuditLog)
+            .outerjoin(Organization, AuditLog.organization_id == Organization.id)
+            .outerjoin(User, AuditLog.actor_user_id == User.id)
         )
         if filters:
             count_stmt = count_stmt.where(*filters)
@@ -122,8 +121,7 @@ class AuditRepository:
 
         # Data query with eager loading
         stmt = (
-            base_query
-            .options(
+            base_query.options(
                 joinedload(AuditLog.organization),
                 joinedload(AuditLog.actor_user),
                 joinedload(AuditLog.actor_api_key),

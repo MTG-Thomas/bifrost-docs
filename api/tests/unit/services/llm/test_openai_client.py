@@ -1,4 +1,5 @@
 """Tests for OpenAI LLM client."""
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

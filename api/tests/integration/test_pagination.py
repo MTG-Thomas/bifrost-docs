@@ -38,11 +38,8 @@ def test_user(test_org_id):
 
 
 def create_mock_password(
-    org_id,
-    name: str,
-    username: str | None = None,
-    url: str | None = None,
-    notes: str | None = None) -> MagicMock:
+    org_id, name: str, username: str | None = None, url: str | None = None, notes: str | None = None
+) -> MagicMock:
     """Create a mock password object."""
     mock = MagicMock(spec=Password)
     mock.id = uuid4()
@@ -65,26 +62,23 @@ class TestPaginationBasic:
         app.dependency_overrides[get_current_active_user] = lambda: test_user
 
         # Create 5 mock passwords
-        all_passwords = [
-            create_mock_password(test_org_id, f"Password {i}") for i in range(1, 6)
-        ]
+        all_passwords = [create_mock_password(test_org_id, f"Password {i}") for i in range(1, 6)]
 
         mock_password_repo = AsyncMock()
         # Return first 2 passwords, total of 5
-        mock_password_repo.get_paginated_by_org = AsyncMock(
-            return_value=(all_passwords[:2], 5)
-        )
+        mock_password_repo.get_paginated_by_org = AsyncMock(return_value=(all_passwords[:2], 5))
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/passwords",
-                        params={"limit": 2, "offset": 0})
+                        params={"limit": 2, "offset": 0},
+                    )
 
             assert response.status_code == 200
             data = response.json()
@@ -95,12 +89,8 @@ class TestPaginationBasic:
 
             # Verify repository was called with correct params
             mock_password_repo.get_paginated_by_org.assert_called_once_with(
-                test_org_id,
-                search=None,
-                sort_by=None,
-                sort_dir="asc",
-                limit=2,
-                offset=0)
+                test_org_id, search=None, sort_by=None, sort_dir="asc", limit=2, offset=0
+            )
         finally:
             app.dependency_overrides.pop(get_current_active_user, None)
 
@@ -109,26 +99,23 @@ class TestPaginationBasic:
         app.dependency_overrides[get_current_active_user] = lambda: test_user
 
         # Create 5 mock passwords
-        all_passwords = [
-            create_mock_password(test_org_id, f"Password {i}") for i in range(1, 6)
-        ]
+        all_passwords = [create_mock_password(test_org_id, f"Password {i}") for i in range(1, 6)]
 
         mock_password_repo = AsyncMock()
         # Return passwords 3-4, total of 5
-        mock_password_repo.get_paginated_by_org = AsyncMock(
-            return_value=(all_passwords[2:4], 5)
-        )
+        mock_password_repo.get_paginated_by_org = AsyncMock(return_value=(all_passwords[2:4], 5))
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/passwords",
-                        params={"limit": 2, "offset": 2})
+                        params={"limit": 2, "offset": 2},
+                    )
 
             assert response.status_code == 200
             data = response.json()
@@ -138,12 +125,8 @@ class TestPaginationBasic:
             assert data["offset"] == 2
 
             mock_password_repo.get_paginated_by_org.assert_called_once_with(
-                test_org_id,
-                search=None,
-                sort_by=None,
-                sort_dir="asc",
-                limit=2,
-                offset=2)
+                test_org_id, search=None, sort_by=None, sort_dir="asc", limit=2, offset=2
+            )
         finally:
             app.dependency_overrides.pop(get_current_active_user, None)
 
@@ -152,26 +135,23 @@ class TestPaginationBasic:
         app.dependency_overrides[get_current_active_user] = lambda: test_user
 
         # Create 5 mock passwords
-        all_passwords = [
-            create_mock_password(test_org_id, f"Password {i}") for i in range(1, 6)
-        ]
+        all_passwords = [create_mock_password(test_org_id, f"Password {i}") for i in range(1, 6)]
 
         mock_password_repo = AsyncMock()
         # Return last password (only 1), total of 5
-        mock_password_repo.get_paginated_by_org = AsyncMock(
-            return_value=([all_passwords[4]], 5)
-        )
+        mock_password_repo.get_paginated_by_org = AsyncMock(return_value=([all_passwords[4]], 5))
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/passwords",
-                        params={"limit": 2, "offset": 4})
+                        params={"limit": 2, "offset": 4},
+                    )
 
             assert response.status_code == 200
             data = response.json()
@@ -181,12 +161,8 @@ class TestPaginationBasic:
             assert data["offset"] == 4
 
             mock_password_repo.get_paginated_by_org.assert_called_once_with(
-                test_org_id,
-                search=None,
-                sort_by=None,
-                sort_dir="asc",
-                limit=2,
-                offset=4)
+                test_org_id, search=None, sort_by=None, sort_dir="asc", limit=2, offset=4
+            )
         finally:
             app.dependency_overrides.pop(get_current_active_user, None)
 
@@ -199,15 +175,13 @@ class TestPaginationBasic:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     # No pagination params - should use defaults
-                    response = await client.get(
-                        f"/api/organizations/{test_org_id}/passwords"
-                    )
+                    response = await client.get(f"/api/organizations/{test_org_id}/passwords")
 
             assert response.status_code == 200
             data = response.json()
@@ -216,12 +190,8 @@ class TestPaginationBasic:
             assert data["offset"] == 0
 
             mock_password_repo.get_paginated_by_org.assert_called_once_with(
-                test_org_id,
-                search=None,
-                sort_by=None,
-                sort_dir="asc",
-                limit=100,
-                offset=0)
+                test_org_id, search=None, sort_by=None, sort_dir="asc", limit=100, offset=0
+            )
         finally:
             app.dependency_overrides.pop(get_current_active_user, None)
 
@@ -239,20 +209,18 @@ class TestPaginationSearch:
 
         mock_password_repo = AsyncMock()
         # Search for "admin" should return only matching password
-        mock_password_repo.get_paginated_by_org = AsyncMock(
-            return_value=([admin_password], 1)
-        )
+        mock_password_repo.get_paginated_by_org = AsyncMock(return_value=([admin_password], 1))
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
-                        f"/api/organizations/{test_org_id}/passwords",
-                        params={"search": "admin"})
+                        f"/api/organizations/{test_org_id}/passwords", params={"search": "admin"}
+                    )
 
             assert response.status_code == 200
             data = response.json()
@@ -261,12 +229,8 @@ class TestPaginationSearch:
             assert data["items"][0]["name"] == "Admin Account"
 
             mock_password_repo.get_paginated_by_org.assert_called_once_with(
-                test_org_id,
-                search="admin",
-                sort_by=None,
-                sort_dir="asc",
-                limit=100,
-                offset=0)
+                test_org_id, search="admin", sort_by=None, sort_dir="asc", limit=100, offset=0
+            )
         finally:
             app.dependency_overrides.pop(get_current_active_user, None)
 
@@ -280,14 +244,15 @@ class TestPaginationSearch:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/passwords",
-                        params={"search": "nonexistent"})
+                        params={"search": "nonexistent"},
+                    )
 
             assert response.status_code == 200
             data = response.json()
@@ -301,9 +266,7 @@ class TestPaginationSearch:
         app.dependency_overrides[get_current_active_user] = lambda: test_user
 
         # Create multiple matching passwords
-        matching_passwords = [
-            create_mock_password(test_org_id, f"Admin {i}") for i in range(1, 6)
-        ]
+        matching_passwords = [create_mock_password(test_org_id, f"Admin {i}") for i in range(1, 6)]
 
         mock_password_repo = AsyncMock()
         # Return first 2 matching passwords, total of 5 matches
@@ -313,14 +276,15 @@ class TestPaginationSearch:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/passwords",
-                        params={"search": "Admin", "limit": 2, "offset": 0})
+                        params={"search": "Admin", "limit": 2, "offset": 0},
+                    )
 
             assert response.status_code == 200
             data = response.json()
@@ -331,12 +295,8 @@ class TestPaginationSearch:
             assert data["offset"] == 0
 
             mock_password_repo.get_paginated_by_org.assert_called_once_with(
-                test_org_id,
-                search="Admin",
-                sort_by=None,
-                sort_dir="asc",
-                limit=2,
-                offset=0)
+                test_org_id, search="Admin", sort_by=None, sort_dir="asc", limit=2, offset=0
+            )
         finally:
             app.dependency_overrides.pop(get_current_active_user, None)
 
@@ -357,32 +317,27 @@ class TestPaginationSorting:
         ]
 
         mock_password_repo = AsyncMock()
-        mock_password_repo.get_paginated_by_org = AsyncMock(
-            return_value=(passwords, 3)
-        )
+        mock_password_repo.get_paginated_by_org = AsyncMock(return_value=(passwords, 3))
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/passwords",
-                        params={"sort_by": "name", "sort_dir": "asc"})
+                        params={"sort_by": "name", "sort_dir": "asc"},
+                    )
 
             assert response.status_code == 200
             data = response.json()
             assert len(data["items"]) == 3
             # Verify sorting was requested
             mock_password_repo.get_paginated_by_org.assert_called_once_with(
-                test_org_id,
-                search=None,
-                sort_by="name",
-                sort_dir="asc",
-                limit=100,
-                offset=0)
+                test_org_id, search=None, sort_by="name", sort_dir="asc", limit=100, offset=0
+            )
             # Verify order in response
             assert data["items"][0]["name"] == "Alpha"
             assert data["items"][1]["name"] == "Beta"
@@ -402,31 +357,26 @@ class TestPaginationSorting:
         ]
 
         mock_password_repo = AsyncMock()
-        mock_password_repo.get_paginated_by_org = AsyncMock(
-            return_value=(passwords, 3)
-        )
+        mock_password_repo.get_paginated_by_org = AsyncMock(return_value=(passwords, 3))
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/passwords",
-                        params={"sort_by": "name", "sort_dir": "desc"})
+                        params={"sort_by": "name", "sort_dir": "desc"},
+                    )
 
             assert response.status_code == 200
             data = response.json()
             assert len(data["items"]) == 3
             mock_password_repo.get_paginated_by_org.assert_called_once_with(
-                test_org_id,
-                search=None,
-                sort_by="name",
-                sort_dir="desc",
-                limit=100,
-                offset=0)
+                test_org_id, search=None, sort_by="name", sort_dir="desc", limit=100, offset=0
+            )
             # Verify reverse order in response
             assert data["items"][0]["name"] == "Gamma"
             assert data["items"][1]["name"] == "Beta"
@@ -445,17 +395,15 @@ class TestPaginationSorting:
         ]
 
         mock_password_repo = AsyncMock()
-        mock_password_repo.get_paginated_by_org = AsyncMock(
-            return_value=(passwords, 5)
-        )
+        mock_password_repo.get_paginated_by_org = AsyncMock(return_value=(passwords, 5))
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/passwords",
                         params={
@@ -463,19 +411,16 @@ class TestPaginationSorting:
                             "sort_dir": "asc",
                             "limit": 2,
                             "offset": 2,
-                        })
+                        },
+                    )
 
             assert response.status_code == 200
             data = response.json()
             assert len(data["items"]) == 2
             assert data["total"] == 5
             mock_password_repo.get_paginated_by_org.assert_called_once_with(
-                test_org_id,
-                search=None,
-                sort_by="name",
-                sort_dir="asc",
-                limit=2,
-                offset=2)
+                test_org_id, search=None, sort_by="name", sort_dir="asc", limit=2, offset=2
+            )
         finally:
             app.dependency_overrides.pop(get_current_active_user, None)
 
@@ -494,14 +439,15 @@ class TestPaginationEdgeCases:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/passwords",
-                        params={"limit": 10, "offset": 100})
+                        params={"limit": 10, "offset": 100},
+                    )
 
             assert response.status_code == 200
             data = response.json()
@@ -520,14 +466,15 @@ class TestPaginationEdgeCases:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/passwords",
-                        params={"limit": 10, "offset": 999999})
+                        params={"limit": 10, "offset": 999999},
+                    )
 
             assert response.status_code == 200
             data = response.json()
@@ -542,68 +489,62 @@ class TestPaginationEdgeCases:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 response = await client.get(
-                    f"/api/organizations/{test_org_id}/passwords",
-                    params={"limit": 0})
+                    f"/api/organizations/{test_org_id}/passwords", params={"limit": 0}
+                )
 
             # Should return 422 validation error because limit must be >= 1
             assert response.status_code == 422
         finally:
             app.dependency_overrides.pop(get_current_active_user, None)
 
-    async def test_limit_exceeds_max_returns_validation_error(
-        self, test_user, test_org_id
-    ):
+    async def test_limit_exceeds_max_returns_validation_error(self, test_user, test_org_id):
         """Test that limit exceeding max (1000) returns validation error."""
         app.dependency_overrides[get_current_active_user] = lambda: test_user
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 response = await client.get(
-                    f"/api/organizations/{test_org_id}/passwords",
-                    params={"limit": 1001})
+                    f"/api/organizations/{test_org_id}/passwords", params={"limit": 1001}
+                )
 
             # Should return 422 validation error because limit max is 1000
             assert response.status_code == 422
         finally:
             app.dependency_overrides.pop(get_current_active_user, None)
 
-    async def test_negative_offset_returns_validation_error(
-        self, test_user, test_org_id
-    ):
+    async def test_negative_offset_returns_validation_error(self, test_user, test_org_id):
         """Test that negative offset returns validation error."""
         app.dependency_overrides[get_current_active_user] = lambda: test_user
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 response = await client.get(
-                    f"/api/organizations/{test_org_id}/passwords",
-                    params={"offset": -1})
+                    f"/api/organizations/{test_org_id}/passwords", params={"offset": -1}
+                )
 
             # Should return 422 validation error because offset must be >= 0
             assert response.status_code == 422
         finally:
             app.dependency_overrides.pop(get_current_active_user, None)
 
-    async def test_invalid_sort_direction_returns_validation_error(
-        self, test_user, test_org_id
-    ):
+    async def test_invalid_sort_direction_returns_validation_error(self, test_user, test_org_id):
         """Test that invalid sort direction returns validation error."""
         app.dependency_overrides[get_current_active_user] = lambda: test_user
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 response = await client.get(
-                    f"/api/organizations/{test_org_id}/passwords",
-                    params={"sort_dir": "invalid"})
+                    f"/api/organizations/{test_org_id}/passwords", params={"sort_dir": "invalid"}
+                )
 
             # Should return 422 validation error for invalid sort_dir
             assert response.status_code == 422
@@ -617,32 +558,26 @@ class TestPaginationEdgeCases:
         passwords = [create_mock_password(test_org_id, "Test Password")]
 
         mock_password_repo = AsyncMock()
-        mock_password_repo.get_paginated_by_org = AsyncMock(
-            return_value=(passwords, 1)
-        )
+        mock_password_repo.get_paginated_by_org = AsyncMock(return_value=(passwords, 1))
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
-                        f"/api/organizations/{test_org_id}/passwords",
-                        params={"search": ""})
+                        f"/api/organizations/{test_org_id}/passwords", params={"search": ""}
+                    )
 
             assert response.status_code == 200
             data = response.json()
             assert len(data["items"]) == 1
             # Empty search is passed as empty string
             mock_password_repo.get_paginated_by_org.assert_called_once_with(
-                test_org_id,
-                search="",
-                sort_by=None,
-                sort_dir="asc",
-                limit=100,
-                offset=0)
+                test_org_id, search="", sort_by=None, sort_dir="asc", limit=100, offset=0
+            )
         finally:
             app.dependency_overrides.pop(get_current_active_user, None)
 
@@ -662,17 +597,15 @@ class TestPaginationCombined:
         ]
 
         mock_password_repo = AsyncMock()
-        mock_password_repo.get_paginated_by_org = AsyncMock(
-            return_value=(passwords, 10)
-        )
+        mock_password_repo.get_paginated_by_org = AsyncMock(return_value=(passwords, 10))
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/passwords",
                         params={
@@ -681,7 +614,8 @@ class TestPaginationCombined:
                             "sort_dir": "desc",
                             "limit": 2,
                             "offset": 4,
-                        })
+                        },
+                    )
 
             assert response.status_code == 200
             data = response.json()
@@ -691,12 +625,8 @@ class TestPaginationCombined:
             assert data["offset"] == 4
 
             mock_password_repo.get_paginated_by_org.assert_called_once_with(
-                test_org_id,
-                search="Admin",
-                sort_by="name",
-                sort_dir="desc",
-                limit=2,
-                offset=4)
+                test_org_id, search="Admin", sort_by="name", sort_dir="desc", limit=2, offset=4
+            )
         finally:
             app.dependency_overrides.pop(get_current_active_user, None)
 
@@ -709,14 +639,14 @@ class TestPaginationCombined:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
-                        f"/api/organizations/{test_org_id}/passwords",
-                        params={"limit": 1000})
+                        f"/api/organizations/{test_org_id}/passwords", params={"limit": 1000}
+                    )
 
             assert response.status_code == 200
             data = response.json()
@@ -731,20 +661,18 @@ class TestPaginationCombined:
         passwords = [create_mock_password(test_org_id, "Single Result")]
 
         mock_password_repo = AsyncMock()
-        mock_password_repo.get_paginated_by_org = AsyncMock(
-            return_value=(passwords, 5)
-        )
+        mock_password_repo.get_paginated_by_org = AsyncMock(return_value=(passwords, 5))
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 with patch(
-                    "src.routers.passwords.PasswordRepository",
-                    return_value=mock_password_repo):
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
-                        f"/api/organizations/{test_org_id}/passwords",
-                        params={"limit": 1})
+                        f"/api/organizations/{test_org_id}/passwords", params={"limit": 1}
+                    )
 
             assert response.status_code == 200
             data = response.json()

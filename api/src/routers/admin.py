@@ -328,7 +328,7 @@ async def create_user(
     user = await user_repo.create_user(
         email=user_data.email,
         hashed_password=None,  # No password - SSO only
-        name=user_data.email.split('@')[0],  # Default name from email
+        name=user_data.email.split("@")[0],  # Default name from email
         role=role,
     )
 
@@ -475,8 +475,6 @@ async def update_user_role(
         is_active=user.is_active,
         created_at=user.created_at.isoformat() if user.created_at else "",
     )
-
-
 
 
 @router.post("/transfer-ownership")
@@ -644,7 +642,9 @@ async def start_reindex(
 
         # Count total entities to index
         entity_types: list[EntityType] = (
-            [entity_type] if entity_type else ["password", "configuration", "location", "document", "custom_asset"]
+            [entity_type]
+            if entity_type
+            else ["password", "configuration", "location", "document", "custom_asset"]
         )
 
         total = 0
@@ -743,8 +743,12 @@ async def get_reindex_status(
             processed=job.processed,
             total=job.total,
             errors=job.errors,
-            started_at=datetime.fromtimestamp(job.started_at, tz=UTC).isoformat() if job.started_at else None,
-            completed_at=datetime.fromtimestamp(job.completed_at, tz=UTC).isoformat() if job.completed_at else None,
+            started_at=datetime.fromtimestamp(job.started_at, tz=UTC).isoformat()
+            if job.started_at
+            else None,
+            completed_at=datetime.fromtimestamp(job.completed_at, tz=UTC).isoformat()
+            if job.completed_at
+            else None,
             error_message=job.error_message,
         )
     finally:
@@ -883,9 +887,7 @@ async def get_index_stats(
         total_entities += count_result.scalar() or 0
 
     # Last indexed timestamp
-    last_result = await db.execute(
-        select(func.max(EmbeddingIndex.updated_at))
-    )
+    last_result = await db.execute(select(func.max(EmbeddingIndex.updated_at)))
     last_indexed = last_result.scalar()
 
     return IndexStatsResponse(

@@ -34,8 +34,12 @@ class Export(Base):
     __tablename__ = "exports"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    organization_ids: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)  # null = all orgs
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    organization_ids: Mapped[list[str] | None] = mapped_column(
+        JSONB, nullable=True
+    )  # null = all orgs
     status: Mapped[ExportStatus] = mapped_column(
         String(20),
         default=ExportStatus.PENDING,

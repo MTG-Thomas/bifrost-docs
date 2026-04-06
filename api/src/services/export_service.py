@@ -160,36 +160,38 @@ async def export_passwords_to_csv(
     """
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow([
-        "id",
-        "organization_id",
-        "name",
-        "username",
-        "url",
-        "notes",
-        "created_at",
-        "updated_at",
-    ])
+    writer.writerow(
+        [
+            "id",
+            "organization_id",
+            "name",
+            "username",
+            "url",
+            "notes",
+            "created_at",
+            "updated_at",
+        ]
+    )
 
     for i, org_id in enumerate(organization_ids):
         result = await db.execute(
-            select(Password)
-            .where(Password.organization_id == org_id)
-            .order_by(Password.name)
+            select(Password).where(Password.organization_id == org_id).order_by(Password.name)
         )
         passwords = result.scalars().all()
 
         for password in passwords:
-            writer.writerow([
-                str(password.id),
-                str(password.organization_id),
-                password.name,
-                password.username or "",
-                password.url or "",
-                password.notes or "",
-                password.created_at.isoformat() if password.created_at else "",
-                password.updated_at.isoformat() if password.updated_at else "",
-            ])
+            writer.writerow(
+                [
+                    str(password.id),
+                    str(password.organization_id),
+                    password.name,
+                    password.username or "",
+                    password.url or "",
+                    password.notes or "",
+                    password.created_at.isoformat() if password.created_at else "",
+                    password.updated_at.isoformat() if password.updated_at else "",
+                ]
+            )
 
         await publish_export_progress(
             export_id, "passwords", i + 1, len(organization_ids), "password"
@@ -216,21 +218,23 @@ async def export_configurations_to_csv(
     """
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow([
-        "id",
-        "organization_id",
-        "name",
-        "configuration_type_id",
-        "configuration_status_id",
-        "serial_number",
-        "asset_tag",
-        "manufacturer",
-        "model",
-        "ip_address",
-        "notes",
-        "created_at",
-        "updated_at",
-    ])
+    writer.writerow(
+        [
+            "id",
+            "organization_id",
+            "name",
+            "configuration_type_id",
+            "configuration_status_id",
+            "serial_number",
+            "asset_tag",
+            "manufacturer",
+            "model",
+            "ip_address",
+            "notes",
+            "created_at",
+            "updated_at",
+        ]
+    )
 
     for i, org_id in enumerate(organization_ids):
         result = await db.execute(
@@ -241,21 +245,23 @@ async def export_configurations_to_csv(
         configurations = result.scalars().all()
 
         for config in configurations:
-            writer.writerow([
-                str(config.id),
-                str(config.organization_id),
-                config.name,
-                str(config.configuration_type_id) if config.configuration_type_id else "",
-                str(config.configuration_status_id) if config.configuration_status_id else "",
-                config.serial_number or "",
-                config.asset_tag or "",
-                config.manufacturer or "",
-                config.model or "",
-                config.ip_address or "",
-                config.notes or "",
-                config.created_at.isoformat() if config.created_at else "",
-                config.updated_at.isoformat() if config.updated_at else "",
-            ])
+            writer.writerow(
+                [
+                    str(config.id),
+                    str(config.organization_id),
+                    config.name,
+                    str(config.configuration_type_id) if config.configuration_type_id else "",
+                    str(config.configuration_status_id) if config.configuration_status_id else "",
+                    config.serial_number or "",
+                    config.asset_tag or "",
+                    config.manufacturer or "",
+                    config.model or "",
+                    config.ip_address or "",
+                    config.notes or "",
+                    config.created_at.isoformat() if config.created_at else "",
+                    config.updated_at.isoformat() if config.updated_at else "",
+                ]
+            )
 
         await publish_export_progress(
             export_id, "configurations", i + 1, len(organization_ids), "configuration"
@@ -282,44 +288,46 @@ async def export_locations_to_csv(
     """
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow([
-        "id",
-        "organization_id",
-        "name",
-        "address_line_1",
-        "address_line_2",
-        "city",
-        "region",
-        "postal_code",
-        "country",
-        "notes",
-        "created_at",
-        "updated_at",
-    ])
+    writer.writerow(
+        [
+            "id",
+            "organization_id",
+            "name",
+            "address_line_1",
+            "address_line_2",
+            "city",
+            "region",
+            "postal_code",
+            "country",
+            "notes",
+            "created_at",
+            "updated_at",
+        ]
+    )
 
     for i, org_id in enumerate(organization_ids):
         result = await db.execute(
-            select(Location)
-            .where(Location.organization_id == org_id)
-            .order_by(Location.name)
+            select(Location).where(Location.organization_id == org_id).order_by(Location.name)
         )
         locations = result.scalars().all()
 
         for location in locations:
-            writer.writerow([
-                str(location.id),
-                str(location.organization_id),
-                location.name,
-                getattr(location, "address_line_1", "") or "",
-                getattr(location, "address_line_2", "") or "",
-                getattr(location, "city", "") or "",
-                getattr(location, "region", "") or "",
-                getattr(location, "postal_code", "") or "",
-                getattr(location, "country", "") or "",
-                location.notes or "",
-                location.created_at.isoformat() if location.created_at else "",
-                location.updated_at.isoformat() if location.updated_at else "",
-            ])
+            writer.writerow(
+                [
+                    str(location.id),
+                    str(location.organization_id),
+                    location.name,
+                    getattr(location, "address_line_1", "") or "",
+                    getattr(location, "address_line_2", "") or "",
+                    getattr(location, "city", "") or "",
+                    getattr(location, "region", "") or "",
+                    getattr(location, "postal_code", "") or "",
+                    getattr(location, "country", "") or "",
+                    location.notes or "",
+                    location.created_at.isoformat() if location.created_at else "",
+                    location.updated_at.isoformat() if location.updated_at else "",
+                ]
+            )
 
         await publish_export_progress(
             export_id, "locations", i + 1, len(organization_ids), "location"
@@ -346,15 +354,17 @@ async def export_documents_to_csv(
     """
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow([
-        "id",
-        "organization_id",
-        "name",
-        "path",
-        "content",
-        "created_at",
-        "updated_at",
-    ])
+    writer.writerow(
+        [
+            "id",
+            "organization_id",
+            "name",
+            "path",
+            "content",
+            "created_at",
+            "updated_at",
+        ]
+    )
 
     for i, org_id in enumerate(organization_ids):
         result = await db.execute(
@@ -365,15 +375,17 @@ async def export_documents_to_csv(
         documents = result.scalars().all()
 
         for doc in documents:
-            writer.writerow([
-                str(doc.id),
-                str(doc.organization_id),
-                doc.name,
-                doc.path or "",
-                doc.content or "",
-                doc.created_at.isoformat() if doc.created_at else "",
-                doc.updated_at.isoformat() if doc.updated_at else "",
-            ])
+            writer.writerow(
+                [
+                    str(doc.id),
+                    str(doc.organization_id),
+                    doc.name,
+                    doc.path or "",
+                    doc.content or "",
+                    doc.created_at.isoformat() if doc.created_at else "",
+                    doc.updated_at.isoformat() if doc.updated_at else "",
+                ]
+            )
 
         await publish_export_progress(
             export_id, "documents", i + 1, len(organization_ids), "document"
@@ -404,15 +416,17 @@ async def export_custom_assets_to_csv(
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow([
-        "id",
-        "organization_id",
-        "custom_asset_type_id",
-        "values_json",
-        "is_enabled",
-        "created_at",
-        "updated_at",
-    ])
+    writer.writerow(
+        [
+            "id",
+            "organization_id",
+            "custom_asset_type_id",
+            "values_json",
+            "is_enabled",
+            "created_at",
+            "updated_at",
+        ]
+    )
 
     for i, org_id in enumerate(organization_ids):
         result = await db.execute(
@@ -424,15 +438,17 @@ async def export_custom_assets_to_csv(
 
         for asset in assets:
             values_json = json.dumps(asset.values) if asset.values else "{}"
-            writer.writerow([
-                str(asset.id),
-                str(asset.organization_id),
-                str(asset.custom_asset_type_id),
-                values_json,
-                asset.is_enabled,
-                asset.created_at.isoformat() if asset.created_at else "",
-                asset.updated_at.isoformat() if asset.updated_at else "",
-            ])
+            writer.writerow(
+                [
+                    str(asset.id),
+                    str(asset.organization_id),
+                    str(asset.custom_asset_type_id),
+                    values_json,
+                    asset.is_enabled,
+                    asset.created_at.isoformat() if asset.created_at else "",
+                    asset.updated_at.isoformat() if asset.updated_at else "",
+                ]
+            )
 
         await publish_export_progress(
             export_id, "custom_assets", i + 1, len(organization_ids), "custom_asset"
@@ -484,9 +500,7 @@ async def process_export(export_id: UUID) -> None:
             if not org_ids:
                 raise ValueError("No organizations to export")
 
-            logger.info(
-                f"Processing export {export_id} for {len(org_ids)} organizations"
-            )
+            logger.info(f"Processing export {export_id} for {len(org_ids)} organizations")
 
             # Create in-memory ZIP file
             zip_buffer = io.BytesIO()

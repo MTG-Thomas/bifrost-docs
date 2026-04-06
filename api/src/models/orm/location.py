@@ -25,7 +25,9 @@ class Location(Base):
     __tablename__ = "locations"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true", default=True)
+    is_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="true", default=True
+    )
     organization_id: Mapped[UUID] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE"),
         nullable=False,

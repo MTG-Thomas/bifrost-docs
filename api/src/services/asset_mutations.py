@@ -1,4 +1,5 @@
 """Custom asset mutation service."""
+
 import json
 import logging
 import re
@@ -48,9 +49,11 @@ def extract_field_updates(current_fields: dict[str, Any], instruction: str) -> d
                 field_normalized = field_name.replace("_", "")
 
                 # Check for exact match or if field_name is contained in current_field
-                if (current_normalized == field_normalized or
-                    current_normalized.startswith(field_normalized) or
-                    field_normalized in current_normalized):
+                if (
+                    current_normalized == field_normalized
+                    or current_normalized.startswith(field_normalized)
+                    or field_normalized in current_normalized
+                ):
                     updates[current_field] = field_value
                     break
 
@@ -116,17 +119,14 @@ Extract the field updates as JSON."""
         # Parse JSON response
         try:
             # Extract JSON from response (handle markdown code blocks)
-            json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', content, re.DOTALL)
+            json_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", content, re.DOTALL)
             if json_match:
                 content = json_match.group(1)
 
             updates = json.loads(content)
 
             # Filter to only include existing fields
-            filtered_updates = {
-                k: v for k, v in updates.items()
-                if k in current_fields
-            }
+            filtered_updates = {k: v for k, v in updates.items() if k in current_fields}
 
             # Generate summary
             if filtered_updates:

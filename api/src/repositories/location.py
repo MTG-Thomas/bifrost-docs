@@ -58,7 +58,7 @@ class LocationRepository(BaseRepository[Location]):
         if region is not None:
             filters.append(Location.region == region)
 
-        if is_enabled is not None and hasattr(Location, 'is_enabled'):
+        if is_enabled is not None and hasattr(Location, "is_enabled"):
             filters.append(Location.is_enabled == is_enabled)
 
         return await self.get_paginated(

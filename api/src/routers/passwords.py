@@ -36,6 +36,7 @@ class PasswordListResponse(BaseModel):
     limit: int
     offset: int
 
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/organizations/{org_id}/passwords", tags=["passwords"])
@@ -52,7 +53,9 @@ async def list_passwords(
     limit: int = Query(100, ge=1, le=1000, description="Maximum results per page"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
     show_disabled: bool = Query(False, description="Include disabled passwords"),
-    has_totp: bool | None = Query(None, description="Filter by TOTP status (True = has TOTP, False = no TOTP)"),
+    has_totp: bool | None = Query(
+        None, description="Filter by TOTP status (True = has TOTP, False = no TOTP)"
+    ),
 ) -> PasswordListResponse:
     """
     List all passwords for an organization with pagination and search.
@@ -167,7 +170,11 @@ async def create_password(
 
     logger.info(
         f"Password created: {password.name}",
-        extra={"password_id": str(password.id), "org_id": str(org_id), "user_id": str(current_user.user_id)},
+        extra={
+            "password_id": str(password.id),
+            "org_id": str(org_id),
+            "user_id": str(current_user.user_id),
+        },
     )
 
     # Index for search (async, non-blocking on failure)
@@ -185,7 +192,9 @@ async def create_password(
         is_enabled=password.is_enabled,
         created_at=password.created_at,
         updated_at=password.updated_at,
-        updated_by_user_id=str(password.updated_by_user_id) if password.updated_by_user_id else None,
+        updated_by_user_id=str(password.updated_by_user_id)
+        if password.updated_by_user_id
+        else None,
         updated_by_user_name=password.updated_by_user.email if password.updated_by_user else None,
     )
 
@@ -244,7 +253,9 @@ async def get_password(
         is_enabled=password.is_enabled,
         created_at=password.created_at,
         updated_at=password.updated_at,
-        updated_by_user_id=str(password.updated_by_user_id) if password.updated_by_user_id else None,
+        updated_by_user_id=str(password.updated_by_user_id)
+        if password.updated_by_user_id
+        else None,
         updated_by_user_name=password.updated_by_user.email if password.updated_by_user else None,
     )
 
@@ -351,7 +362,11 @@ async def reveal_password(
 
     logger.info(
         f"Password revealed: {password.name}",
-        extra={"password_id": str(password.id), "org_id": str(org_id), "user_id": str(current_user.user_id)},
+        extra={
+            "password_id": str(password.id),
+            "org_id": str(org_id),
+            "user_id": str(current_user.user_id),
+        },
     )
 
     return PasswordReveal(
@@ -366,7 +381,9 @@ async def reveal_password(
         is_enabled=password.is_enabled,
         created_at=password.created_at,
         updated_at=password.updated_at,
-        updated_by_user_id=str(password.updated_by_user_id) if password.updated_by_user_id else None,
+        updated_by_user_id=str(password.updated_by_user_id)
+        if password.updated_by_user_id
+        else None,
         updated_by_user_name=password.updated_by_user.email if password.updated_by_user else None,
         password=decrypted_password,
         totp_secret=decrypted_totp,
@@ -441,7 +458,11 @@ async def update_password(
 
     logger.info(
         f"Password updated: {password.name}",
-        extra={"password_id": str(password.id), "org_id": str(org_id), "user_id": str(current_user.user_id)},
+        extra={
+            "password_id": str(password.id),
+            "org_id": str(org_id),
+            "user_id": str(current_user.user_id),
+        },
     )
 
     # Update search index (async, non-blocking on failure)
@@ -459,7 +480,9 @@ async def update_password(
         is_enabled=password.is_enabled,
         created_at=password.created_at,
         updated_at=password.updated_at,
-        updated_by_user_id=str(password.updated_by_user_id) if password.updated_by_user_id else None,
+        updated_by_user_id=str(password.updated_by_user_id)
+        if password.updated_by_user_id
+        else None,
         updated_by_user_name=password.updated_by_user.email if password.updated_by_user else None,
     )
 
@@ -509,7 +532,11 @@ async def delete_password(
 
     logger.info(
         f"Password deleted: {password.name}",
-        extra={"password_id": str(password.id), "org_id": str(org_id), "user_id": str(current_user.user_id)},
+        extra={
+            "password_id": str(password.id),
+            "org_id": str(org_id),
+            "user_id": str(current_user.user_id),
+        },
     )
 
 

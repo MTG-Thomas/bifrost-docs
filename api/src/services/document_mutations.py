@@ -1,4 +1,5 @@
 """Document mutation service with Diataxis framework support."""
+
 import json
 import logging
 from typing import Literal
@@ -90,15 +91,11 @@ Practical implications.
 
 ## Related Concepts
 Links to related topics.
-"""
+""",
 }
 
 
-def classify_document_type(
-    content: str,
-    document_name: str,
-    user_instruction: str
-) -> DiataxisType:
+def classify_document_type(content: str, document_name: str, user_instruction: str) -> DiataxisType:
     """
     Classify document type using heuristics.
 
@@ -115,31 +112,64 @@ def classify_document_type(
     combined = f"{name_lower} {content_lower}"
 
     # Tutorial indicators
-    if any(keyword in combined for keyword in [
-        "getting started", "tutorial", "learn", "introduction to",
-        "step-by-step", "beginner", "first time"
-    ]):
+    if any(
+        keyword in combined
+        for keyword in [
+            "getting started",
+            "tutorial",
+            "learn",
+            "introduction to",
+            "step-by-step",
+            "beginner",
+            "first time",
+        ]
+    ):
         return "tutorial"
 
     # How-to indicators
-    if any(keyword in combined for keyword in [
-        "how to", "troubleshoot", "fix", "solve", "configure",
-        "setup", "install", "deploy"
-    ]):
+    if any(
+        keyword in combined
+        for keyword in [
+            "how to",
+            "troubleshoot",
+            "fix",
+            "solve",
+            "configure",
+            "setup",
+            "install",
+            "deploy",
+        ]
+    ):
         return "how-to"
 
     # Reference indicators
-    if any(keyword in combined for keyword in [
-        "api", "reference", "specification", "documentation",
-        "endpoint", "parameter", "configuration options"
-    ]):
+    if any(
+        keyword in combined
+        for keyword in [
+            "api",
+            "reference",
+            "specification",
+            "documentation",
+            "endpoint",
+            "parameter",
+            "configuration options",
+        ]
+    ):
         return "reference"
 
     # Explanation indicators
-    if any(keyword in combined for keyword in [
-        "understanding", "concept", "why", "architecture",
-        "overview", "explanation", "theory"
-    ]):
+    if any(
+        keyword in combined
+        for keyword in [
+            "understanding",
+            "concept",
+            "why",
+            "architecture",
+            "overview",
+            "explanation",
+            "theory",
+        ]
+    ):
         return "explanation"
 
     # Default to how-to for task-oriented content
@@ -246,15 +276,12 @@ Return valid JSON with "content" (no H1 title heading) and "suggested_title" fie
             cleaned_content = response.content
 
             if not cleaned_content:
-                logger.warning(
-                    f"LLM returned empty content for document '{document_name}'"
-                )
+                logger.warning(f"LLM returned empty content for document '{document_name}'")
                 raise ValueError("LLM returned empty response")
 
         except Exception as e:
             logger.error(
-                f"Failed to generate cleaned content for '{document_name}': {e}",
-                exc_info=True
+                f"Failed to generate cleaned content for '{document_name}': {e}", exc_info=True
             )
             raise
 
@@ -267,7 +294,7 @@ Return valid JSON with "content" (no H1 title heading) and "suggested_title" fie
             # Remove opening fence (```json or ```)
             first_newline = json_content.find("\n")
             if first_newline != -1:
-                json_content = json_content[first_newline + 1:]
+                json_content = json_content[first_newline + 1 :]
             # Remove closing fence
             if json_content.endswith("```"):
                 json_content = json_content[:-3].strip()

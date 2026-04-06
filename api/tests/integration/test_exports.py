@@ -289,9 +289,7 @@ class TestCreateExport:
         data = response.json()
         assert data["status"] == "pending"
 
-    async def test_non_admin_cannot_create_export(
-        self, contributor_client: AsyncClient
-    ):
+    async def test_non_admin_cannot_create_export(self, contributor_client: AsyncClient):
         """Test that non-admin users get 403 when creating export."""
         response = await contributor_client.post(
             "/api/exports",
@@ -353,9 +351,7 @@ class TestCreateExport:
 class TestListExports:
     """Tests for listing exports."""
 
-    async def test_list_user_exports(
-        self, admin_client: AsyncClient, mock_admin_principal
-    ):
+    async def test_list_user_exports(self, admin_client: AsyncClient, mock_admin_principal):
         """Test listing exports returns only user's exports."""
         mock_export_1 = create_mock_export(user_id=mock_admin_principal.user_id)
         mock_export_2 = create_mock_export(
@@ -375,9 +371,7 @@ class TestListExports:
         data = response.json()
         assert len(data) == 2
 
-    async def test_list_exports_pagination(
-        self, admin_client: AsyncClient, mock_admin_principal
-    ):
+    async def test_list_exports_pagination(self, admin_client: AsyncClient, mock_admin_principal):
         """Test listing exports with pagination parameters."""
         mock_export = create_mock_export(user_id=mock_admin_principal.user_id)
 
@@ -397,9 +391,7 @@ class TestListExports:
         assert call_kwargs["limit"] == 10
         assert call_kwargs["offset"] == 5
 
-    async def test_list_exports_empty(
-        self, admin_client: AsyncClient, mock_admin_principal
-    ):
+    async def test_list_exports_empty(self, admin_client: AsyncClient, mock_admin_principal):
         """Test listing exports when user has no exports."""
         mock_repo = AsyncMock()
         mock_repo.get_by_user = AsyncMock(return_value=[])
@@ -416,9 +408,7 @@ class TestListExports:
 class TestGetSingleExport:
     """Tests for getting a single export."""
 
-    async def test_get_own_export(
-        self, admin_client: AsyncClient, mock_admin_principal
-    ):
+    async def test_get_own_export(self, admin_client: AsyncClient, mock_admin_principal):
         """Test getting user's own export."""
         export_id = uuid4()
         mock_export = create_mock_export(user_id=mock_admin_principal.user_id)
@@ -594,9 +584,7 @@ class TestRevokeExport:
 class TestDownloadExport:
     """Tests for downloading exports (presigned URL)."""
 
-    async def test_download_completed_export(
-        self, admin_client: AsyncClient, mock_admin_principal
-    ):
+    async def test_download_completed_export(self, admin_client: AsyncClient, mock_admin_principal):
         """Test downloading a completed export returns presigned URL."""
         export_id = uuid4()
         mock_export = create_mock_export(
@@ -756,9 +744,7 @@ class TestDownloadExport:
 
         assert response.status_code == 404
 
-    async def test_download_url_structure(
-        self, admin_client: AsyncClient, mock_admin_principal
-    ):
+    async def test_download_url_structure(self, admin_client: AsyncClient, mock_admin_principal):
         """Test that download response contains proper URL structure."""
         export_id = uuid4()
         mock_export = create_mock_export(
@@ -852,8 +838,6 @@ class TestExportsUserIsolation:
         mock_repo.get_by_id_and_user = AsyncMock(return_value=None)
 
         with patch("src.routers.exports.ExportRepository", return_value=mock_repo):
-            response = await admin_client.get(
-                f"/api/exports/{other_user_export_id}/download"
-            )
+            response = await admin_client.get(f"/api/exports/{other_user_export_id}/download")
 
         assert response.status_code == 404

@@ -111,7 +111,7 @@ async def create_organization(
     org = Organization(
         name=org_data.name,
         metadata_=org_data.metadata,
-        is_enabled=org_data.is_enabled if org_data.is_enabled is not None else True
+        is_enabled=org_data.is_enabled if org_data.is_enabled is not None else True,
     )
     org = await org_repo.create(org)
 
@@ -192,9 +192,7 @@ async def get_organization(
     frequently_accessed = None
     if "frequently_accessed" in include:
         access_repo = AccessTrackingRepository(db)
-        frequently_accessed = await access_repo.get_frequently_accessed(
-            org_id, limit=6, days=30
-        )
+        frequently_accessed = await access_repo.get_frequently_accessed(org_id, limit=6, days=30)
 
     return OrganizationWithFrequent(
         id=str(org.id),
@@ -371,9 +369,7 @@ async def get_sidebar_data(
     configuration_types = []
     for ct in config_types:
         count = await config_repo.count_by_type_and_organization(ct.id, org_id)
-        configuration_types.append(
-            SidebarItemCount(id=str(ct.id), name=ct.name, count=count)
-        )
+        configuration_types.append(SidebarItemCount(id=str(ct.id), name=ct.name, count=count))
 
     # Get custom asset types with their asset counts (types are global)
     asset_type_repo = CustomAssetTypeRepository(db)
@@ -383,9 +379,7 @@ async def get_sidebar_data(
     custom_asset_types = []
     for at in asset_types:
         count = await asset_repo.count_by_type_and_organization(at.id, org_id)
-        custom_asset_types.append(
-            SidebarItemCount(id=str(at.id), name=at.name, count=count)
-        )
+        custom_asset_types.append(SidebarItemCount(id=str(at.id), name=at.name, count=count))
 
     return SidebarData(
         passwords_count=passwords_count,

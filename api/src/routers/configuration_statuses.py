@@ -304,5 +304,3 @@ async def delete_configuration_status(
             "user_id": str(current_user.user_id),
         },
     )
-
-

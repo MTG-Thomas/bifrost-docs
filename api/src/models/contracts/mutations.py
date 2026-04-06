@@ -1,4 +1,5 @@
 """Mutation request/response contracts."""
+
 from typing import Literal
 from uuid import UUID
 
@@ -15,7 +16,9 @@ class DocumentMutation(BaseModel):
 class AssetMutation(BaseModel):
     """Mutation for a custom asset."""
 
-    field_updates: dict[str, str] = Field(..., min_length=1, description="Field name to new value mapping")
+    field_updates: dict[str, str] = Field(
+        ..., min_length=1, description="Field name to new value mapping"
+    )
     summary: str = Field(..., min_length=1, max_length=500, description="TL;DR of changes")
 
 

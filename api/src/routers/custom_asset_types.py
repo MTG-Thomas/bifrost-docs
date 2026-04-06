@@ -286,9 +286,11 @@ async def update_custom_asset_type(
     # Validate display_field_key if provided
     if "display_field_key" in data.model_fields_set and data.display_field_key:
         # Use updated fields if provided, otherwise use existing fields
-        fields_to_check = data.fields if data.fields is not None else [
-            FieldDefinition(**f) for f in asset_type.fields
-        ]
+        fields_to_check = (
+            data.fields
+            if data.fields is not None
+            else [FieldDefinition(**f) for f in asset_type.fields]
+        )
         valid_keys = {f.key for f in fields_to_check}
         if data.display_field_key not in valid_keys:
             raise HTTPException(
@@ -455,5 +457,3 @@ async def delete_custom_asset_type(
             "user_id": str(current_user.user_id),
         },
     )
-
-

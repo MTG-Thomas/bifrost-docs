@@ -1,4 +1,5 @@
 """Tests for SystemConfig repository."""
+
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 

@@ -45,6 +45,7 @@ class CustomAssetListResponse(BaseModel):
     limit: int
     offset: int
 
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
@@ -312,7 +313,9 @@ async def create_custom_asset(
 
     # Get display name for logging
     display_field_key = _get_display_field_key(asset_type)
-    display_name = values.get(display_field_key, str(asset.id)) if display_field_key else str(asset.id)
+    display_name = (
+        values.get(display_field_key, str(asset.id)) if display_field_key else str(asset.id)
+    )
 
     logger.info(
         f"Custom asset created: {display_name}",
@@ -425,9 +428,7 @@ async def get_custom_asset_preview(
     # Get display name
     display_field_key = _get_display_field_key(asset_type)
     display_name = (
-        key_values.get(display_field_key, asset_type.name)
-        if display_field_key
-        else asset_type.name
+        key_values.get(display_field_key, asset_type.name) if display_field_key else asset_type.name
     )
 
     # Build preview content
@@ -561,9 +562,7 @@ async def update_custom_asset(
             ) from e
 
         # Convert existing ID-based values to key-based (decrypting secrets)
-        current_key_values = values_id_to_key(
-            type_fields, asset.values, decrypt_secrets=True
-        )
+        current_key_values = values_id_to_key(type_fields, asset.values, decrypt_secrets=True)
 
         # Merge with incoming key-based values
         current_key_values.update(data.values)

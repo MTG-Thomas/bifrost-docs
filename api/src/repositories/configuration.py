@@ -72,7 +72,7 @@ class ConfigurationRepository(BaseRepository[Configuration]):
         if configuration_status_id is not None:
             filters.append(Configuration.configuration_status_id == configuration_status_id)
 
-        if is_enabled is not None and hasattr(Configuration, 'is_enabled'):
+        if is_enabled is not None and hasattr(Configuration, "is_enabled"):
             filters.append(Configuration.is_enabled == is_enabled)
 
         return await self.get_paginated(
@@ -90,9 +90,7 @@ class ConfigurationRepository(BaseRepository[Configuration]):
             ],
         )
 
-    async def get_by_id_for_org(
-        self, id: UUID, organization_id: UUID
-    ) -> Configuration | None:
+    async def get_by_id_for_org(self, id: UUID, organization_id: UUID) -> Configuration | None:
         """
         Get configuration by ID within an organization.
 
@@ -159,9 +157,7 @@ class ConfigurationRepository(BaseRepository[Configuration]):
         result = await self.session.execute(query)
         return list(result.unique().scalars().all())
 
-    async def get_by_name_for_org(
-        self, name: str, organization_id: UUID
-    ) -> Configuration | None:
+    async def get_by_name_for_org(self, name: str, organization_id: UUID) -> Configuration | None:
         """
         Get configuration by name within an organization.
 

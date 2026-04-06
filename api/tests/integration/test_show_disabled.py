@@ -18,10 +18,7 @@ from src.models.enums import UserRole
 @pytest_asyncio.fixture
 async def client():
     """Create an async HTTP client for testing."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test"
-    ) as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
 
@@ -286,9 +283,7 @@ class TestShowDisabledOrganizations:
         with patch("src.core.auth.get_current_user") as mock_auth:
             mock_auth.return_value = user
 
-            with patch(
-                "src.repositories.organization.OrganizationRepository.get_all"
-            ) as mock_repo:
+            with patch("src.repositories.organization.OrganizationRepository.get_all") as mock_repo:
                 mock_repo.return_value = []
 
                 response = await client.get("/api/organizations?show_disabled=false")
@@ -302,9 +297,7 @@ class TestShowDisabledOrganizations:
         with patch("src.core.auth.get_current_user") as mock_auth:
             mock_auth.return_value = user
 
-            with patch(
-                "src.repositories.organization.OrganizationRepository.get_all"
-            ) as mock_repo:
+            with patch("src.repositories.organization.OrganizationRepository.get_all") as mock_repo:
                 mock_repo.return_value = []
 
                 response = await client.get("/api/organizations?show_disabled=true")

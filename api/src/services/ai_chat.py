@@ -1,4 +1,5 @@
 """AI Chat service using LLM abstraction layer."""
+
 import logging
 from collections.abc import AsyncGenerator
 from uuid import UUID
@@ -101,7 +102,8 @@ def build_context_from_results(results: list[SearchResult]) -> str:
                     if result.score >= 1.0:
                         # Preserve structure but limit consecutive newlines to 2
                         import re
-                        snippet = re.sub(r'\n{3,}', '\n\n', result.snippet)
+
+                        snippet = re.sub(r"\n{3,}", "\n\n", result.snippet)
                     else:
                         # Collapse all whitespace for search snippets
                         snippet = " ".join(result.snippet.split())
@@ -302,36 +304,36 @@ MUTATION_TOOL_DEFINITION = ToolDefinition(
             "entity_type": {
                 "type": "string",
                 "enum": ["document", "custom_asset"],
-                "description": "Type of entity to modify"
+                "description": "Type of entity to modify",
             },
             "entity_id": {
                 "type": "string",
-                "description": "UUID of the entity to modify (the LAST UUID in entity links like entity://documents/{org_id}/{entity_id})"
+                "description": "UUID of the entity to modify (the LAST UUID in entity links like entity://documents/{org_id}/{entity_id})",
             },
             "organization_id": {
                 "type": "string",
-                "description": "UUID of the organization (the SECOND UUID in entity links like entity://documents/{org_id}/{entity_id})"
+                "description": "UUID of the organization (the SECOND UUID in entity links like entity://documents/{org_id}/{entity_id})",
             },
             "intent": {
                 "type": "string",
                 "enum": ["cleanup", "update", "draft"],
-                "description": "Type of modification"
+                "description": "Type of modification",
             },
             "changes_summary": {
                 "type": "string",
-                "description": "Brief summary of changes (2-3 sentences)"
+                "description": "Brief summary of changes (2-3 sentences)",
             },
             "content": {
                 "type": "string",
-                "description": "Full updated content in Markdown format (for documents only). Use standard markdown syntax: # for headings, **bold**, *italic*, - for lists, etc."
+                "description": "Full updated content in Markdown format (for documents only). Use standard markdown syntax: # for headings, **bold**, *italic*, - for lists, etc.",
             },
             "field_updates": {
                 "type": "object",
-                "description": "Field updates (for custom_asset only)"
-            }
+                "description": "Field updates (for custom_asset only)",
+            },
         },
-        "required": ["entity_type", "entity_id", "organization_id", "intent", "changes_summary"]
-    }
+        "required": ["entity_type", "entity_id", "organization_id", "intent", "changes_summary"],
+    },
 )
 
 
@@ -359,25 +361,16 @@ def parse_mutation_tool_call(tool_call: ToolCall) -> MutationPreview:
         if entity_type == "document":
             if "content" not in args:
                 raise ValueError("Document mutations require 'content' field")
-            mutation = DocumentMutation(
-                content=args["content"],
-                summary=summary
-            )
+            mutation = DocumentMutation(content=args["content"], summary=summary)
         elif entity_type == "custom_asset":
             if "field_updates" not in args:
                 raise ValueError("Asset mutations require 'field_updates' field")
-            mutation = AssetMutation(
-                field_updates=args["field_updates"],
-                summary=summary
-            )
+            mutation = AssetMutation(field_updates=args["field_updates"], summary=summary)
         else:
             raise ValueError(f"Invalid entity_type: {entity_type}")
 
         return MutationPreview(
-            entity_type=entity_type,
-            entity_id=entity_id,
-            organization_id=org_id,
-            mutation=mutation
+            entity_type=entity_type, entity_id=entity_id, organization_id=org_id, mutation=mutation
         )
     except KeyError as e:
         raise ValueError(f"Missing required field in tool call: {e}") from e
@@ -487,7 +480,7 @@ Please provide a helpful answer based ONLY on this current context. If the conte
                             "id": chunk.tool_call.id,
                             "name": chunk.tool_call.name,
                             "arguments": chunk.tool_call.arguments,
-                        }
+                        },
                     }
         except Exception as e:
             logger.error(f"Error streaming conversational response: {e}", exc_info=True)

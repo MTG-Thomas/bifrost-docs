@@ -10,9 +10,11 @@ Note: If slowapi is not installed, rate limiting is disabled (development mode).
 try:
     from slowapi import Limiter
     from slowapi.util import get_remote_address
+
     RATE_LIMITING_ENABLED = True
 except ImportError:
     RATE_LIMITING_ENABLED = False
+
     # Create dummy limiter class and decorator for when slowapi is not installed
     class Limiter:
         def __init__(self, *args, **kwargs):
@@ -20,12 +22,15 @@ except ImportError:
 
         def limit(self, limits):
             """Dummy decorator that does nothing when slowapi not installed."""
+
             def decorator(f):
                 return f
+
             return decorator
 
     def get_remote_address(request):
         return "127.0.0.1"
+
 
 from src.config import get_settings
 
@@ -42,6 +47,7 @@ if RATE_LIMITING_ENABLED:
     )
 else:
     limiter = Limiter()  # Dummy limiter
+
 
 # Rate limit configurations by endpoint type
 class RateLimits:

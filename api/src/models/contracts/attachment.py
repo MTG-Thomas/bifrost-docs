@@ -73,9 +73,7 @@ class DocumentImageCreate(BaseModel):
         pattern=r"^image/",
     )
     size_bytes: int = Field(..., ge=0, description="File size in bytes")
-    document_id: UUID | None = Field(
-        None, description="Optional document ID to associate with"
-    )
+    document_id: UUID | None = Field(None, description="Optional document ID to associate with")
 
 
 class DocumentImageUploadResponse(BaseModel):

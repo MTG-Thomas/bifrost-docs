@@ -84,9 +84,7 @@ class CustomAssetTypeUpdate(BaseModel):
 
     @field_validator("fields")
     @classmethod
-    def validate_unique_keys(
-        cls, v: list[FieldDefinition] | None
-    ) -> list[FieldDefinition] | None:
+    def validate_unique_keys(cls, v: list[FieldDefinition] | None) -> list[FieldDefinition] | None:
         """Validate that all field keys are unique."""
         if v is None:
             return v

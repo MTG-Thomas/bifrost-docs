@@ -1,4 +1,5 @@
 """Base types and abstract class for LLM providers."""
+
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field

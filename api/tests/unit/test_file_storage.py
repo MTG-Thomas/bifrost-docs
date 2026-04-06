@@ -74,10 +74,7 @@ class TestFileStorageService:
         assert FileStorageService.guess_content_type("page.html") == "text/html"
 
         # Unknown type should default to octet-stream
-        assert (
-            FileStorageService.guess_content_type("file.unknown")
-            == "application/octet-stream"
-        )
+        assert FileStorageService.guess_content_type("file.unknown") == "application/octet-stream"
 
     def test_generate_s3_key(self, file_storage_service):
         """Test S3 key generation."""
@@ -106,9 +103,7 @@ class TestFileStorageService:
     @pytest.mark.asyncio
     async def test_generate_upload_url(self, file_storage_service):
         """Test presigned upload URL generation."""
-        with patch(
-            "aiobotocore.session.get_session"
-        ) as mock_get_session:
+        with patch("aiobotocore.session.get_session") as mock_get_session:
             # Setup mock S3 client
             mock_s3_client = AsyncMock()
             mock_s3_client.generate_presigned_url = AsyncMock(
@@ -146,9 +141,7 @@ class TestFileStorageService:
     @pytest.mark.asyncio
     async def test_generate_download_url(self, file_storage_service):
         """Test presigned download URL generation."""
-        with patch(
-            "aiobotocore.session.get_session"
-        ) as mock_get_session:
+        with patch("aiobotocore.session.get_session") as mock_get_session:
             # Setup mock S3 client
             mock_s3_client = AsyncMock()
             mock_s3_client.generate_presigned_url = AsyncMock(
@@ -178,18 +171,13 @@ class TestFileStorageService:
             assert call_args[0][0] == "get_object"
             assert call_args[1]["Params"]["Bucket"] == "test-bucket"
             assert call_args[1]["Params"]["Key"] == "test/key.pdf"
-            assert (
-                'filename="document.pdf"'
-                in call_args[1]["Params"]["ResponseContentDisposition"]
-            )
+            assert 'filename="document.pdf"' in call_args[1]["Params"]["ResponseContentDisposition"]
             assert call_args[1]["ExpiresIn"] == 3600
 
     @pytest.mark.asyncio
     async def test_generate_download_url_without_filename(self, file_storage_service):
         """Test download URL generation without filename."""
-        with patch(
-            "aiobotocore.session.get_session"
-        ) as mock_get_session:
+        with patch("aiobotocore.session.get_session") as mock_get_session:
             mock_s3_client = AsyncMock()
             mock_s3_client.generate_presigned_url = AsyncMock(
                 return_value="https://s3.example.com/download-url"
@@ -218,9 +206,7 @@ class TestFileStorageService:
     @pytest.mark.asyncio
     async def test_delete_file(self, file_storage_service):
         """Test file deletion."""
-        with patch(
-            "aiobotocore.session.get_session"
-        ) as mock_get_session:
+        with patch("aiobotocore.session.get_session") as mock_get_session:
             mock_s3_client = AsyncMock()
             mock_s3_client.delete_object = AsyncMock()
 
@@ -245,9 +231,7 @@ class TestFileStorageService:
     async def test_delete_file_failure(self, file_storage_service):
         """Test file deletion failure handling."""
         # Patch the get_client method directly to raise an exception
-        with patch.object(
-            file_storage_service, "get_client"
-        ) as mock_get_client:
+        with patch.object(file_storage_service, "get_client") as mock_get_client:
             mock_context = AsyncMock()
             mock_context.__aenter__.side_effect = Exception("S3 error")
             mock_get_client.return_value = mock_context
@@ -259,9 +243,7 @@ class TestFileStorageService:
     @pytest.mark.asyncio
     async def test_file_exists(self, file_storage_service):
         """Test file existence check."""
-        with patch(
-            "aiobotocore.session.get_session"
-        ) as mock_get_session:
+        with patch("aiobotocore.session.get_session") as mock_get_session:
             mock_s3_client = AsyncMock()
             mock_s3_client.head_object = AsyncMock()
 
@@ -286,9 +268,7 @@ class TestFileStorageService:
     async def test_file_not_exists(self, file_storage_service):
         """Test file existence check for non-existent file."""
         # Patch the get_client method directly to raise an exception
-        with patch.object(
-            file_storage_service, "get_client"
-        ) as mock_get_client:
+        with patch.object(file_storage_service, "get_client") as mock_get_client:
             mock_context = AsyncMock()
             mock_context.__aenter__.side_effect = Exception("NoSuchKey")
             mock_get_client.return_value = mock_context

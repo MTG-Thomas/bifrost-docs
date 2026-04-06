@@ -1,4 +1,5 @@
 """Tests for asset mutation service."""
+
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -8,11 +9,7 @@ from src.services.asset_mutations import AssetMutationService, extract_field_upd
 
 def test_extract_field_updates_simple():
     """Test extracting field updates from instruction."""
-    current_fields = {
-        "ip_address": "10.0.0.1",
-        "location": "DC1",
-        "status": "active"
-    }
+    current_fields = {"ip_address": "10.0.0.1", "location": "DC1", "status": "active"}
     instruction = "change IP to 10.0.0.5"
 
     updates = extract_field_updates(current_fields, instruction)
@@ -22,10 +19,7 @@ def test_extract_field_updates_simple():
 
 def test_extract_field_updates_multiple():
     """Test extracting multiple field updates."""
-    current_fields = {
-        "ip_address": "10.0.0.1",
-        "location": "DC1"
-    }
+    current_fields = {"ip_address": "10.0.0.1", "location": "DC1"}
     instruction = "update IP to 10.0.0.10 and location to DC2"
 
     updates = extract_field_updates(current_fields, instruction)
@@ -43,17 +37,11 @@ async def test_generate_field_updates():
 
     service = AssetMutationService(mock_client)
 
-    current_fields = {
-        "ip_address": "10.0.0.1",
-        "location": "DC1",
-        "status": "active"
-    }
+    current_fields = {"ip_address": "10.0.0.1", "location": "DC1", "status": "active"}
     instruction = "change IP to 10.0.0.5 and location to DC2"
 
     updates, summary = await service.generate_field_updates(
-        asset_type="Server",
-        current_fields=current_fields,
-        user_instruction=instruction
+        asset_type="Server", current_fields=current_fields, user_instruction=instruction
     )
 
     assert isinstance(updates, dict)
@@ -74,7 +62,7 @@ async def test_generate_field_updates_llm_error():
         await service.generate_field_updates(
             asset_type="Server",
             current_fields={"ip": "10.0.0.1"},
-            user_instruction="change IP to 10.0.0.5"
+            user_instruction="change IP to 10.0.0.5",
         )
 
 
@@ -92,9 +80,7 @@ async def test_generate_field_updates_invalid_json_uses_fallback():
     instruction = "change IP to 10.0.0.5"
 
     updates, summary = await service.generate_field_updates(
-        asset_type="Server",
-        current_fields=current_fields,
-        user_instruction=instruction
+        asset_type="Server", current_fields=current_fields, user_instruction=instruction
     )
 
     # Should use regex fallback
@@ -109,7 +95,9 @@ async def test_generate_field_updates_filters_nonexistent_fields():
     mock_client = AsyncMock()
     mock_response = MagicMock()
     # LLM returns fields that don't exist
-    mock_response.content = '{"ip_address": "10.0.0.5", "fake_field": "value", "another_fake": "test"}'
+    mock_response.content = (
+        '{"ip_address": "10.0.0.5", "fake_field": "value", "another_fake": "test"}'
+    )
     mock_client.complete.return_value = mock_response
 
     service = AssetMutationService(mock_client)
@@ -119,7 +107,7 @@ async def test_generate_field_updates_filters_nonexistent_fields():
     updates, summary = await service.generate_field_updates(
         asset_type="Server",
         current_fields=current_fields,
-        user_instruction="update IP and add some fake fields"
+        user_instruction="update IP and add some fake fields",
     )
 
     # Should only include ip_address, not fake fields
@@ -143,9 +131,7 @@ async def test_generate_field_updates_empty_response():
     instruction = "change IP to 10.0.0.5"
 
     updates, summary = await service.generate_field_updates(
-        asset_type="Server",
-        current_fields=current_fields,
-        user_instruction=instruction
+        asset_type="Server", current_fields=current_fields, user_instruction=instruction
     )
 
     # Should use fallback and extract using regex

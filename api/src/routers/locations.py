@@ -34,6 +34,7 @@ class LocationListResponse(BaseModel):
     limit: int
     offset: int
 
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/organizations/{org_id}/locations", tags=["locations"])
@@ -50,7 +51,9 @@ def _to_public(location: Location) -> LocationPublic:
         is_enabled=location.is_enabled,
         created_at=location.created_at,
         updated_at=location.updated_at,
-        updated_by_user_id=str(location.updated_by_user_id) if location.updated_by_user_id else None,
+        updated_by_user_id=str(location.updated_by_user_id)
+        if location.updated_by_user_id
+        else None,
         updated_by_user_name=location.updated_by_user.email if location.updated_by_user else None,
         address_1=location.address_1,
         address_2=location.address_2,

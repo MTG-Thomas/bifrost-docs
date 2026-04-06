@@ -1,4 +1,5 @@
 """Tests for AI chat mutation tools."""
+
 from uuid import UUID
 
 import pytest
@@ -54,8 +55,8 @@ def test_parse_mutation_tool_call_document():
             "organization_id": "660e8400-e29b-41d4-a716-446655440000",
             "intent": "cleanup",
             "changes_summary": "Fixed typos and improved formatting",
-            "content": "# Updated Document\n\nNew content here."
-        }
+            "content": "# Updated Document\n\nNew content here.",
+        },
     )
 
     preview = parse_mutation_tool_call(tool_call)
@@ -83,11 +84,8 @@ def test_parse_mutation_tool_call_asset():
             "organization_id": "660e8400-e29b-41d4-a716-446655440000",
             "intent": "update",
             "changes_summary": "Updated server IP and added notes",
-            "field_updates": {
-                "ip_address": "192.168.1.100",
-                "notes": "Primary web server"
-            }
-        }
+            "field_updates": {"ip_address": "192.168.1.100", "notes": "Primary web server"},
+        },
     )
 
     preview = parse_mutation_tool_call(tool_call)
@@ -100,10 +98,7 @@ def test_parse_mutation_tool_call_asset():
     # Check mutation details
     mutation = preview.mutation
     assert isinstance(mutation, AssetMutation)
-    assert mutation.field_updates == {
-        "ip_address": "192.168.1.100",
-        "notes": "Primary web server"
-    }
+    assert mutation.field_updates == {"ip_address": "192.168.1.100", "notes": "Primary web server"}
     assert mutation.summary == "Updated server IP and added notes"
 
 
@@ -117,8 +112,8 @@ def test_parse_mutation_tool_call_invalid_entity_type():
             "entity_id": "550e8400-e29b-41d4-a716-446655440000",
             "organization_id": "660e8400-e29b-41d4-a716-446655440000",
             "intent": "update",
-            "changes_summary": "Some changes"
-        }
+            "changes_summary": "Some changes",
+        },
     )
 
     with pytest.raises(ValueError, match="Invalid entity_type"):
@@ -133,7 +128,7 @@ def test_parse_mutation_tool_call_missing_required_field():
         arguments={
             "entity_type": "document",
             # Missing entity_id, organization_id, changes_summary
-        }
+        },
     )
 
     with pytest.raises(ValueError, match="Missing required field"):
@@ -151,8 +146,8 @@ def test_parse_mutation_tool_call_invalid_uuid():
             "organization_id": "550e8400-e29b-41d4-a716-446655440000",
             "intent": "cleanup",
             "changes_summary": "Test",
-            "content": "test"
-        }
+            "content": "test",
+        },
     )
 
     with pytest.raises(ValueError, match="Invalid"):
@@ -169,9 +164,9 @@ def test_parse_mutation_tool_call_document_missing_content():
             "entity_id": "550e8400-e29b-41d4-a716-446655440000",
             "organization_id": "660e8400-e29b-41d4-a716-446655440000",
             "intent": "cleanup",
-            "changes_summary": "Test"
+            "changes_summary": "Test",
             # Missing content field
-        }
+        },
     )
 
     with pytest.raises(ValueError, match="content"):
@@ -188,9 +183,9 @@ def test_parse_mutation_tool_call_asset_missing_field_updates():
             "entity_id": "550e8400-e29b-41d4-a716-446655440000",
             "organization_id": "660e8400-e29b-41d4-a716-446655440000",
             "intent": "update",
-            "changes_summary": "Test"
+            "changes_summary": "Test",
             # Missing field_updates
-        }
+        },
     )
 
     with pytest.raises(ValueError, match="field_updates"):

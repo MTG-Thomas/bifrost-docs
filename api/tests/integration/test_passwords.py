@@ -44,15 +44,14 @@ def test_user(test_org_id):
         name="Test User",
         role=UserRole.CONTRIBUTOR,
         is_active=True,
-        is_verified=True)
+        is_verified=True,
+    )
 
 
 @pytest_asyncio.fixture
 async def client():
     """Create an async HTTP client for testing (unauthenticated)."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
 
@@ -69,7 +68,8 @@ class TestPasswordsEndpointsUnauthenticated:
         """Test that creating passwords requires authentication."""
         response = await client.post(
             f"/api/organizations/{test_org_id}/passwords",
-            json={"name": "Test Password", "password": "secret123"})
+            json={"name": "Test Password", "password": "secret123"},
+        )
         assert response.status_code == 401
 
     async def test_get_password_unauthenticated(self, client: AsyncClient, test_org_id):
@@ -110,9 +110,11 @@ class TestPasswordsCreate:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
-                with patch("src.routers.passwords.PasswordRepository", return_value=mock_password_repo):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                with patch(
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.post(
                         f"/api/organizations/{test_org_id}/passwords",
                         json={
@@ -121,7 +123,8 @@ class TestPasswordsCreate:
                             "password": "secret123",
                             "url": "https://example.com",
                             "notes": "Main admin account",
-                        })
+                        },
+                    )
 
             assert response.status_code == 201
             data = response.json()
@@ -137,14 +140,15 @@ class TestPasswordsCreate:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 response = await client.post(
                     f"/api/organizations/{other_org_id}/passwords",
                     json={
                         "name": "Test Password",
                         "password": "secret123",
-                    })
+                    },
+                )
 
             assert response.status_code == 404
         finally:
@@ -175,9 +179,11 @@ class TestPasswordsRetrieve:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
-                with patch("src.routers.passwords.PasswordRepository", return_value=mock_password_repo):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                with patch(
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/passwords/{password_id}"
                     )
@@ -217,9 +223,11 @@ class TestPasswordsRetrieve:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
-                with patch("src.routers.passwords.PasswordRepository", return_value=mock_password_repo):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                with patch(
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/passwords/{password_id}/reveal"
                     )
@@ -241,9 +249,11 @@ class TestPasswordsRetrieve:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
-                with patch("src.routers.passwords.PasswordRepository", return_value=mock_password_repo):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                with patch(
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.get(
                         f"/api/organizations/{test_org_id}/passwords/{password_id}"
                     )
@@ -264,8 +274,8 @@ class TestPasswordsOrganizationIsolation:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 response = await client.get(
                     f"/api/organizations/{other_org_id}/passwords/{password_id}"
                 )
@@ -280,8 +290,8 @@ class TestPasswordsOrganizationIsolation:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 response = await client.get(f"/api/organizations/{other_org_id}/passwords")
 
             assert response.status_code == 404
@@ -314,12 +324,15 @@ class TestPasswordsUpdate:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
-                with patch("src.routers.passwords.PasswordRepository", return_value=mock_password_repo):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                with patch(
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.put(
                         f"/api/organizations/{test_org_id}/passwords/{password_id}",
-                        json={"name": "New Name", "username": "newuser"})
+                        json={"name": "New Name", "username": "newuser"},
+                    )
 
             assert response.status_code == 200
         finally:
@@ -335,12 +348,15 @@ class TestPasswordsUpdate:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
-                with patch("src.routers.passwords.PasswordRepository", return_value=mock_password_repo):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                with patch(
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.put(
                         f"/api/organizations/{test_org_id}/passwords/{password_id}",
-                        json={"name": "New Name"})
+                        json={"name": "New Name"},
+                    )
 
             assert response.status_code == 404
         finally:
@@ -366,9 +382,11 @@ class TestPasswordsDelete:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
-                with patch("src.routers.passwords.PasswordRepository", return_value=mock_password_repo):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                with patch(
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.delete(
                         f"/api/organizations/{test_org_id}/passwords/{password_id}"
                     )
@@ -387,9 +405,11 @@ class TestPasswordsDelete:
 
         try:
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test") as client:
-                with patch("src.routers.passwords.PasswordRepository", return_value=mock_password_repo):
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                with patch(
+                    "src.routers.passwords.PasswordRepository", return_value=mock_password_repo
+                ):
                     response = await client.delete(
                         f"/api/organizations/{test_org_id}/passwords/{password_id}"
                     )

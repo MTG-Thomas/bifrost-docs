@@ -90,9 +90,7 @@ class RelationshipRepository(BaseRepository[Relationship]):
         )
         return list(result.scalars().all())
 
-    async def get_by_id_and_org(
-        self, id: UUID, organization_id: UUID
-    ) -> Relationship | None:
+    async def get_by_id_and_org(self, id: UUID, organization_id: UUID) -> Relationship | None:
         """
         Get a relationship by ID within an organization scope.
 

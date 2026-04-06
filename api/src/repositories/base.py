@@ -50,7 +50,9 @@ class BaseRepository(Generic[ModelT]):
         )
         return result.scalar_one_or_none()
 
-    async def get_all(self, limit: int = 100, offset: int = 0, is_enabled: bool | None = None) -> list[ModelT]:
+    async def get_all(
+        self, limit: int = 100, offset: int = 0, is_enabled: bool | None = None
+    ) -> list[ModelT]:
         """
         Get all entities with pagination.
 
@@ -64,7 +66,7 @@ class BaseRepository(Generic[ModelT]):
         """
         query = select(self.model)
 
-        if is_enabled is not None and hasattr(self.model, 'is_enabled'):
+        if is_enabled is not None and hasattr(self.model, "is_enabled"):
             query = query.where(self.model.is_enabled == is_enabled)  # type: ignore[attr-defined]
 
         query = query.limit(limit).offset(offset)
