@@ -49,14 +49,17 @@ import {
 import { SettingsPage } from "@/pages/settings/SettingsPage";
 import { ProfileSettings } from "@/pages/settings/ProfileSettings";
 import { SecuritySettings } from "@/pages/settings/SecuritySettings";
-import { ApiKeysSettings } from "@/pages/settings/ApiKeysSettings";
-import { ConfigurationTypesSettings } from "@/pages/settings/ConfigurationTypesSettings";
-import { ConfigurationStatusesSettings } from "@/pages/settings/ConfigurationStatusesSettings";
+import { AppearanceSettings } from "@/pages/settings/AppearanceSettings";
+import { ConfigTypesSettings } from "@/pages/settings/ConfigTypesSettings";
+import { ConfigStatusesSettings } from "@/pages/settings/ConfigStatusesSettings";
 import { CustomAssetTypesSettings } from "@/pages/settings/CustomAssetTypesSettings";
 import { UsersSettings } from "@/pages/settings/UsersSettings";
 import { AISettings } from "@/pages/settings/AISettings";
 import { ExportsSettings } from "@/pages/settings/ExportsSettings";
 import { OAuthSettings } from "@/pages/settings/OAuthSettings";
+
+// Admin pages
+import { MigrationDashboard } from "@/pages/admin/MigrationDashboard";
 
 function App() {
   return (
@@ -131,6 +134,7 @@ function App() {
               <Route path="/organizations" element={<OrganizationsListPage />} />
               <Route path="/admin/organizations" element={<OrganizationsPage />} />
               <Route path="/admin/organizations/:id" element={<OrganizationDetailPage />} />
+              <Route path="/admin/migration" element={<MigrationDashboard />} />
 
               {/* Global view */}
               <Route path="/global" element={<GlobalPage />} />
