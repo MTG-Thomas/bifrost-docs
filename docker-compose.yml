@@ -56,6 +56,7 @@ services:
 
   # Garage Initialization — assigns layout, creates bucket and access key
   # Uses alpine:3 (has wget + sh) to hit the Garage admin HTTP API
+  # Note: No healthcheck - this is a one-shot container that exits after initialization
   garage-init:
     image: alpine:3
     container_name: bifrost-docs-garage-init
@@ -69,13 +70,6 @@ services:
       GARAGE_ACCESS_KEY_ID: ${GARAGE_ACCESS_KEY_ID:?GARAGE_ACCESS_KEY_ID is required}
       GARAGE_SECRET_ACCESS_KEY: ${GARAGE_SECRET_ACCESS_KEY:?GARAGE_SECRET_ACCESS_KEY is required}
     entrypoint: ["sh", "/garage-init.sh"]
-    # Healthcheck: verifies Garage is accessible (one-shot container)
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO /dev/null --header=\"Authorization: Bearer ${GARAGE_ADMIN_TOKEN}\" http://garage:3903/v1/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
 
   # Valkey (Redis-compatible cache and pub/sub — BSD-3-Clause, replaces SSPL Redis)
   valkey:
@@ -128,6 +122,7 @@ services:
       retries: 5
 
   # Init Container - Runs migrations before API starts
+  # Note: No healthcheck - this is a one-shot container that exits after migrations
   init:
     image: jackmusick/bifrost-docs-api:latest
     container_name: bifrost-docs-init
@@ -139,13 +134,6 @@ services:
       pgbouncer:
         condition: service_healthy
     command: python -m scripts.init_container
-    # Healthcheck: verifies database connectivity (one-shot container)
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import psycopg2; psycopg2.connect(host='pgbouncer', port=5432, dbname='bifrost_docs', user='bifrost_docs', password='${POSTGRES_PASSWORD}')\""]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
 
   # FastAPI Application
   api:
