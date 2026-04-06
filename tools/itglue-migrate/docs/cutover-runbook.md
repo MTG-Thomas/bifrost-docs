@@ -1,0 +1,428 @@
+# Midtown Migration Cutover Runbook
+
+> **For:** Midtown migration from IT Glue to Bifrost Docs  
+> **When:** Production cutover day  
+> **Owner:** Migration operator (you!)  
+
+This runbook provides step-by-step procedures for executing the Midtown migration cutover from IT Glue to Bifrost Docs. Follow this guide to ensure a safe, reversible migration with minimal downtime.
+
+---
+
+## 📋 Quick Reference
+
+| Item | Value |
+|------|-------|
+| **Source** | IT Glue export (178 orgs, ~25K entities) |
+| **Target** | Bifrost Docs production instance |
+| **Estimated Cutover Time** | 4-8 hours |
+| **Rollback Window** | 24 hours (keep IT Glue access) |
+| **Support Channel** | #migration-support (Slack) |
+| **Escalation** | @migration-lead |
+
+---
+
+## Phase 0: Pre-Cutover (T-7 Days to T-1 Day)
+
+### 0.1 Environment Preparation Checklist
+
+- [ ] Bifrost Docs production deployment verified healthy
+- [ ] `curl $BIFROST_API_URL/api/health` returns 200
+- [ ] Database backups scheduled and tested
+- [ ] Migration operator has admin access to both IT Glue and Bifrost Docs
+- [ ] API token generated with `owner` role in Bifrost Docs
+- [ ] IT Glue export downloaded and validated (less than 7 days old)
+- [ ] Export size verified: ~2.1GB, ~2,100 attachments expected
+- [ ] `itglue-migrate` CLI installed: `pip install -e tools/itglue-migrate`
+
+### 0.2 Rehearsal Completion
+
+- [ ] **Mandatory:** Full rehearsal completed using seeded fixture
+  ```bash
+  cd tools/itglue-migrate
+  pytest tests/integration/test_migration_smoke.py -v
+  ```
+- [ ] **Mandatory:** Single org pilot migration completed successfully
+  ```bash
+  python -m itglue_migrate.cli run \
+      --export /path/to/export \
+      --org "Acme Corp" \
+      --api-url $BIFROST_API_URL \
+      --token $BIFROST_TOKEN \
+      --dry-run
+  ```
+- [ ] Pilot org verified in Bifrost Docs UI
+- [ ] Entity counts match: Orgs=1, Configs=N, Passwords=N, etc.
+- [ ] No critical errors in logs
+
+### 0.3 Communication Plan
+
+- [ ] Cutover date announced to Midtown staff (T-3 days minimum)
+- [ ] IT Glue "read-only" notice scheduled for cutover day
+- [ ] Bifrost Docs training session completed for key users
+- [ ] Support contact list distributed
+
+---
+
+## Phase 1: Pre-Flight (Cutover Day, T-2 Hours)
+
+### 1.1 Final Health Checks
+
+```bash
+# Test Bifrost Docs API connectivity
+curl -H "Authorization: Bearer $BIFROST_TOKEN" \
+    $BIFROST_API_URL/api/health
+
+# Expected: {"status": "healthy", "database": "connected"}
+```
+
+- [ ] API responding < 500ms
+- [ ] Database connection healthy
+- [ ] S3/MinIO storage accessible
+- [ ] Redis/Valkey responsive
+
+### 1.2 Backup Verification
+
+- [ ] Bifrost Docs database backup completed
+  ```bash
+  # Verify backup exists
+  ls -la /backups/bifrost-docs-$(date +%Y%m%d)*
+  ```
+- [ ] Backup restoration tested in staging environment
+- [ ] Rollback plan documented (see Phase 5)
+
+### 1.3 Export Validation
+
+```bash
+cd tools/itglue-migrate
+
+# Validate export structure
+python -m itglue_migrate.cli validate \
+    --export /path/to/itglue-export
+```
+
+- [ ] Export structure validation passes
+- [ ] All expected CSV files present
+- [ ] Attachments directory accessible
+- [ ] File permissions correct (readable)
+
+### 1.4 Resource Check
+
+- [ ] Disk space: > 50GB free on target system
+- [ ] Network: Stable connection to Bifrost Docs
+- [ ] Time: 4-8 hour window available
+- [ ] Coffee: ☕ Fully stocked
+
+---
+
+## Phase 2: Migration Execution (Cutover Day, T-0)
+
+### 2.1 Generate Migration Plan
+
+```bash
+cd tools/itglue-migrate
+
+# Generate the migration plan
+python -m itglue_migrate.cli preview \
+    --export /path/to/itglue-export \
+    --api-url $BIFROST_API_URL \
+    --token $BIFROST_TOKEN \
+    --output /tmp/midtown-migration-plan.json
+```
+
+- [ ] Plan file generated successfully
+- [ ] Review summary output:
+  - Organizations: 178
+  - Configurations: ~6,191
+  - Documents: ~1,328
+  - Locations: ~589
+  - Passwords: ~10,218
+  - Custom Assets: ~7,500
+  - Attachments: ~2,100
+
+### 2.2 Review Plan File
+
+```bash
+# Quick sanity check
+jq '.summary' /tmp/midtown-migration-plan.json
+```
+
+**Decision Point:** ⚠️
+
+- [ ] **YES** - Counts match expected? → Continue to 2.3
+- [ ] **NO** - Counts off by > 10%? → Stop and investigate
+
+### 2.3 Execute Migration (First Pass)
+
+```bash
+# First pass: Core entities (no attachments)
+python -m itglue_migrate.cli run \
+    --export /path/to/itglue-export \
+    --plan /tmp/midtown-migration-plan.json \
+    --api-url $BIFROST_API_URL \
+    --token $BIFROST_TOKEN \
+    --skip-attachments \
+    --output /tmp/migration-results-core.json
+```
+
+**Monitor progress:**
+- Watch for ERROR messages in output
+- Note any "skipped" or "failed" counts
+- Expected: ~30-60 minutes for core entities
+
+- [ ] Core entity migration completed
+- [ ] Error count < 1% of total entities
+- [ ] No critical (blocking) errors
+
+### 2.4 Execute Attachment Migration
+
+```bash
+# Second pass: Attachments only
+python -m itglue_migrate.cli run \
+    --export /path/to/itglue-export \
+    --plan /tmp/midtown-migration-plan.json \
+    --api-url $BIFROST_API_URL \
+    --token $BIFROST_TOKEN \
+    --only-attachments \
+    --output /tmp/migration-results-attachments.json
+```
+
+- [ ] Attachment migration completed
+- [ ] ~2,100 attachments processed
+- [ ] Failed attachments logged for review
+
+### 2.5 Execute Relationship Sync (Second Pass)
+
+```bash
+# Third pass: Relationships (requires API)
+python -m itglue_migrate.cli sync-relationships \
+    --itglue-api-key $ITGLUE_API_KEY \
+    --api-url $BIFROST_API_URL \
+    --token $BIFROST_TOKEN \
+    --output /tmp/relationship-sync-results.json
+```
+
+- [ ] Relationship sync completed
+- [ ] Related items linked correctly
+
+---
+
+## Phase 3: Validation (T+2 Hours)
+
+### 3.1 Automated Verification
+
+```bash
+# Run validation script
+cd tools/itglue-migrate
+python -m itglue_migrate.cli validate-migration \
+    --export /path/to/itglue-export \
+    --api-url $BIFROST_API_URL \
+    --token $BIFROST_TOKEN \
+    --report /tmp/migration-validation-report.json
+```
+
+### 3.2 Entity Count Verification
+
+| Entity Type | IT Glue Source | Bifrost Target | Match |
+|-------------|----------------|----------------|-------|
+| Organizations | 178 | ___ | [ ] |
+| Configurations | ~6,191 | ___ | [ ] |
+| Documents | ~1,328 | ___ | [ ] |
+| Locations | ~589 | ___ | [ ] |
+| Passwords | ~10,218 | ___ | [ ] |
+| Custom Assets | ~7,500 | ___ | [ ] |
+| Attachments | ~2,100 | ___ | [ ] |
+
+**Decision Point:** ⚠️
+
+- [ ] **YES** - All counts within 5%? → Continue to 3.3
+- [ ] **NO** - Significant discrepancies? → Review logs before proceeding
+
+### 3.3 Spot Check Critical Data
+
+**Sample 5 random organizations and verify:**
+- [ ] Organization name matches
+- [ ] At least one password visible
+- [ ] At least one configuration exists
+- [ ] Documents render correctly (no broken images)
+
+**Sample 10 random passwords and verify:**
+- [ ] Password decrypts successfully (reveal works)
+- [ ] Username field populated
+- [ ] URL field populated (if applicable)
+
+**Sample 5 random documents and verify:**
+- [ ] Document opens without errors
+- [ ] Images load correctly
+- [ ] Formatting preserved
+
+### 3.4 Integration Features Check
+
+- [ ] Search returns results for common queries
+- [ ] Global view shows all organizations
+- [ ] Recent/Frequent access tracking works
+- [ ] Audit logs recording access
+
+---
+
+## Phase 4: Cutover Signoff (T+4 Hours)
+
+### 4.1 Go/No-Go Decision
+
+**Check all gates:**
+
+| Gate | Status |
+|------|--------|
+| Entity counts match (±5%) | [ ] PASS / [ ] FAIL |
+| No critical errors in logs | [ ] PASS / [ ] FAIL |
+| Spot checks successful (90%+) | [ ] PASS / [ ] FAIL |
+| Search/indexing functional | [ ] PASS / [ ] FAIL |
+| Staff can log in and access data | [ ] PASS / [ ] FAIL |
+
+**Decision:**
+
+- [ ] **GO** - All gates pass → Continue to 4.2
+- [ ] **NO-GO** - Any gate fails → Execute rollback (Phase 5)
+
+### 4.2 Enable Bifrost Docs for Staff
+
+- [ ] Remove "maintenance mode" if enabled
+- [ ] Announce cutover complete to staff
+- [ ] Provide Bifrost Docs login URL
+- [ ] Share quick-start guide
+- [ ] Open support channel for questions
+
+### 4.3 IT Glue Read-Only Transition
+
+- [ ] Set IT Glue to read-only for Midtown data
+- [ ] Post notice directing staff to Bifrost Docs
+- [ ] Retain IT Glue access for 24 hours (rollback window)
+
+### 4.4 Post-Cutover Monitoring
+
+**First 24 hours:**
+- [ ] Monitor error rates every 2 hours
+- [ ] Check API response times
+- [ ] Watch for authentication issues
+- [ ] Monitor storage usage growth
+
+**First week:**
+- [ ] Daily standup to review issues
+- [ ] Track user feedback
+- [ ] Document workarounds for any gaps
+
+---
+
+## Phase 5: Rollback (If Needed)
+
+**⚠️ Execute this section only if Go/No-Go decision is NO-GO**
+
+### 5.1 Rollback Triggers
+
+**Immediate rollback required if:**
+- [ ] > 10% of entities failed to migrate
+- [ ] Password decryption failing systemically
+- [ ] Search/indexing completely broken
+- [ ] Users cannot authenticate
+- [ ] Data corruption detected
+
+**Consider rollback if:**
+- [ ] 5-10% entity count discrepancy
+- [ ] Key workflows not functional
+- [ ] Staff unable to perform daily tasks
+
+### 5.2 Rollback Procedure
+
+**Step 1: Stop Migration (if still running)**
+```bash
+# Kill any running migration processes
+pkill -f "itglue-migrate"
+```
+
+**Step 2: Restore Database (if needed)**
+```bash
+# Restore from pre-migration backup
+# (Work with your DBA or use documented restore procedure)
+pg_restore --clean --if-exists \
+    --dbname=bifrost_docs \
+    /backups/bifrost-docs-pre-migration.dump
+```
+
+**Step 3: Re-enable IT Glue Write Access**
+- [ ] Remove read-only restrictions in IT Glue
+- [ ] Notify staff to continue using IT Glue
+- [ ] Pause Bifrost Docs rollout
+
+**Step 4: Post-Rollback Analysis**
+- [ ] Document what failed
+- [ ] Preserve migration logs for analysis
+- [ ] Schedule post-mortem within 48 hours
+- [ ] Plan remediation and re-cutover
+
+### 5.3 Partial Rollback Option
+
+If only some organizations failed:
+- [ ] Wipe affected organizations from Bifrost Docs
+- [ ] Re-run migration for those orgs only
+- [ ] Validate before declaring success
+
+---
+
+## Phase 6: Post-Cutover (T+1 Day to T+7 Days)
+
+### 6.1 Final IT Glue Cleanup
+
+**After 7 days of stable operation:**
+- [ ] Confirm no staff requesting IT Glue access
+- [ ] Export final IT Glue backup (for records)
+- [ ] Cancel IT Glue subscription (if applicable)
+- [ ] Update documentation to remove IT Glue references
+
+### 6.2 Documentation Updates
+
+- [ ] Update internal wiki with Bifrost Docs procedures
+- [ ] Archive IT Glue procedures (mark deprecated)
+- [ ] Document any workarounds discovered
+
+### 6.3 Success Metrics
+
+Track these for 30 days post-cutover:
+- [ ] Daily active users in Bifrost Docs
+- [ ] Search query success rate
+- [ ] Average page load time
+- [ ] Support ticket volume (should decrease over time)
+
+---
+
+## 📞 Emergency Contacts
+
+| Role | Contact | Phone/Slack |
+|------|---------|-------------|
+| Migration Lead | _____________ | @migration-lead |
+| Bifrost Docs Admin | _____________ | @bifrost-admin |
+| Database Admin | _____________ | @dba-oncall |
+| IT Glue Admin | _____________ | @itglue-admin |
+| Midtown IT Lead | _____________ | @midtown-it |
+
+---
+
+## 🔗 Related Documentation
+
+- `migration-features.md` - Migration tool features
+- `rehearsal-guide.md` - Using the test fixture
+- `MIGRATION_TOOL.md` - Full migration architecture
+- `docs/ROADMAP.md` - Project roadmap
+- `docs/INFRASTRUCTURE_ASSESSMENT.md` - Production readiness
+
+---
+
+## 📝 Change Log
+
+| Date | Version | Changes |
+|------|---------|---------|
+| 2026-04-06 | 1.0 | Initial runbook for Midtown cutover |
+
+---
+
+**END OF RUNBOOK**
+
+**Remember:** When in doubt, roll back. Data integrity is more important than meeting a deadline.

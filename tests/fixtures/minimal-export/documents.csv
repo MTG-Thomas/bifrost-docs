@@ -1,0 +1,17 @@
+id,organization_id,name,path,content
+3001,1001,Test Onboarding Guide,/,"# Test Onboarding Guide
+
+This is a test document for migration rehearsal purposes.
+
+## Getting Started
+
+1. Step one
+2. Step two
+3. Step three
+
+## Notes
+
+- This is synthetic data
+- Safe for testing only
+- Do not use in production
+"

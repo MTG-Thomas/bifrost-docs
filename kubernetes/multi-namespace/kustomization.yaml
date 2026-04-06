@@ -1,0 +1,9 @@
+# Multi-Namespace Deployment Root
+# This provides a convenient way to deploy everything or subsets
+
+resources:
+  # Namespaces (always first)
+  - namespaces/
+  
+  # Shared platform infrastructure
+  - platform/network-policies/

@@ -1,0 +1,26 @@
+# Allow bifrost-docs API to call bifrost API for integration features
+# This is the ONLY cross-namespace API call allowed
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-docs-to-bifrost-api
+  namespace: bifrost
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: api
+      app.kubernetes.io/part-of: bifrost
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/name: bifrost-docs
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: api
+              app.kubernetes.io/part-of: bifrost-docs
+      ports:
+        - protocol: TCP
+          port: 8000

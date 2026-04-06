@@ -1,0 +1,45 @@
+# TLS Certificate for Bifrost Docs
+#
+# This Certificate resource requests a TLS certificate from the Let's Encrypt
+# ClusterIssuer. cert-manager will automatically create and renew the certificate.
+#
+# Usage:
+#   kubectl apply -f kubernetes/cert-manager/certificate.yaml
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: bifrost-docs-tls
+  namespace: bifrost-docs
+  labels:
+    app.kubernetes.io/name: bifrost-docs-tls
+    app.kubernetes.io/part-of: bifrost-docs
+spec:
+  # Secret name where the certificate will be stored
+  secretName: bifrost-docs-tls
+  
+  # DNS names the certificate will be valid for
+  dnsNames:
+    - docs.example.com
+    - www.docs.example.com
+  
+  # Reference to the ClusterIssuer
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+    group: cert-manager.io
+  
+  # Certificate duration and renewal
+  duration: 2160h  # 90 days
+  renewBefore: 720h  # 30 days before expiry
+  
+  # Private key configuration
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  
+  # Use modern cipher suites
+  usages:
+    - digital signature
+    - key encipherment

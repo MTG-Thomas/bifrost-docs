@@ -1,0 +1,37 @@
+# Kustomization for bifrost-docs namespace
+# This is a reference structure - actual app resources should be imported from existing manifests
+
+namespace: bifrost-docs
+
+resources:
+  - namespace.yaml
+  - resource-quota.yaml
+  - limit-range.yaml
+  - ingress.yaml
+  - external-service-bifrost.yaml
+  # Import existing app resources
+  - ../../api/deployment.yaml
+  - ../../api/service.yaml
+  - ../../client/deployment.yaml
+  - ../../client/service.yaml
+  - ../../worker/deployment.yaml
+
+# Patches to ensure resources target correct namespace
+patches:
+  - target:
+      kind: Deployment
+      namespace: bifrost-docs
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/envFrom/0/configMapRef/name
+        value: bifrost-docs-config
+      - op: replace
+        path: /spec/template/spec/containers/0/envFrom/1/secretRef/name
+        value: bifrost-docs-secrets
+  - target:
+      kind: ConfigMap
+      name: bifrost-docs-config
+    patch: |
+      - op: add
+        path: /data/BIFROST_API_URL
+        value: "http://external-bifrost-api.bifrost-docs.svc.cluster.local:8000"

@@ -1,0 +1,15 @@
+# Apply network policies
+# kubectl apply -f platform/network-policies/
+
+resources:
+  # Default deny policies (apply first)
+  - bifrost-docs-default-deny.yaml
+  - bifrost-default-deny.yaml
+  # Allow ingress controller to reach apps
+  - allow-ingress-to-docs.yaml
+  - allow-ingress-to-bifrost.yaml
+  # Allow cross-namespace API calls (Docs -> Bifrost)
+  - allow-docs-to-bifrost.yaml
+  # Egress policies
+  - allow-egress-docs.yaml
+  - allow-egress-bifrost.yaml

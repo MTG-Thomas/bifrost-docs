@@ -1,0 +1,54 @@
+# Let's Encrypt ClusterIssuer for cert-manager
+# 
+# This creates a ClusterIssuer that can be used by any namespace to obtain
+# TLS certificates from Let's Encrypt.
+#
+# Usage:
+#   kubectl apply -f kubernetes/cert-manager/cluster-issuer.yaml
+
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  labels:
+    app.kubernetes.io/name: letsencrypt-prod
+    app.kubernetes.io/part-of: bifrost-platform
+spec:
+  acme:
+    # The ACME server URL
+    server: https://acme-v02.api.letsencrypt.org/directory
+    
+    # Email address for ACME registration
+    email: ${CERT_MANAGER_EMAIL:-admin@example.com}
+    
+    # Name of a secret used to store the ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    
+    # Enable the HTTP-01 challenge provider
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx
+        selector: {}
+
+---
+# Staging issuer for testing (rate limits are higher)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+  labels:
+    app.kubernetes.io/name: letsencrypt-staging
+    app.kubernetes.io/part-of: bifrost-platform
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: ${CERT_MANAGER_EMAIL:-admin@example.com}
+    privateKeySecretRef:
+      name: letsencrypt-staging
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx
+        selector: {}

@@ -1,0 +1,54 @@
+# Production environment overlay
+# Full scale with all protections enabled
+
+namespace: bifrost-docs
+
+resources:
+  - ../bifrost-docs/
+  - ../platform/network-policies/
+
+patches:
+  # Production replica counts
+  - target:
+      kind: Deployment
+      name: bifrost-docs-api
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 3
+  - target:
+      kind: Deployment
+      name: bifrost-docs-client
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+  - target:
+      kind: Deployment
+      name: bifrost-docs-worker
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+  # Production hostname
+  - target:
+      kind: Ingress
+      name: bifrost-docs
+    patch: |
+      - op: replace
+        path: /spec/rules/0/host
+        value: docs.example.com
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: docs.example.com
+      - op: replace
+        path: /spec/tls/0/secretName
+        value: bifrost-docs-tls
+
+configMapGenerator:
+  - name: bifrost-docs-config
+    behavior: merge
+    literals:
+      - BIFROST_DOCS_ENVIRONMENT=production
+      - BIFROST_DOCS_DEBUG=false
+      - BIFROST_API_URL=http://external-bifrost-api.bifrost-docs.svc.cluster.local:8000

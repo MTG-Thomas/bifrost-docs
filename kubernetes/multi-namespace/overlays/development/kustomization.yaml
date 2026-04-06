@@ -1,0 +1,52 @@
+# Development environment overlay
+# Uses smaller resource allocations and local/shared infrastructure
+
+namespace: bifrost-docs
+
+resources:
+  - ../bifrost-docs/
+  - ../platform/network-policies/
+
+# Development-specific patches
+patches:
+  # Reduce replica count
+  - target:
+      kind: Deployment
+      name: bifrost-docs-api
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target:
+      kind: Deployment
+      name: bifrost-docs-client
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target:
+      kind: Deployment
+      name: bifrost-docs-worker
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  # Relax resource limits for dev
+  - target:
+      kind: ResourceQuota
+      name: bifrost-docs-quota
+    patch: |
+      - op: replace
+        path: /spec/hard/limits.cpu
+        value: "2"
+      - op: replace
+        path: /spec/hard/limits.memory
+        value: 4Gi
+
+configMapGenerator:
+  - name: bifrost-docs-config
+    behavior: merge
+    literals:
+      - BIFROST_DOCS_ENVIRONMENT=development
+      - BIFROST_DOCS_DEBUG=true
+      - BIFROST_API_URL=http://external-bifrost-api.bifrost-docs.svc.cluster.local:8000

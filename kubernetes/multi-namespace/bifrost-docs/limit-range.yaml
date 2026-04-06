@@ -1,0 +1,22 @@
+# Default resource limits for pods without explicit requests/limits
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: bifrost-docs-limits
+  namespace: bifrost-docs
+spec:
+  limits:
+    - default:
+        cpu: "500m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "256Mi"
+      type: Container
+    - max:
+        cpu: "2"
+        memory: "2Gi"
+      min:
+        cpu: "50m"
+        memory: "128Mi"
+      type: Container

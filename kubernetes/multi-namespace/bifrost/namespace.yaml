@@ -1,0 +1,9 @@
+# Placeholder namespace definition
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bifrost
+  labels:
+    app.kubernetes.io/name: bifrost
+    app.kubernetes.io/part-of: bifrost
+    app: bifrost

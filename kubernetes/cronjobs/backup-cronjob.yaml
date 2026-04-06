@@ -1,0 +1,283 @@
+# Kubernetes CronJob for Automated Database Backups
+#
+# This CronJob runs database backups on a schedule and uploads them to S3.
+# It also includes a verification step to ensure backups are valid.
+#
+# Usage:
+#   kubectl apply -f kubernetes/cronjobs/backup-cronjob.yaml
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: bifrost-docs-backup-daily
+  namespace: bifrost-docs
+  labels:
+    app.kubernetes.io/name: bifrost-docs-backup-daily
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/part-of: bifrost-docs
+spec:
+  schedule: "0 2 * * *"  # Daily at 2:00 AM
+  timeZone: "UTC"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: bifrost-docs-backup-daily
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: postgres:15-alpine
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  echo "Starting daily backup at $(date)"
+                  
+                  # Create backup
+                  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                  BACKUP_FILE="/tmp/bifrost_docs_daily_${TIMESTAMP}.sql.gz"
+                  
+                  echo "Dumping database..."
+                  pg_dump \
+                    -h "$DB_HOST" \
+                    -p "$DB_PORT" \
+                    -U "$DB_USER" \
+                    -d "$DB_NAME" \
+                    --format=custom \
+                    --verbose | gzip > "$BACKUP_FILE"
+                  
+                  echo "Uploading to S3..."
+                  S3_PATH="s3://$S3_BUCKET/backups/daily/$(date +%Y-%m-%d)/"
+                  aws s3 cp "$BACKUP_FILE" "$S3_PATH" --endpoint-url "$S3_ENDPOINT"
+                  
+                  # Verify backup
+                  echo "Verifying backup..."
+                  if gzip -t "$BACKUP_FILE"; then
+                    echo "✓ Backup valid"
+                  else
+                    echo "✗ Backup corrupt"
+                    exit 1
+                  fi
+                  
+                  # Cleanup
+                  rm "$BACKUP_FILE"
+                  
+                  # Cleanup old backups (keep 7 days)
+                  echo "Cleaning up old backups..."
+                  aws s3 ls "s3://$S3_BUCKET/backups/daily/" \
+                    --endpoint-url "$S3_ENDPOINT" \
+                    --recursive | \
+                    sort -r | \
+                    tail -n +8 | \
+                    awk '{print $4}' | \
+                    xargs -I {} aws s3 rm "s3://$S3_BUCKET/{}" --endpoint-url "$S3_ENDPOINT"
+                  
+                  echo "Backup complete at $(date)"
+              env:
+                - name: DB_HOST
+                  valueFrom:
+                    configMapKeyRef:
+                      name: bifrost-docs-config
+                      key: DB_HOST
+                      optional: true
+                - name: DB_HOST_FALLBACK
+                  value: "postgres.bifrost-docs.svc.cluster.local"
+                - name: DB_PORT
+                  value: "5432"
+                - name: DB_NAME
+                  value: "bifrost_docs"
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: bifrost-docs-secrets
+                      key: POSTGRES_USER
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: bifrost-docs-secrets
+                      key: POSTGRES_PASSWORD
+                - name: S3_BUCKET
+                  valueFrom:
+                    configMapKeyRef:
+                      name: bifrost-docs-config
+                      key: BIFROST_DOCS_S3_BUCKET
+                      optional: true
+                - name: S3_BUCKET_FALLBACK
+                  value: "bifrost-docs"
+                - name: S3_ENDPOINT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: bifrost-docs-config
+                      key: BIFROST_DOCS_S3_ENDPOINT
+                      optional: true
+                - name: S3_ENDPOINT_FALLBACK
+                  value: "http://garage.bifrost-docs.svc.cluster.local:3900"
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: bifrost-docs-secrets
+                      key: GARAGE_ACCESS_KEY_ID
+                      optional: true
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: bifrost-docs-secrets
+                      key: GARAGE_SECRET_ACCESS_KEY
+                      optional: true
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "256Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "512Mi"
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: bifrost-docs-backup-weekly
+  namespace: bifrost-docs
+  labels:
+    app.kubernetes.io/name: bifrost-docs-backup-weekly
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/part-of: bifrost-docs
+spec:
+  schedule: "0 3 * * 0"  # Weekly on Sunday at 3:00 AM
+  timeZone: "UTC"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: bifrost-docs-backup-weekly
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: postgres:15-alpine
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  echo "Starting weekly backup at $(date)"
+                  
+                  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                  BACKUP_FILE="/tmp/bifrost_docs_weekly_${TIMESTAMP}.sql.gz"
+                  
+                  echo "Dumping database..."
+                  pg_dump \
+                    -h "$DB_HOST" \
+                    -p "$DB_PORT" \
+                    -U "$DB_USER" \
+                    -d "$DB_NAME" \
+                    --format=custom \
+                    --verbose | gzip > "$BACKUP_FILE"
+                  
+                  echo "Uploading to S3..."
+                  S3_PATH="s3://$S3_BUCKET/backups/weekly/$(date +%Y-%W)/"
+                  aws s3 cp "$BACKUP_FILE" "$S3_PATH" --endpoint-url "$S3_ENDPOINT"
+                  
+                  # Verify
+                  if gzip -t "$BACKUP_FILE"; then
+                    echo "✓ Backup valid"
+                  else
+                    echo "✗ Backup corrupt"
+                    exit 1
+                  fi
+                  
+                  rm "$BACKUP_FILE"
+                  
+                  # Cleanup old weekly backups (keep 4 weeks)
+                  aws s3 ls "s3://$S3_BUCKET/backups/weekly/" \
+                    --endpoint-url "$S3_ENDPOINT" \
+                    --recursive | \
+                    sort -r | \
+                    tail -n +5 | \
+                    awk '{print $4}' | \
+                    xargs -I {} aws s3 rm "s3://$S3_BUCKET/{}" --endpoint-url "$S3_ENDPOINT"
+                  
+                  echo "Weekly backup complete at $(date)"
+              env:
+                - name: DB_HOST
+                  valueFrom:
+                    configMapKeyRef:
+                      name: bifrost-docs-config
+                      key: DB_HOST
+                      optional: true
+                - name: DB_HOST_FALLBACK
+                  value: "postgres.bifrost-docs.svc.cluster.local"
+                - name: DB_PORT
+                  value: "5432"
+                - name: DB_NAME
+                  value: "bifrost_docs"
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: bifrost-docs-secrets
+                      key: POSTGRES_USER
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: bifrost-docs-secrets
+                      key: POSTGRES_PASSWORD
+                - name: S3_BUCKET
+                  valueFrom:
+                    configMapKeyRef:
+                      name: bifrost-docs-config
+                      key: BIFROST_DOCS_S3_BUCKET
+                      optional: true
+                - name: S3_BUCKET_FALLBACK
+                  value: "bifrost-docs"
+                - name: S3_ENDPOINT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: bifrost-docs-config
+                      key: BIFROST_DOCS_S3_ENDPOINT
+                      optional: true
+                - name: S3_ENDPOINT_FALLBACK
+                  value: "http://garage.bifrost-docs.svc.cluster.local:3900"
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: bifrost-docs-secrets
+                      key: GARAGE_ACCESS_KEY_ID
+                      optional: true
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: bifrost-docs-secrets
+                      key: GARAGE_SECRET_ACCESS_KEY
+                      optional: true
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "256Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "512Mi"
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}

@@ -1,0 +1,18 @@
+# Kustomization for bifrost namespace
+# This is a reference structure only - actual manifests should reference MTG-Thomas/bifrost repo
+
+namespace: bifrost
+
+resources:
+  - namespace.yaml
+  - resource-quota.yaml
+  - limit-range.yaml
+  - ingress.yaml
+
+# Note: Actual bifrost app resources should be imported from:
+# https://github.com/MTG-Thomas/bifrost/tree/main/k8s/
+#
+# Example (add to resources after cloning/importing):
+#   - ../../../../../bifrost/k8s/base/
+#
+# Or use a GitOps tool like ArgoCD to deploy from the bifrost repo directly

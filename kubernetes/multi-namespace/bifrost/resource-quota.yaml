@@ -1,0 +1,16 @@
+# Resource quotas for bifrost namespace
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: bifrost-quota
+  namespace: bifrost
+spec:
+  hard:
+    requests.cpu: "6"
+    requests.memory: 12Gi
+    limits.cpu: "12"
+    limits.memory: 24Gi
+    persistentvolumeclaims: "15"
+    services: "15"
+    secrets: "30"
+    configmaps: "30"

@@ -1,0 +1,125 @@
+# TLS-enabled Ingress for Bifrost Docs
+#
+# This ingress uses cert-manager to automatically obtain and renew TLS certificates.
+#
+# Prerequisites:
+#   - cert-manager installed in cluster
+#   - ClusterIssuer created (see cluster-issuer.yaml)
+#   - nginx ingress controller running
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: bifrost-docs-tls
+  namespace: bifrost-docs
+  annotations:
+    # Enable cert-manager
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    cert-manager.io/acme-challenge-type: http01
+    
+    # Nginx specific annotations
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    
+    # Proxy settings
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    
+    # Enable CORS if needed
+    # nginx.ingress.kubernetes.io/enable-cors: "true"
+    
+    # Rate limiting (requires nginx-mod-http-limit-req module)
+    # nginx.ingress.kubernetes.io/limit-rps: "10"
+    
+    # Security headers (additional to application headers)
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Frame-Options "DENY" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+spec:
+  ingressClassName: nginx
+  
+  rules:
+    - host: docs.example.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: bifrost-docs-api
+                port:
+                  number: 8000
+          
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: bifrost-docs-api
+                port:
+                  number: 8000
+          
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: bifrost-docs-api
+                port:
+                  number: 8000
+          
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: bifrost-docs-api
+                port:
+                  number: 8000
+          
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: bifrost-docs-api
+                port:
+                  number: 8000
+          
+          - path: /redoc
+            pathType: Prefix
+            backend:
+              service:
+                name: bifrost-docs-api
+                port:
+                  number: 8000
+          
+          - path: /openapi.json
+            pathType: Exact
+            backend:
+              service:
+                name: bifrost-docs-api
+                port:
+                  number: 8000
+          
+          - path: /metrics
+            pathType: Exact
+            backend:
+              service:
+                name: bifrost-docs-api
+                port:
+                  number: 8000
+          
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: bifrost-docs-client
+                port:
+                  number: 80
+  
+  tls:
+    - hosts:
+        - docs.example.com
+      secretName: bifrost-docs-tls

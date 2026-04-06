@@ -1,0 +1,5 @@
+# Apply development environment
+# kubectl apply -k overlays/development/
+
+resources:
+  - development/

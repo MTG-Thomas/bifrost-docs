@@ -1,0 +1,40 @@
+# Staging environment overlay
+# Mirrors production but with smaller scale
+
+namespace: bifrost-docs
+
+resources:
+  - ../bifrost-docs/
+  - ../platform/network-policies/
+
+patches:
+  # Two replicas for HA testing
+  - target:
+      kind: Deployment
+      name: bifrost-docs-api
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+  # Update hostnames
+  - target:
+      kind: Ingress
+      name: bifrost-docs
+    patch: |
+      - op: replace
+        path: /spec/rules/0/host
+        value: docs-staging.example.com
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: docs-staging.example.com
+      - op: replace
+        path: /spec/tls/0/secretName
+        value: bifrost-docs-staging-tls
+
+configMapGenerator:
+  - name: bifrost-docs-config
+    behavior: merge
+    literals:
+      - BIFROST_DOCS_ENVIRONMENT=staging
+      - BIFROST_DOCS_DEBUG=false
+      - BIFROST_API_URL=http://external-bifrost-api.bifrost-docs.svc.cluster.local:8000

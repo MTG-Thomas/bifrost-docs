@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bifrost-platform
+  labels:
+    app.kubernetes.io/name: bifrost-platform
+    app.kubernetes.io/part-of: bifrost-platform
+    purpose: shared-infrastructure

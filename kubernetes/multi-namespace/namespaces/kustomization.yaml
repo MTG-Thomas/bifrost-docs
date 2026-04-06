@@ -1,0 +1,7 @@
+# Apply all namespace definitions
+# kubectl apply -f namespaces/
+
+resources:
+  - bifrost-platform.yaml
+  - bifrost.yaml
+  - bifrost-docs.yaml

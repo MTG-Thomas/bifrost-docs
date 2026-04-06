@@ -1,0 +1,34 @@
+# Example ingress for bifrost
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: bifrost
+  namespace: bifrost
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: bifrost.example.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: bifrost-api
+                port:
+                  number: 8000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: bifrost-client
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - bifrost.example.com
+      secretName: bifrost-tls

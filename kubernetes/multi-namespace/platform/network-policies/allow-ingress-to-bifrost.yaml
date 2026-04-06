@@ -1,0 +1,27 @@
+# Allow ingress from the shared ingress controller to bifrost
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-controller
+  namespace: bifrost
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: bifrost
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/name: bifrost-platform
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8000
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443

@@ -1,0 +1,17 @@
+# Service pointing to Bifrost API in the bifrost namespace
+# Used by Docs API to make integration calls
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-bifrost-api
+  namespace: bifrost-docs
+  labels:
+    app.kubernetes.io/name: external-bifrost-api
+    app.kubernetes.io/component: integration
+spec:
+  type: ExternalName
+  externalName: bifrost-api.bifrost.svc.cluster.local
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
