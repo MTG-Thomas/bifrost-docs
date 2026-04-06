@@ -7,7 +7,7 @@
 - [ ] cert-manager installed in cluster (for TLS)
 - [ ] Ingress controller installed (nginx or traefik)
 - [ ] External Secrets Operator or secret management solution ready
-- [ ] DNS configured for domains (docs.example.com, bifrost.example.com)
+- [ ] DNS configured for domains (dev.docs.midtowntg.com, bifrost.example.com)
 
 ## Namespace Creation
 
@@ -64,8 +64,8 @@
 
 ### Bifrost Docs
 
-- [ ] https://docs.example.com loads without certificate errors
-- [ ] API health endpoint responds: https://docs.example.com/api/health
+- [ ] https://dev.docs.midtowntg.com loads without certificate errors
+- [ ] API health endpoint responds: https://dev.docs.midtowntg.com/api/health
 - [ ] Can authenticate and view organization list
 - [ ] Can navigate to passwords/configurations/documents
 

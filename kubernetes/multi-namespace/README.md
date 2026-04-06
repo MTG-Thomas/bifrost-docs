@@ -227,7 +227,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: docs.example.com
+    - host: dev.docs.midtowntg.com
       http:
         paths:
           - path: /
@@ -239,7 +239,7 @@ spec:
                   number: 80
   tls:
     - hosts:
-        - docs.example.com
+        - dev.docs.midtowntg.com
       secretName: bifrost-docs-tls
 ```
 
