@@ -1146,47 +1146,47 @@ Port branding from bifrost-api (brand family consistency):
 
 ---
 
-## Phase 23: OTP/TOTP Support
+## Phase 23: OTP/TOTP Support ✅ COMPLETE
 
-### 23.1 Password TOTP Field
+### 23.1 Password TOTP Field ✅
 
 **Goal:** Add TOTP secret storage to passwords with live code generation.
 
 **Backend:**
 
--   [ ] Add `totp_secret_encrypted: str | None` column to Password ORM model
--   [ ] Update Password Pydantic contracts:
+-   [x] Add `totp_secret_encrypted: str | None` column to Password ORM model
+-   [x] Update Password Pydantic contracts:
     -   `PasswordCreate` / `PasswordUpdate`: add optional `totp_secret: str | None`
     -   `PasswordPublic`: exclude `totp_secret_encrypted` (never expose)
     -   `PasswordReveal`: include decrypted `totp_secret` if present
--   [ ] Encrypt/decrypt TOTP secret using existing Fernet encryption
--   [ ] Write Alembic migration (`20260113_004000_add_totp_to_passwords.py`)
+-   [x] Encrypt/decrypt TOTP secret using existing Fernet encryption
+-   [x] Write Alembic migration (`20260113_004000_add_totp_to_passwords.py`)
 
 **Frontend:**
 
--   [ ] Add "OTP Secret" field to password create/edit form
+-   [x] Add "OTP Secret" field to password create/edit form
     -   Text input for pasting TOTP secret (base32 encoded)
     -   Hint text: "Paste your TOTP secret (base32 format)"
--   [ ] Password reveal view shows TOTP code:
+-   [x] Password reveal view shows TOTP code:
     -   Generate TOTP code client-side using `otpauth` library
     -   Display 6-digit code with circular countdown indicator (30s period)
     -   Code auto-refreshes when period expires
     -   Copy button for current code
--   [ ] Install `otpauth` npm package for TOTP generation
+-   [x] Install `otpauth` npm package for TOTP generation
 
 **Tests:**
 
 -   [ ] Unit: TOTP secret encryption/decryption round-trip
 -   [ ] Integration: create password with TOTP, reveal, verify secret returned
 
-### 23.2 Custom Asset TOTP Field Type
+### 23.2 Custom Asset TOTP Field Type ✅
 
 **Goal:** Add `"totp"` as a custom asset field type.
 
 **Backend:**
 
--   [ ] Add `"totp"` to `FieldDefinition.type` Literal in `api/src/models/contracts/custom_asset.py`
--   [ ] Update `custom_asset_validation.py`:
+-   [x] Add `"totp"` to `FieldDefinition.type` Literal in `api/src/models/contracts/custom_asset.py`
+-   [x] Update `custom_asset_validation.py`:
     -   Add `"totp"` case to `_validate_field_value()` (same as password - string)
     -   Add `"totp"` case to `encrypt_password_fields()` (encrypt with `_encrypted` suffix)
     -   Add `"totp"` case to `decrypt_password_fields()` (decrypt for reveal)
@@ -1194,16 +1194,16 @@ Port branding from bifrost-api (brand family consistency):
 
 **Frontend:**
 
--   [ ] Add `"totp"` option to field type selector in schema builder
--   [ ] Custom asset form renders TOTP fields same as password fields (masked input)
--   [ ] Custom asset reveal view shows TOTP code with countdown and copy button
--   [ ] Share `TOTPDisplay` component between passwords and custom assets
+-   [x] Add `"totp"` option to field type selector in schema builder
+-   [x] Custom asset form renders TOTP fields same as password fields (masked input)
+-   [x] Custom asset reveal view shows TOTP code with countdown and copy button
+-   [x] Share `TOTPDisplay` component between passwords and custom assets
 
-### 23.3 TOTP Display Component
+### 23.3 TOTP Display Component ✅
 
 **Goal:** Reusable component for displaying live TOTP codes.
 
--   [ ] Create `TOTPDisplay` component (`client/src/components/ui/totp-display.tsx`):
+-   [x] Create `TOTPDisplay` component (`client/src/components/ui/totp-display.tsx`):
     -   Props: `secret: string` (base32 TOTP secret)
     -   Generates 6-digit TOTP code using `otpauth` library
     -   Circular progress ring showing seconds until next code (30s period)
@@ -1211,7 +1211,7 @@ Port branding from bifrost-api (brand family consistency):
     -   Copy button with toast notification
     -   Loading state while generating
     -   Error state for invalid secrets
--   [ ] Styling:
+-   [x] Styling:
     -   Large monospace font for 6-digit code
     -   Circular countdown ring (primary color, 30px diameter)
     -   Ring empties as time progresses, refills on new code

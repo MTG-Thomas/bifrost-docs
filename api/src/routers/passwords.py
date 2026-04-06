@@ -42,6 +42,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/organizations/{org_id}/passwords", tags=["passwords"])
 
 
+def _to_public(password: Password) -> PasswordPublic:
+    """Convert Password ORM model to public response."""
+    data = {
+        "id": password.id,
+        "organization_id": password.organization_id,
+        "name": password.name,
+        "username": password.username,
+        "url": password.url,
+        "notes": password.notes,
+        "_totp_secret_encrypted": password.totp_secret_encrypted,  # For computed has_totp
+        "metadata": password.metadata_ if isinstance(password.metadata_, dict) else {},
+        "is_enabled": password.is_enabled,
+        "created_at": password.created_at,
+        "updated_at": password.updated_at,
+        "updated_by_user_id": str(password.updated_by_user_id) if password.updated_by_user_id else None,
+        "updated_by_user_name": password.updated_by_user.email if password.updated_by_user else None,
+    }
+    return PasswordPublic.model_validate(data)
+
+
 @router.get("", response_model=PasswordListResponse)
 async def list_passwords(
     org_id: UUID,
@@ -90,24 +110,7 @@ async def list_passwords(
         has_totp=has_totp,
     )
 
-    items = [
-        PasswordPublic(
-            id=str(p.id),
-            organization_id=str(p.organization_id),
-            name=p.name,
-            username=p.username,
-            url=p.url,
-            notes=p.notes,
-            has_totp=bool(p.totp_secret_encrypted),
-            metadata=p.metadata_ if isinstance(p.metadata_, dict) else {},
-            is_enabled=p.is_enabled,
-            created_at=p.created_at,
-            updated_at=p.updated_at,
-            updated_by_user_id=str(p.updated_by_user_id) if p.updated_by_user_id else None,
-            updated_by_user_name=p.updated_by_user.email if p.updated_by_user else None,
-        )
-        for p in passwords
-    ]
+    items = [_to_public(p) for p in passwords]
 
     return PasswordListResponse(
         items=items,
@@ -180,23 +183,8 @@ async def create_password(
     # Index for search (async, non-blocking on failure)
     await index_entity_for_search(db, "password", password.id, org_id)
 
-    return PasswordPublic(
-        id=str(password.id),
-        organization_id=str(password.organization_id),
-        name=password.name,
-        username=password.username,
-        url=password.url,
-        notes=password.notes,
-        has_totp=bool(password.totp_secret_encrypted),
-        metadata=password.metadata_ if isinstance(password.metadata_, dict) else {},
-        is_enabled=password.is_enabled,
-        created_at=password.created_at,
-        updated_at=password.updated_at,
-        updated_by_user_id=str(password.updated_by_user_id)
-        if password.updated_by_user_id
-        else None,
-        updated_by_user_name=password.updated_by_user.email if password.updated_by_user else None,
-    )
+    return _to_public(password)
+
 
 
 @router.get("/{password_id}", response_model=PasswordPublic)
@@ -241,23 +229,7 @@ async def get_password(
         dedupe_seconds=60,
     )
 
-    return PasswordPublic(
-        id=str(password.id),
-        organization_id=str(password.organization_id),
-        name=password.name,
-        username=password.username,
-        url=password.url,
-        notes=password.notes,
-        has_totp=bool(password.totp_secret_encrypted),
-        metadata=password.metadata_ if isinstance(password.metadata_, dict) else {},
-        is_enabled=password.is_enabled,
-        created_at=password.created_at,
-        updated_at=password.updated_at,
-        updated_by_user_id=str(password.updated_by_user_id)
-        if password.updated_by_user_id
-        else None,
-        updated_by_user_name=password.updated_by_user.email if password.updated_by_user else None,
-    )
+    return _to_public(password)
 
 
 @router.get("/{password_id}/preview")
@@ -369,25 +341,27 @@ async def reveal_password(
         },
     )
 
-    return PasswordReveal(
-        id=str(password.id),
-        organization_id=str(password.organization_id),
-        name=password.name,
-        username=password.username,
-        url=password.url,
-        notes=password.notes,
-        has_totp=bool(password.totp_secret_encrypted),
-        metadata=password.metadata_ if isinstance(password.metadata_, dict) else {},
-        is_enabled=password.is_enabled,
-        created_at=password.created_at,
-        updated_at=password.updated_at,
-        updated_by_user_id=str(password.updated_by_user_id)
-        if password.updated_by_user_id
-        else None,
-        updated_by_user_name=password.updated_by_user.email if password.updated_by_user else None,
-        password=decrypted_password,
-        totp_secret=decrypted_totp,
-    )
+    # Build base data from ORM
+    data = {
+        "id": password.id,
+        "organization_id": password.organization_id,
+        "name": password.name,
+        "username": password.username,
+        "url": password.url,
+        "notes": password.notes,
+        "_totp_secret_encrypted": password.totp_secret_encrypted,
+        "metadata": password.metadata_ if isinstance(password.metadata_, dict) else {},
+        "is_enabled": password.is_enabled,
+        "created_at": password.created_at,
+        "updated_at": password.updated_at,
+        "updated_by_user_id": str(password.updated_by_user_id) if password.updated_by_user_id else None,
+        "updated_by_user_name": password.updated_by_user.email if password.updated_by_user else None,
+        # Decrypted sensitive fields
+        "password": decrypted_password,
+        "totp_secret": decrypted_totp,
+    }
+
+    return PasswordReveal.model_validate(data)
 
 
 @router.put("/{password_id}", response_model=PasswordPublic)
@@ -468,23 +442,7 @@ async def update_password(
     # Update search index (async, non-blocking on failure)
     await index_entity_for_search(db, "password", password.id, org_id)
 
-    return PasswordPublic(
-        id=str(password.id),
-        organization_id=str(password.organization_id),
-        name=password.name,
-        username=password.username,
-        url=password.url,
-        notes=password.notes,
-        has_totp=bool(password.totp_secret_encrypted),
-        metadata=password.metadata_ if isinstance(password.metadata_, dict) else {},
-        is_enabled=password.is_enabled,
-        created_at=password.created_at,
-        updated_at=password.updated_at,
-        updated_by_user_id=str(password.updated_by_user_id)
-        if password.updated_by_user_id
-        else None,
-        updated_by_user_name=password.updated_by_user.email if password.updated_by_user else None,
-    )
+    return _to_public(password)
 
 
 @router.delete("/{password_id}", status_code=status.HTTP_204_NO_CONTENT)

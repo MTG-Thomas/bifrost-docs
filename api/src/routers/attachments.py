@@ -37,6 +37,22 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/organizations/{org_id}", tags=["attachments"])
 
 
+def _to_public(attachment: Attachment) -> AttachmentPublic:
+    """Convert Attachment ORM model to public response."""
+    data = {
+        "id": attachment.id,
+        "organization_id": attachment.organization_id,
+        "entity_type": attachment.entity_type,
+        "entity_id": attachment.entity_id,
+        "filename": attachment.filename,
+        "s3_key": attachment.s3_key,
+        "content_type": attachment.content_type,
+        "size_bytes": attachment.size_bytes,
+        "created_at": attachment.created_at,
+    }
+    return AttachmentPublic.model_validate(data)
+
+
 @router.get("/attachments", response_model=AttachmentList)
 async def list_attachments(
     org_id: UUID,
@@ -221,17 +237,7 @@ async def get_attachment(
             detail="Attachment not found",
         )
 
-    return AttachmentPublic(
-        id=str(attachment.id),
-        organization_id=str(attachment.organization_id),
-        entity_type=attachment.entity_type,
-        entity_id=str(attachment.entity_id),
-        filename=attachment.filename,
-        s3_key=attachment.s3_key,
-        content_type=attachment.content_type,
-        size_bytes=attachment.size_bytes,
-        created_at=attachment.created_at,
-    )
+    return _to_public(attachment)
 
 
 @router.get("/attachments/{attachment_id}/download", response_model=AttachmentDownloadResponse)

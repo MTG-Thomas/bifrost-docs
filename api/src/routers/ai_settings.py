@@ -66,6 +66,34 @@ DEFAULT_EMBEDDINGS_CONFIG: dict[str, Any] = {
 }
 
 
+def _completions_to_public(config: dict[str, Any]) -> CompletionsConfigPublic:
+    """Convert completions config dict to public response."""
+    data = {
+        "provider": config.get("provider", "openai"),
+        "api_key_set": config.get("api_key_encrypted") is not None,
+        "model": config.get("model", "gpt-4o-mini"),
+        "endpoint": config.get("endpoint"),
+    }
+    return CompletionsConfigPublic.model_validate(data)
+
+
+def _embeddings_to_public(config: dict[str, Any]) -> EmbeddingsConfigPublic:
+    """Convert embeddings config dict to public response."""
+    data = {
+        "api_key_set": config.get("api_key_encrypted") is not None,
+        "model": config.get("model", "text-embedding-3-small"),
+    }
+    return EmbeddingsConfigPublic.model_validate(data)
+
+
+def _indexing_to_public(config: dict[str, Any]) -> IndexingConfigPublic:
+    """Convert indexing config dict to public response."""
+    data = {
+        "enabled": config.get("enabled", True),
+    }
+    return IndexingConfigPublic.model_validate(data)
+
+
 # =============================================================================
 # Helper: Require Superuser
 # =============================================================================
@@ -360,12 +388,7 @@ async def update_completions_config(
         },
     )
 
-    return CompletionsConfigPublic(
-        provider=config.get("provider", "openai"),
-        api_key_set=config.get("api_key_encrypted") is not None,
-        model=config.get("model", "gpt-4o-mini"),
-        endpoint=config.get("endpoint"),
-    )
+    return _completions_to_public(config)
 
 
 @router.put("/embeddings", response_model=EmbeddingsConfigPublic)
@@ -411,10 +434,7 @@ async def update_embeddings_config(
         },
     )
 
-    return EmbeddingsConfigPublic(
-        api_key_set=config.get("api_key_encrypted") is not None,
-        model=config.get("model", "text-embedding-3-small"),
-    )
+    return _embeddings_to_public(config)
 
 
 @router.get("/indexing", response_model=IndexingConfigPublic)
@@ -439,9 +459,7 @@ async def get_indexing_config(
         else {"enabled": True}  # Default to enabled
     )
 
-    return IndexingConfigPublic(
-        enabled=indexing_data.get("enabled", True),
-    )
+    return _indexing_to_public(indexing_data)
 
 
 @router.put("/indexing", response_model=IndexingConfigPublic)
@@ -473,7 +491,7 @@ async def update_indexing_config(
         },
     )
 
-    return IndexingConfigPublic(enabled=update_data.enabled)
+    return _indexing_to_public({"enabled": update_data.enabled})
 
 
 @router.get("/models", response_model=ModelsResponse)

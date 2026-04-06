@@ -22,9 +22,25 @@ from src.models.contracts.relationship import (
 from src.repositories.relationship import RelationshipRepository
 from src.services.entity_resolver import VALID_ENTITY_TYPES, EntityResolver
 
+from src.models.orm.relationship import Relationship
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/organizations/{org_id}/relationships", tags=["relationships"])
+
+
+def _to_public(relationship: Relationship) -> RelationshipPublic:
+    """Convert Relationship ORM model to public response."""
+    data = {
+        "id": relationship.id,
+        "organization_id": relationship.organization_id,
+        "source_type": relationship.source_type,
+        "source_id": relationship.source_id,
+        "target_type": relationship.target_type,
+        "target_id": relationship.target_id,
+        "created_at": relationship.created_at,
+    }
+    return RelationshipPublic.model_validate(data)
 
 
 def _validate_entity_type(entity_type: str) -> None:
@@ -167,15 +183,7 @@ async def create_relationship(
         },
     )
 
-    return RelationshipPublic(
-        id=str(relationship.id),
-        organization_id=str(relationship.organization_id),
-        source_type=relationship.source_type,
-        source_id=str(relationship.source_id),
-        target_type=relationship.target_type,
-        target_id=str(relationship.target_id),
-        created_at=relationship.created_at,
-    )
+    return _to_public(relationship)
 
 
 @router.delete("/{relationship_id}", status_code=status.HTTP_204_NO_CONTENT)

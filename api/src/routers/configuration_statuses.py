@@ -28,6 +28,18 @@ router = APIRouter(
 )
 
 
+def _to_public(config_status: ConfigurationStatus, configuration_count: int = 0) -> ConfigurationStatusPublic:
+    """Convert ConfigurationStatus ORM model to public response."""
+    data = {
+        "id": config_status.id,
+        "name": config_status.name,
+        "is_active": config_status.is_active,
+        "created_at": config_status.created_at,
+        "configuration_count": configuration_count,
+    }
+    return ConfigurationStatusPublic.model_validate(data)
+
+
 @router.get("", response_model=list[ConfigurationStatusPublic])
 async def list_configuration_statuses(
     current_user: CurrentActiveUser,
@@ -111,13 +123,7 @@ async def create_configuration_status(
         },
     )
 
-    return ConfigurationStatusPublic(
-        id=str(config_status.id),
-        name=config_status.name,
-        is_active=config_status.is_active,
-        created_at=config_status.created_at,
-        configuration_count=0,
-    )
+    return _to_public(config_status, configuration_count=0)
 
 
 @router.get("/{status_id}", response_model=ConfigurationStatusPublic)
@@ -152,13 +158,7 @@ async def get_configuration_status(
         )
 
     config_count = await repo.get_configuration_count(status_id)
-    return ConfigurationStatusPublic(
-        id=str(config_status.id),
-        name=config_status.name,
-        is_active=config_status.is_active,
-        created_at=config_status.created_at,
-        configuration_count=config_count,
-    )
+    return _to_public(config_status, configuration_count=config_count)
 
 
 @router.post("/{status_id}/deactivate", response_model=ConfigurationStatusPublic)
@@ -201,13 +201,7 @@ async def deactivate_configuration_status(
         },
     )
 
-    return ConfigurationStatusPublic(
-        id=str(config_status.id),
-        name=config_status.name,
-        is_active=config_status.is_active,
-        created_at=config_status.created_at,
-        configuration_count=config_count,
-    )
+    return _to_public(config_status, configuration_count=config_count)
 
 
 @router.post("/{status_id}/activate", response_model=ConfigurationStatusPublic)
@@ -249,13 +243,7 @@ async def activate_configuration_status(
         },
     )
 
-    return ConfigurationStatusPublic(
-        id=str(config_status.id),
-        name=config_status.name,
-        is_active=config_status.is_active,
-        created_at=config_status.created_at,
-        configuration_count=config_count,
-    )
+    return _to_public(config_status, configuration_count=config_count)
 
 
 @router.delete("/{status_id}", status_code=status.HTTP_204_NO_CONTENT)

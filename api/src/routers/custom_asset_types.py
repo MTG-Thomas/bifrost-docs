@@ -37,17 +37,18 @@ router = APIRouter(
 
 def _to_public(asset_type: CustomAssetType, asset_count: int = 0) -> CustomAssetTypePublic:
     """Convert ORM model to public response."""
-    return CustomAssetTypePublic(
-        id=str(asset_type.id),
-        name=asset_type.name,
-        fields=[FieldDefinition(**f) for f in asset_type.fields],
-        sort_order=asset_type.sort_order,
-        display_field_key=asset_type.display_field_key,
-        is_active=asset_type.is_active,
-        created_at=asset_type.created_at,
-        updated_at=asset_type.updated_at,
-        asset_count=asset_count,
-    )
+    data = {
+        "id": asset_type.id,
+        "name": asset_type.name,
+        "fields": [FieldDefinition(**f) for f in asset_type.fields],
+        "sort_order": asset_type.sort_order,
+        "display_field_key": asset_type.display_field_key,
+        "is_active": asset_type.is_active,
+        "created_at": asset_type.created_at,
+        "updated_at": asset_type.updated_at,
+        "asset_count": asset_count,
+    }
+    return CustomAssetTypePublic.model_validate(data)
 
 
 @router.get("", response_model=list[CustomAssetTypePublic])

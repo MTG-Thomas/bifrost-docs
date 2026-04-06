@@ -28,6 +28,18 @@ router = APIRouter(
 )
 
 
+def _to_public(config_type: ConfigurationType, configuration_count: int = 0) -> ConfigurationTypePublic:
+    """Convert ConfigurationType ORM model to public response."""
+    data = {
+        "id": config_type.id,
+        "name": config_type.name,
+        "is_active": config_type.is_active,
+        "created_at": config_type.created_at,
+        "configuration_count": configuration_count,
+    }
+    return ConfigurationTypePublic.model_validate(data)
+
+
 @router.get("", response_model=list[ConfigurationTypePublic])
 async def list_configuration_types(
     current_user: CurrentActiveUser,
@@ -111,13 +123,7 @@ async def create_configuration_type(
         },
     )
 
-    return ConfigurationTypePublic(
-        id=str(config_type.id),
-        name=config_type.name,
-        is_active=config_type.is_active,
-        created_at=config_type.created_at,
-        configuration_count=0,
-    )
+    return _to_public(config_type, configuration_count=0)
 
 
 @router.get("/{type_id}", response_model=ConfigurationTypePublic)
@@ -152,13 +158,7 @@ async def get_configuration_type(
         )
 
     config_count = await repo.get_configuration_count(type_id)
-    return ConfigurationTypePublic(
-        id=str(config_type.id),
-        name=config_type.name,
-        is_active=config_type.is_active,
-        created_at=config_type.created_at,
-        configuration_count=config_count,
-    )
+    return _to_public(config_type, configuration_count=config_count)
 
 
 @router.post("/{type_id}/deactivate", response_model=ConfigurationTypePublic)
@@ -201,13 +201,7 @@ async def deactivate_configuration_type(
         },
     )
 
-    return ConfigurationTypePublic(
-        id=str(config_type.id),
-        name=config_type.name,
-        is_active=config_type.is_active,
-        created_at=config_type.created_at,
-        configuration_count=config_count,
-    )
+    return _to_public(config_type, configuration_count=config_count)
 
 
 @router.post("/{type_id}/activate", response_model=ConfigurationTypePublic)
@@ -249,13 +243,7 @@ async def activate_configuration_type(
         },
     )
 
-    return ConfigurationTypePublic(
-        id=str(config_type.id),
-        name=config_type.name,
-        is_active=config_type.is_active,
-        created_at=config_type.created_at,
-        configuration_count=config_count,
-    )
+    return _to_public(config_type, configuration_count=config_count)
 
 
 @router.delete("/{type_id}", status_code=status.HTTP_204_NO_CONTENT)
