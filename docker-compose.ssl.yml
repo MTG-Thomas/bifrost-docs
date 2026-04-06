@@ -12,6 +12,8 @@ services:
       # Mount SSL certificates from host
       - /etc/letsencrypt/live/dev.docs.midtowntg.com/fullchain.pem:/etc/nginx/ssl/cert.pem:ro
       - /etc/letsencrypt/live/dev.docs.midtowntg.com/privkey.pem:/etc/nginx/ssl/key.pem:ro
+      # Mount SSL nginx config
+      - ./client/nginx-ssl.conf:/app/nginx-ssl.conf:ro
     # Override command to use SSL nginx config
     command: >
       sh -c "if [ -f /etc/nginx/ssl/cert.pem ]; then
