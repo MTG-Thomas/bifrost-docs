@@ -31,10 +31,21 @@ from itglue_migrate.importers import map_archived_to_is_enabled
 from itglue_migrate.org_matcher import OrgMatcher
 from itglue_migrate.password_field_mapper import PasswordFieldMap, build_password_field_map
 from itglue_migrate.progress import Phase, create_progress_reporter
+from itglue_migrate.reconciliation import (
+    OrganizationReconciliation,
+    ReconciliationReport,
+    apply_result_counts,
+    build_plan_counts,
+)
 from itglue_migrate.state import MigrationState, MigrationStateError
 from itglue_migrate.state_fetcher import ExistingState, StateFetcher
 from itglue_migrate.sync_differ import EntityPlan, SyncDiffer, SyncPlan
 from itglue_migrate.sync_executor import SyncExecutor, SyncResult
+from itglue_migrate.verification import (
+    BROKEN_EMBEDDED_IMAGE,
+    collect_embedded_image_references,
+    verify_embedded_images,
+)
 from itglue_migrate.warnings import ParsedData, Warning, WarningDetector, summarize
 
 # Create Typer app
@@ -2568,6 +2579,46 @@ def _display_sync_result(result: SyncResult) -> None:
             console.print(f"  ... and {len(result.errors) - 10} more errors")
 
 
+def _build_attachment_validation_summary(
+    export_path: Path,
+    *,
+    configurations: list[dict[str, Any]],
+    locations: list[dict[str, Any]],
+    documents: list[dict[str, Any]],
+    passwords: list[dict[str, Any]],
+    custom_assets: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Build read-only attachment validation details for reconciliation."""
+    entities_to_migrate: dict[str, set[str]] = {
+        "configurations": {str(item.get("id", "")) for item in configurations},
+        "locations": {str(item.get("id", "")) for item in locations},
+        "documents": {str(item.get("id", "")) for item in documents},
+        "passwords": {str(item.get("id", "")) for item in passwords},
+    }
+
+    for asset in custom_assets:
+        type_slug = str(asset.get("_type_slug") or asset.get("asset_type") or "")
+        asset_id = str(asset.get("id", ""))
+        if type_slug and asset_id:
+            entities_to_migrate.setdefault(type_slug, set()).add(asset_id)
+
+    validation = validate_attachments(export_path, entities_to_migrate)
+    image_references = collect_embedded_image_references(export_path, documents)
+    image_validation = verify_embedded_images(image_references)
+    summary = validation.to_dict()
+    summary["failure_categories"] = {
+        "count_mismatch": validation.total_orphaned_folders,
+        BROKEN_EMBEDDED_IMAGE: len(image_validation.failures),
+    }
+    summary["embedded_images"] = {
+        "expected_count": image_validation.expected_count,
+        "present_count": image_validation.present_count,
+        "failure_count": len(image_validation.failures),
+        "failures": [failure.to_dict() for failure in image_validation.failures],
+    }
+    return summary
+
+
 async def _run_sync(
     export_path: Path,
     api_url: str,
@@ -2577,6 +2628,7 @@ async def _run_sync(
     dry_run: bool,
     update_existing: bool,
     skip_attachments: bool = False,
+    reconciliation_output: Path | None = None,
 ) -> int:
     """Run the sync operation.
 
@@ -2589,6 +2641,7 @@ async def _run_sync(
         dry_run: Preview changes without making them.
         update_existing: Update entities that already exist.
         skip_attachments: Skip attachment uploads for faster testing.
+        reconciliation_output: Optional path to write reconciliation JSON.
 
     Returns:
         Exit code (0 for success, non-zero for failures).
@@ -2633,6 +2686,11 @@ async def _run_sync(
     console.print()
 
     total_result = SyncResult()
+    report = ReconciliationReport.create(
+        export_path=export_path,
+        target=target_org or "all",
+        dry_run=dry_run,
+    )
 
     async with BifrostDocsClient(base_url=api_url, api_key=token) as client:
         fetcher = StateFetcher(client)
@@ -2707,11 +2765,11 @@ async def _run_sync(
                     continue
             else:
                 # Fetch existing state for this org
-                console.print(f"  Fetching existing state...")
+                console.print("  Fetching existing state...")
                 state = await fetcher.fetch_for_org(org_uuid)
 
             # Debug: show state summary
-            console.print(f"  [dim]API state:[/dim]")
+            console.print("  [dim]API state:[/dim]")
             console.print(f"    [dim]Config types: {len(state.config_type_by_name)}[/dim]")
             console.print(f"    [dim]Config statuses: {len(state.config_status_by_name)}[/dim]")
             console.print(f"    [dim]Custom asset types: {len(state.custom_asset_type_by_name)}[/dim]")
@@ -2729,9 +2787,13 @@ async def _run_sync(
 
             # Filter CSV data to this org
             # CSV files use either 'organization_id' or 'organization' column
-            def matches_org(item: dict) -> bool:
+            def matches_org(
+                item: dict,
+                expected_itglue_id: str = org_itglue_id,
+                expected_name: str = org_name,
+            ) -> bool:
                 csv_org = str(item.get("organization_id") or item.get("organization") or "")
-                return csv_org == org_itglue_id or csv_org == org_name
+                return csv_org == expected_itglue_id or csv_org == expected_name
 
             org_configs = [c for c in parsed.configurations if matches_org(c)]
             org_locations = [loc for loc in parsed.locations if matches_org(loc)]
@@ -2747,7 +2809,7 @@ async def _run_sync(
 
             # Show sample organization_id values from documents to debug filtering
             if parsed.documents:
-                sample_org_ids = set(str(d.get("organization_id", "")) for d in parsed.documents[:20])
+                sample_org_ids = {str(d.get("organization_id", "")) for d in parsed.documents[:20]}
                 console.print(f"    [dim]Sample organization_id values in documents.csv: {sample_org_ids}[/dim]")
 
             # Debug: show sample CSV document IDs for comparison
@@ -2762,6 +2824,15 @@ async def _run_sync(
                     if matches_org(asset):
                         asset["_type_slug"] = type_slug
                         org_custom_assets.append(asset)
+
+            attachment_summary = _build_attachment_validation_summary(
+                export_path,
+                configurations=org_configs,
+                locations=org_locations,
+                documents=org_documents,
+                passwords=org_passwords,
+                custom_assets=org_custom_assets,
+            )
 
             # Create differ and generate plan
             differ = SyncDiffer(state)
@@ -2816,6 +2887,8 @@ async def _run_sync(
 
             # Display plan summary
             _display_sync_plan_summary(org_name, plan)
+            org_counts = build_plan_counts(plan)
+            org_errors: list[str] = []
 
             # Execute if not dry-run
             if dry_run:
@@ -2852,14 +2925,36 @@ async def _run_sync(
                 # Merge results
                 for key, value in result.created.items():
                     total_result.created[key] = total_result.created.get(key, 0) + value
+                for key, value in result.updated.items():
+                    total_result.updated[key] = total_result.updated.get(key, 0) + value
                 for key, value in result.skipped.items():
                     total_result.skipped[key] = total_result.skipped.get(key, 0) + value
                 for key, value in result.failed.items():
                     total_result.failed[key] = total_result.failed.get(key, 0) + value
                 total_result.errors.extend(result.errors)
+                org_errors = list(result.errors)
+                org_counts = apply_result_counts(org_counts, result)
+                relationship_summary = (
+                    result.relationship_summary if result.relationship_summary else None
+                )
 
                 _display_sync_result(result)
+            if dry_run:
+                relationship_summary = None
 
+            report.organizations.append(
+                OrganizationReconciliation(
+                    name=org_name,
+                    itglue_id=org_itglue_id,
+                    bifrost_id=org_uuid,
+                    dry_run=dry_run,
+                    entities=org_counts,
+                    warnings=warnings,
+                    errors=org_errors,
+                    attachment_summary=attachment_summary,
+                    relationship_summary=relationship_summary,
+                )
+            )
             console.print()
 
     # Display total results if multiple orgs
@@ -2869,6 +2964,12 @@ async def _run_sync(
 
     # Determine exit code
     total_failed = sum(total_result.failed.values())
+    if reconciliation_output:
+        report.errors.extend(total_result.errors)
+        report.write_json(reconciliation_output)
+        console.print(
+            f"[green]Reconciliation report written to {reconciliation_output}[/green]"
+        )
     return 1 if total_failed > 0 else 0
 
 
@@ -2941,6 +3042,16 @@ def sync(
             help="Skip attachment uploads for faster testing",
         ),
     ] = False,
+    reconciliation_output: Annotated[
+        Path | None,
+        typer.Option(
+            "--reconciliation-output",
+            help="Write a JSON reconciliation report to this path",
+            file_okay=True,
+            dir_okay=False,
+            resolve_path=True,
+        ),
+    ] = Path("reconciliation-report.json"),
     itglue_api_key: Annotated[
         str | None,
         typer.Option(
@@ -3012,6 +3123,7 @@ def sync(
             dry_run=dry_run,
             update_existing=update_existing,
             skip_attachments=skip_attachments,
+            reconciliation_output=reconciliation_output,
         )
     )
 
