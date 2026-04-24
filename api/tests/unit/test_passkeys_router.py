@@ -43,6 +43,4 @@ async def test_registration_options_route_accepts_rate_limited_request(monkeypat
         response = await client.post("/auth/passkeys/register/options", json={})
 
     assert response.status_code == 200
-    assert response.json() == {
-        "options": {"challenge": "abc123", "rp": {"name": "Bifrost Docs"}}
-    }
+    assert response.json() == {"options": {"challenge": "abc123", "rp": {"name": "Bifrost Docs"}}}
