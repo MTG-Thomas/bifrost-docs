@@ -62,6 +62,7 @@
     "cmdk": "^1.1.1",
     "framer-motion": "^12.26.1",
     "lucide-react": "^0.562.0",
+    "mermaid": "^11.14.0",
     "openapi-fetch": "^0.15.0",
     "openapi-react-query": "^0.5.1",
     "openapi-typescript-helpers": "^0.0.15",

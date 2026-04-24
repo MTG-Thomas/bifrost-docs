@@ -46,7 +46,7 @@ def _to_public(location: Location) -> LocationPublic:
     # (handles both real ORM objects and test mocks)
     metadata_value = getattr(location, "metadata_", None)
     metadata = metadata_value if isinstance(metadata_value, dict) else {}
-    
+
     data = {
         "id": getattr(location, "id", None),
         "organization_id": getattr(location, "organization_id", None),
@@ -63,10 +63,14 @@ def _to_public(location: Location) -> LocationPublic:
         "postal_code": getattr(location, "postal_code", None),
         "country": getattr(location, "country", None),
         "phone": getattr(location, "phone", None),
-        "updated_by_user_id": str(location.updated_by_user_id) if getattr(location, "updated_by_user_id", None) else None,
-        "updated_by_user_name": location.updated_by_user.email if getattr(location, "updated_by_user", None) else None,
+        "updated_by_user_id": str(location.updated_by_user_id)
+        if getattr(location, "updated_by_user_id", None)
+        else None,
+        "updated_by_user_name": location.updated_by_user.email
+        if getattr(location, "updated_by_user", None)
+        else None,
     }
-    
+
     return LocationPublic.model_validate(data)
 
 

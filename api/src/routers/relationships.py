@@ -19,10 +19,9 @@ from src.models.contracts.relationship import (
     RelationshipCreate,
     RelationshipPublic,
 )
+from src.models.orm.relationship import Relationship
 from src.repositories.relationship import RelationshipRepository
 from src.services.entity_resolver import VALID_ENTITY_TYPES, EntityResolver
-
-from src.models.orm.relationship import Relationship
 
 logger = logging.getLogger(__name__)
 

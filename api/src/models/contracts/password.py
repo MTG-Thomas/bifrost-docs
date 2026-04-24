@@ -1,7 +1,6 @@
-"""Password contracts (API request/response schemas).
-"""
+"""Password contracts (API request/response schemas)."""
 
-from pydantic import BaseModel, Field, computed_field, PrivateAttr
+from pydantic import BaseModel, Field, PrivateAttr, computed_field
 
 from src.models.contracts.base import PublicEntityBase
 

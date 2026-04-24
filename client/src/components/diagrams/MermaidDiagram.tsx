@@ -51,14 +51,8 @@ export function MermaidDiagram({
         // Generate unique ID for this render
         const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
         
-        // Validate syntax first
-        const { valid, error: validationError } = await mermaid.parse(chart);
-        
-        if (!valid) {
-          setError(validationError || "Invalid diagram syntax");
-          setLoading(false);
-          return;
-        }
+        // Validate syntax first. Mermaid throws when parsing fails.
+        await mermaid.parse(chart);
 
         // Render
         const { svg } = await mermaid.render(id, chart);

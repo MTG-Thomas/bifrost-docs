@@ -15,8 +15,17 @@ export {
 } from "@/lib/api-client";
 
 // Configurations API
+type ListConfig = {
+  params?: {
+    limit?: number;
+    offset?: number;
+    sort_by?: string;
+    sort_dir?: "asc" | "desc";
+  };
+};
+
 export const configurationsApi = {
-  list: (config?: { limit?: number; offset?: number }) =>
+  list: (config?: ListConfig) =>
     api.get("/api/organizations/{org_id}/configurations", config),
   get: (orgId: string, id: string) =>
     api.get(`/api/organizations/${orgId}/configurations/${id}`),
@@ -30,7 +39,7 @@ export const configurationsApi = {
 
 // Passwords API
 export const passwordsApi = {
-  list: (config?: { limit?: number; offset?: number }) =>
+  list: (config?: ListConfig) =>
     api.get("/api/organizations/{org_id}/passwords", config),
   get: (orgId: string, id: string) =>
     api.get(`/api/organizations/${orgId}/passwords/${id}`),
@@ -44,7 +53,7 @@ export const passwordsApi = {
 
 // Documents API
 export const documentsApi = {
-  list: (config?: { limit?: number; offset?: number }) =>
+  list: (config?: ListConfig) =>
     api.get("/api/organizations/{org_id}/documents", config),
   get: (orgId: string, id: string) =>
     api.get(`/api/organizations/${orgId}/documents/${id}`),
@@ -58,7 +67,7 @@ export const documentsApi = {
 
 // Locations API
 export const locationsApi = {
-  list: (config?: { limit?: number; offset?: number }) =>
+  list: (config?: ListConfig) =>
     api.get("/api/organizations/{org_id}/locations", config),
   get: (orgId: string, id: string) =>
     api.get(`/api/organizations/${orgId}/locations/${id}`),
@@ -72,7 +81,7 @@ export const locationsApi = {
 
 // Custom Assets API
 export const customAssetsApi = {
-  list: (orgId: string, typeId: string, config?: { limit?: number; offset?: number }) =>
+  list: (orgId: string, typeId: string, config?: ListConfig) =>
     api.get(`/api/organizations/${orgId}/custom-asset-types/${typeId}/assets`, config),
   get: (orgId: string, typeId: string, id: string) =>
     api.get(`/api/organizations/${orgId}/custom-asset-types/${typeId}/assets/${id}`),

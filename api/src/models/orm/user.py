@@ -20,9 +20,9 @@ if TYPE_CHECKING:
     from src.models.orm.mfa import MFARecoveryCode, UserMFAMethod
     from src.models.orm.passkey import UserPasskey
     from src.models.orm.session import Session
+    from src.models.orm.user_favorite import UserFavorite
     from src.models.orm.user_oauth_account import UserOAuthAccount
     from src.models.orm.user_preferences import UserPreferences
-    from src.models.orm.user_favorite import UserFavorite
 
 
 class User(Base):

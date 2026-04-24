@@ -1,10 +1,7 @@
 """Tests for base contract models."""
 
 from datetime import UTC, datetime
-from uuid import UUID, uuid4
-
-import pytest
-from pydantic import BaseModel
+from uuid import uuid4
 
 from src.models.contracts.base import PublicEntityBase, PublicOrganizationBase
 

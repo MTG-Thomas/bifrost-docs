@@ -28,7 +28,9 @@ router = APIRouter(
 )
 
 
-def _to_public(config_status: ConfigurationStatus, configuration_count: int = 0) -> ConfigurationStatusPublic:
+def _to_public(
+    config_status: ConfigurationStatus, configuration_count: int = 0
+) -> ConfigurationStatusPublic:
     """Convert ConfigurationStatus ORM model to public response."""
     data = {
         "id": config_status.id,

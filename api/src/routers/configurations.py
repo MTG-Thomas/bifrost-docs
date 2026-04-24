@@ -65,8 +65,12 @@ def _configuration_to_public(config: Configuration) -> ConfigurationPublic:
         "created_at": config.created_at,
         "updated_at": config.updated_at,
         # Joined fields from relationships
-        "configuration_type_name": config.configuration_type.name if config.configuration_type else None,
-        "configuration_status_name": config.configuration_status.name if config.configuration_status else None,
+        "configuration_type_name": config.configuration_type.name
+        if config.configuration_type
+        else None,
+        "configuration_status_name": config.configuration_status.name
+        if config.configuration_status
+        else None,
         "updated_by_user_id": str(config.updated_by_user_id) if config.updated_by_user_id else None,
         "updated_by_user_name": config.updated_by_user.email if config.updated_by_user else None,
     }

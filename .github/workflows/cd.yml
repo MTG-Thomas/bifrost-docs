@@ -27,7 +27,9 @@ jobs:
   # =============================================================================
   deploy-staging:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging' || github.event.workflow_run.conclusion == 'success'
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     environment:
       name: staging
       url: https://staging.bifrost-docs.example.com
@@ -125,7 +127,9 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     needs: [deploy-staging, deploy-production]
-    if: always()
+    if: >-
+      always() &&
+      (needs.deploy-staging.result != 'skipped' || needs.deploy-production.result != 'skipped')
     
     steps:
       - name: Notify Slack on success
