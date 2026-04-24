@@ -1,5 +1,3 @@
-name: bifrost-docs-test-vm
-
 # Test VM deployment override.
 #
 # The base compose file intentionally uses upstream image names. This override pins
