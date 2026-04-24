@@ -22,7 +22,7 @@ COPY pyproject.toml ./
 # Copy src directory so setuptools can find the package
 COPY src ./src
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip && \
+    pip install --upgrade pip setuptools wheel && \
     pip install .
 
 # Production stage
@@ -33,6 +33,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    && python -m pip install --no-cache-dir --upgrade pip setuptools wheel \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
