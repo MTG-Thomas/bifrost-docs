@@ -75,7 +75,7 @@ class NinjaOneIntegration:
             response.raise_for_status()
             data = response.json()
             self._access_token = data["access_token"]
-            return self._access_token
+            return str(self._access_token)
 
     async def discover_devices(self, organization_id: str | None = None) -> list[DiscoveredDevice]:
         """Discover all devices from NinjaOne.
@@ -416,12 +416,14 @@ class DiscoverySyncService:
             config.ip_address = device.ip_address
             changed = True
 
-        if config.status != device.status:
-            config.status = device.status
+        config_status = config.metadata_.get("status")
+        if config_status != device.status:
+            config.metadata_["status"] = device.status
             changed = True
 
-        if config.os_version != device.os_version:
-            config.os_version = device.os_version
+        os_version = config.metadata_.get("os_version")
+        if os_version != device.os_version:
+            config.metadata_["os_version"] = device.os_version
             changed = True
 
         if changed:

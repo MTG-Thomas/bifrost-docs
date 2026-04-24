@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.orm.cable import Cable
 from src.models.orm.configuration import Configuration
-from src.models.orm.dcim import Rack, RackDevice
+from src.models.orm.rack import Rack, RackDevice
 
 
 @dataclass
@@ -129,7 +129,7 @@ class MermaidDiagramService:
                 label="\\n".join(label_parts),
                 type=device_type,
                 ip_address=config.ip_address,
-                status=config.status or "up",
+                status=config.configuration_status.name if config.configuration_status else "up",
             )
 
         # Query cables for connections
@@ -309,8 +309,8 @@ class MermaidDiagramService:
     def _infer_device_type(self, config: Configuration) -> str:
         """Infer device type from configuration data."""
         # Check explicit type first
-        if config.configuration_type in self.NODE_SHAPES:
-            return config.configuration_type
+        if config.configuration_type and config.configuration_type.name in self.NODE_SHAPES:
+            return config.configuration_type.name
 
         # Infer from name or manufacturer
         name_lower = config.name.lower()

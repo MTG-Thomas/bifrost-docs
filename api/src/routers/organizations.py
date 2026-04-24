@@ -189,7 +189,7 @@ async def get_organization(
         frequently_accessed = await access_repo.get_frequently_accessed(org_id, limit=6, days=30)
 
     return OrganizationWithFrequent(
-        id=str(org.id),
+        id=org.id,
         name=org.name,
         metadata=org.metadata_ if isinstance(org.metadata_, dict) else {},
         is_enabled=org.is_enabled,
