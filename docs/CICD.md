@@ -24,7 +24,7 @@ Checks     Checks
          │
     Push to GHCR
          │
-    E2E Tests
+    E2E Smoke / Full E2E
          │
     Security Scan
          │
@@ -67,9 +67,14 @@ Checks     Checks
 - Pushes to GitHub Container Registry (GHCR)
 - Tags: `latest`, branch name, short SHA
 
-#### E2E Tests
-- Runs Playwright tests against built images
-- Uses Docker Compose test configuration
+#### E2E Smoke Tests
+- Runs the smoke-labeled Playwright specs against built images
+- Non-blocking while fixture drift is stabilized
+- Intended to become deploy-blocking once reliable
+
+#### Full E2E Tests
+- Runs the broader Playwright/Docker Compose test suite
+- Remains non-blocking while historical fixture drift is resolved
 
 #### Security Scanning
 - Trivy vulnerability scanner on images
@@ -96,7 +101,7 @@ Manual deploys expect that CI has already published the matching short-SHA image
 
 **Environments:**
 
-#### Test VM (Automatic)
+#### Bifrost Docs Dev (Automatic)
 - Connects the GitHub-hosted runner to NetBird
 - Deploys over SSH to `bifrost-docs-dev`
 - Uses the CI-published short-SHA GHCR image tags, not mutable `latest`
@@ -104,6 +109,7 @@ Manual deploys expect that CI has already published the matching short-SHA image
 - Preserves the VM's existing `.env` and Garage config from `/home/thomas/workspace/bifrost-docs`
 - Runs Docker Compose with `docker-compose.yml`, `docker-compose.test-vm.yml`, and `docker-compose.ssl.yml`
 - Uses Compose project `bifrost-docs-dev` to upgrade the existing test VM stack and reuse its data volumes
+- Uses GitHub Environment `bifrost-docs-dev`
 - Verifies `https://dev.docs.midtowntg.com/health`
 
 ## Local CI Checks
@@ -151,7 +157,7 @@ For CI/CD to work, add these secrets in GitHub repository settings:
 - `NETBIRD_SETUP_KEY`: Setup key that lets the GitHub runner join the NetBird network
 - `TEST_VM_SSH_KEY`: Private key authorized for `thomas@100.103.235.51`
 
-The workflow uses the built-in `GITHUB_TOKEN` for temporary GHCR pulls during the deploy job.
+Store deployment credentials as `bifrost-docs-dev` environment secrets when possible. Repository-level secrets remain compatible with the workflow during bootstrap. The workflow uses the built-in `GITHUB_TOKEN` for temporary GHCR pulls during the deploy job.
 
 #### For SonarQube
 - `SONAR_TOKEN`: SonarCloud/SonarQube token for project analysis
@@ -236,6 +242,7 @@ docker build -t test-client ./client
 - [ ] Add performance testing (k6/Locust)
 - [ ] Add mutation testing
 - [ ] Automated rollback on deployment failure
+- [x] Manual rollback runbook for redeploying a known-good image tag
 - [ ] Blue/green deployments
 - [ ] Automated database backup before migration
 - [ ] Integration with Sentry for error tracking
