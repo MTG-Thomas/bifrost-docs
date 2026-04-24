@@ -12,6 +12,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_serializer
 
 from src.models.contracts.base import PublicEntityBase
+from src.models.contracts.sync import SyncMetadata
 
 # =============================================================================
 # Configuration Type Contracts
@@ -82,6 +83,7 @@ class ConfigurationCreate(BaseModel):
     mac_address: str | None = None
     notes: str | None = None
     metadata: dict | None = None
+    sync_metadata: SyncMetadata | None = None
     interfaces: list | None = None
     is_enabled: bool | None = None  # Defaults to True if not provided
 
@@ -100,6 +102,7 @@ class ConfigurationUpdate(BaseModel):
     mac_address: str | None = None
     notes: str | None = None
     metadata: dict | None = None
+    sync_metadata: SyncMetadata | None = None
     interfaces: list | None = None
     is_enabled: bool | None = None  # Don't change if not provided
 
@@ -117,6 +120,7 @@ class ConfigurationPublic(PublicEntityBase):
     ip_address: str | None = None
     mac_address: str | None = None
     notes: str | None = None
+    sync_metadata: SyncMetadata | None = None
     interfaces: list = Field(default_factory=list)
     # Joined fields from relationships (not from ORM directly)
     configuration_type_name: str | None = None

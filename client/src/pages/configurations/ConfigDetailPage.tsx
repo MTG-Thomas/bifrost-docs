@@ -27,7 +27,12 @@ import {
 } from "@/components/ui/select";
 import { TiptapEditor } from "@/components/documents/TiptapEditor";
 import { RelatedItemsSidebar } from "@/components/relationships/RelatedItemsSidebar";
-import { EntityAttachments, ConfirmDialog, EditModeActions } from "@/components/shared";
+import {
+  ConfirmDialog,
+  EditModeActions,
+  EntityAttachments,
+  SyncProvenanceCard,
+} from "@/components/shared";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
@@ -529,6 +534,7 @@ export function ConfigDetailPage() {
 
       {/* Sidebar */}
       <aside className="w-[360px] shrink-0 hidden lg:block space-y-4">
+        <SyncProvenanceCard syncMetadata={config.sync_metadata} />
         <RelatedItemsSidebar
           orgId={orgId}
           entityType="configuration"

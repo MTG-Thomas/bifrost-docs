@@ -107,6 +107,7 @@ from src.models.contracts.search import (
     SearchResponse,
     SearchResult,
 )
+from src.models.contracts.sync import SyncMetadata
 from src.models.contracts.user_preferences import (
     ColumnPreferences,
     PreferencesData,
@@ -204,6 +205,8 @@ __all__ = [
     # Search
     "SearchResult",
     "SearchResponse",
+    # Sync
+    "SyncMetadata",
     # Chat
     "ChatMessage",
     "ChatRequest",

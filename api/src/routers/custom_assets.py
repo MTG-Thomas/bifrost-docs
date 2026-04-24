@@ -21,6 +21,7 @@ from src.models.contracts.custom_asset import (
     CustomAssetUpdate,
     FieldDefinition,
 )
+from src.models.contracts.sync import sync_metadata_to_storage
 from src.models.enums import AuditAction
 from src.models.orm.custom_asset import CustomAsset
 from src.models.orm.custom_asset_type import CustomAssetType
@@ -158,6 +159,9 @@ def _to_public(
         "custom_asset_type_id": asset.custom_asset_type_id,
         "values": key_values,
         "metadata": asset.metadata_ if isinstance(asset.metadata_, dict) else {},
+        "sync_metadata": asset.sync_metadata
+        if isinstance(asset.sync_metadata, dict) and asset.sync_metadata
+        else None,
         "is_enabled": asset.is_enabled,
         "created_at": asset.created_at,
         "updated_at": asset.updated_at,
@@ -180,6 +184,9 @@ def _to_reveal(
         "custom_asset_type_id": asset.custom_asset_type_id,
         "values": key_values,
         "metadata": asset.metadata_ if isinstance(asset.metadata_, dict) else {},
+        "sync_metadata": asset.sync_metadata
+        if isinstance(asset.sync_metadata, dict) and asset.sync_metadata
+        else None,
         "is_enabled": asset.is_enabled,
         "created_at": asset.created_at,
         "updated_at": asset.updated_at,
@@ -299,6 +306,7 @@ async def create_custom_asset(
         custom_asset_type_id=type_id,
         values=storage_values,
         metadata_=data.metadata,
+        sync_metadata=sync_metadata_to_storage(data.sync_metadata),
         is_enabled=data.is_enabled if data.is_enabled is not None else True,
     )
     asset = await repo.create(asset)
@@ -548,6 +556,8 @@ async def update_custom_asset(
     # Update metadata if provided
     if data.metadata is not None:
         asset.metadata_ = data.metadata
+    if data.sync_metadata is not None:
+        asset.sync_metadata = sync_metadata_to_storage(data.sync_metadata)
 
     # Update is_enabled if provided
     if data.is_enabled is not None:

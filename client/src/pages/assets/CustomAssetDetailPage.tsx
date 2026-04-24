@@ -10,7 +10,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RelatedItemsSidebar } from "@/components/relationships/RelatedItemsSidebar";
-import { EntityAttachments, ConfirmDialog, EditModeActions } from "@/components/shared";
+import {
+  ConfirmDialog,
+  EditModeActions,
+  EntityAttachments,
+  SyncProvenanceCard,
+} from "@/components/shared";
 import { CustomFieldList } from "@/components/assets/CustomFieldRenderer";
 import { CustomFieldInput } from "@/components/assets/CustomFieldInput";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
@@ -517,6 +522,7 @@ export function CustomAssetDetailPage() {
 
       {/* Sidebar */}
       <aside className="w-[360px] shrink-0 hidden lg:block space-y-4">
+        <SyncProvenanceCard syncMetadata={asset.sync_metadata} />
         <RelatedItemsSidebar orgId={orgId} entityType="custom_asset" entityId={id} />
         <EntityAttachments entityType="custom_asset" entityId={id} />
       </aside>

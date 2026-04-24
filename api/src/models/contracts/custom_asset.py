@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from src.models.contracts.base import PublicEntityBase
+from src.models.contracts.sync import SyncMetadata
 
 # =============================================================================
 # Field Definition Schema
@@ -135,6 +136,7 @@ class CustomAssetCreate(BaseModel):
 
     values: dict[str, Any]  # validated against type's fields in service layer
     metadata: dict | None = None
+    sync_metadata: SyncMetadata | None = None
     is_enabled: bool | None = None  # Defaults to True if not provided
 
 
@@ -145,6 +147,7 @@ class CustomAssetUpdate(BaseModel):
 
     values: dict[str, Any] | None = None  # validated against type's fields in service layer
     metadata: dict | None = None
+    sync_metadata: SyncMetadata | None = None
     is_enabled: bool | None = None  # Don't change if not provided
 
 
@@ -157,6 +160,7 @@ class CustomAssetPublic(PublicEntityBase):
 
     custom_asset_type_id: str
     values: dict[str, Any]  # password fields excluded
+    sync_metadata: SyncMetadata | None = None
     updated_by_user_id: str | None = None
     updated_by_user_name: str | None = None
 
@@ -175,6 +179,7 @@ class CustomAssetReveal(PublicEntityBase):
 
     custom_asset_type_id: str
     values: dict[str, Any]  # includes decrypted password fields
+    sync_metadata: SyncMetadata | None = None
     updated_by_user_id: str | None = None
     updated_by_user_name: str | None = None
 
