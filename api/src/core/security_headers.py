@@ -88,6 +88,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "media-src 'self'",
                 "object-src 'none'",
                 "frame-ancestors 'none'",
+                "form-action 'self'",
             ]
 
         response.headers["Content-Security-Policy"] = "; ".join(csp_directives)
