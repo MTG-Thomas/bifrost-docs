@@ -164,6 +164,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}
           tags: |
             type=sha,prefix=,suffix=,format=short
+            type=sha,prefix=,suffix=,format=long
             type=ref,event=branch
             latest
 
@@ -174,6 +175,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.CLIENT_IMAGE_NAME }}
           tags: |
             type=sha,prefix=,suffix=,format=short
+            type=sha,prefix=,suffix=,format=long
             type=ref,event=branch
             latest
 
@@ -184,8 +186,10 @@ jobs:
           push: true
           tags: ${{ steps.api-meta.outputs.tags }}
           labels: ${{ steps.api-meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+          sbom: true
+          provenance: true
 
       - name: Build and push Client image
         uses: docker/build-push-action@v5
@@ -194,8 +198,10 @@ jobs:
           push: true
           tags: ${{ steps.client-meta.outputs.tags }}
           labels: ${{ steps.client-meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=client
+          cache-to: type=gha,mode=max,scope=client
+          sbom: true
+          provenance: true
 
   # =============================================================================
   # E2E Tests (Run after images are built)
@@ -224,12 +230,13 @@ jobs:
           GARAGE_ADMIN_TOKEN: testadmintoken1234567890123456789012345678901234567890
         run: |
           # Pull the images we just built
-          docker pull ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:latest
-          docker pull ${{ env.REGISTRY }}/${{ env.CLIENT_IMAGE_NAME }}:latest
+          IMAGE_TAG="$(git rev-parse --short=7 HEAD)"
+          docker pull ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:${IMAGE_TAG}
+          docker pull ${{ env.REGISTRY }}/${{ env.CLIENT_IMAGE_NAME }}:${IMAGE_TAG}
           
           # Tag them for local use
-          docker tag ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:latest jackmusick/bifrost-docs-api:latest
-          docker tag ${{ env.REGISTRY }}/${{ env.CLIENT_IMAGE_NAME }}:latest jackmusick/bifrost-docs-client:latest
+          docker tag ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:${IMAGE_TAG} jackmusick/bifrost-docs-api:latest
+          docker tag ${{ env.REGISTRY }}/${{ env.CLIENT_IMAGE_NAME }}:${IMAGE_TAG} jackmusick/bifrost-docs-client:latest
           
           # Run E2E tests
           docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner
@@ -264,14 +271,14 @@ jobs:
       - name: Run Trivy vulnerability scanner on API
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:latest
+          image-ref: ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:${{ github.sha }}
           format: 'sarif'
           output: 'trivy-api-results.sarif'
 
       - name: Run Trivy vulnerability scanner on Client
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.CLIENT_IMAGE_NAME }}:latest
+          image-ref: ${{ env.REGISTRY }}/${{ env.CLIENT_IMAGE_NAME }}:${{ github.sha }}
           format: 'sarif'
           output: 'trivy-client-results.sarif'
 

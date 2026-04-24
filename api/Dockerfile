@@ -1,10 +1,13 @@
+# syntax=docker/dockerfile:1.7
 # Bifrost Docs API Dockerfile
 # Multi-stage build for production
 
 FROM python:3.11-slim AS builder
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/*
@@ -18,14 +21,17 @@ WORKDIR /app
 COPY pyproject.toml ./
 # Copy src directory so setuptools can find the package
 COPY src ./src
-RUN pip install --upgrade pip && \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
     pip install .
 
 # Production stage
 FROM python:3.11-slim
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
