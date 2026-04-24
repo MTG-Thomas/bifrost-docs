@@ -92,6 +92,7 @@ Manual deploys expect that CI has already published the matching short-SHA image
 - Uses an isolated checkout at `/home/thomas/deploy/bifrost-docs-main`
 - Preserves the VM's existing `.env` and Garage config from `/home/thomas/workspace/bifrost-docs`
 - Runs Docker Compose with `docker-compose.yml`, `docker-compose.test-vm.yml`, and `docker-compose.ssl.yml`
+- Uses Compose project `bifrost-docs-dev` to upgrade the existing test VM stack and reuse its data volumes
 - Verifies `https://dev.docs.midtowntg.com/health`
 
 ## Local CI Checks
@@ -162,8 +163,8 @@ Deploy:
 ```bash
 export BIFROST_DOCS_API_IMAGE=ghcr.io/mtg-thomas/bifrost-docs-api:<short-sha>
 export BIFROST_DOCS_CLIENT_IMAGE=ghcr.io/mtg-thomas/bifrost-docs-client:<short-sha>
-docker compose -f docker-compose.yml -f docker-compose.test-vm.yml -f docker-compose.ssl.yml pull
-docker compose -f docker-compose.yml -f docker-compose.test-vm.yml -f docker-compose.ssl.yml up -d
+docker compose -p bifrost-docs-dev -f docker-compose.yml -f docker-compose.test-vm.yml -f docker-compose.ssl.yml pull
+docker compose -p bifrost-docs-dev -f docker-compose.yml -f docker-compose.test-vm.yml -f docker-compose.ssl.yml up -d
 ```
 
 ## Workflow Badges

@@ -8,7 +8,9 @@ DEPLOY_SHA_SHORT="${DEPLOY_SHA_SHORT:-${DEPLOY_SHA:0:7}}"
 DEPLOY_ROOT="${DEPLOY_ROOT:-/home/thomas/deploy/bifrost-docs-main}"
 LEGACY_WORKTREE="${LEGACY_WORKTREE:-/home/thomas/workspace/bifrost-docs}"
 HEALTH_URL="${HEALTH_URL:-https://dev.docs.midtowntg.com/health}"
+COMPOSE_PROJECT="${COMPOSE_PROJECT:-bifrost-docs-dev}"
 COMPOSE_FILES=(
+  -p "${COMPOSE_PROJECT}"
   -f docker-compose.yml
   -f docker-compose.test-vm.yml
   -f docker-compose.ssl.yml
