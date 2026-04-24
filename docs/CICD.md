@@ -74,8 +74,19 @@ Checks     Checks
 #### Security Scanning
 - Trivy vulnerability scanner on images
 - Results uploaded to GitHub Security tab
+- Repository scan runs on PRs and `main`; image scans run after CI image build
+- Fixed HIGH/CRITICAL image vulnerabilities fail the security job
 
-### 2. CD - Deploy Test VM (`.github/workflows/cd.yml`)
+### 2. SonarQube (`.github/workflows/sonar.yml`)
+
+**Triggers:**
+- Push to `main` or `develop`
+- Pull requests to `main` or `develop`
+- Manual trigger (`workflow_dispatch`)
+
+The workflow uses `sonar-project.properties` and is ready for SonarCloud by default. It skips cleanly until `SONAR_TOKEN` is added as a repository secret. Set repository variable `SONAR_HOST_URL` only if using a non-default SonarQube server URL.
+
+### 3. CD - Deploy Test VM (`.github/workflows/cd.yml`)
 
 **Triggers:**
 - Successful CI completion on `main`
@@ -141,6 +152,12 @@ For CI/CD to work, add these secrets in GitHub repository settings:
 - `TEST_VM_SSH_KEY`: Private key authorized for `thomas@100.103.235.51`
 
 The workflow uses the built-in `GITHUB_TOKEN` for temporary GHCR pulls during the deploy job.
+
+#### For SonarQube
+- `SONAR_TOKEN`: SonarCloud/SonarQube token for project analysis
+
+Optional repository variable:
+- `SONAR_HOST_URL`: SonarQube server URL; defaults to `https://sonarcloud.io`
 
 ### Docker Compose Override for GHCR
 
