@@ -87,6 +87,7 @@ jobs:
         run: |
           install -d -m 700 ~/.ssh
           printf '%s\n' "${{ secrets.TEST_VM_SSH_KEY }}" > ~/.ssh/test_vm_key
+          sed -i 's/\r$//' ~/.ssh/test_vm_key
           chmod 600 ~/.ssh/test_vm_key
           touch ~/.ssh/known_hosts
 
