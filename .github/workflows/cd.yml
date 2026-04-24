@@ -79,7 +79,7 @@ jobs:
           echo "client_image=ghcr.io/mtg-thomas/bifrost-docs-client:${DEPLOY_SHA_SHORT}" >> "$GITHUB_OUTPUT"
 
       - name: Connect runner to NetBird
-        uses: netbirdio/netbird-connect@v1
+        uses: Alemiz112/netbird-connect@v1
         with:
           setup-key: ${{ secrets.NETBIRD_SETUP_KEY }}
 
