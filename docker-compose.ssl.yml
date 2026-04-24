@@ -21,7 +21,7 @@ services:
       - client
       - api
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:80/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "--no-check-certificate", "--header", "Host: dev.docs.midtowntg.com", "https://127.0.0.1/health"]
       interval: 10s
       timeout: 5s
       retries: 3
