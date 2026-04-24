@@ -1,0 +1,19 @@
+name: bifrost-docs-test-vm
+
+# Test VM deployment override.
+#
+# The base compose file intentionally uses upstream image names. This override pins
+# the runtime services to CI-published GHCR images for the dev/test VM.
+
+services:
+  init:
+    image: ${BIFROST_DOCS_API_IMAGE:?BIFROST_DOCS_API_IMAGE is required}
+
+  api:
+    image: ${BIFROST_DOCS_API_IMAGE:?BIFROST_DOCS_API_IMAGE is required}
+
+  worker:
+    image: ${BIFROST_DOCS_API_IMAGE:?BIFROST_DOCS_API_IMAGE is required}
+
+  client:
+    image: ${BIFROST_DOCS_CLIENT_IMAGE:?BIFROST_DOCS_CLIENT_IMAGE is required}

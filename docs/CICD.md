@@ -75,25 +75,24 @@ Checks     Checks
 - Trivy vulnerability scanner on images
 - Results uploaded to GitHub Security tab
 
-### 2. CD - Deploy (`.github/workflows/cd.yml`)
+### 2. CD - Deploy Test VM (`.github/workflows/cd.yml`)
 
 **Triggers:**
 - Successful CI completion on `main`
-- Manual trigger with environment selection
+- Manual trigger with optional commit SHA/ref
+
+Manual deploys expect that CI has already published the matching short-SHA images.
 
 **Environments:**
 
-#### Staging (Automatic)
-- Deploys via SSH to staging server
-- Pulls latest images from GHCR
-- Runs database migrations
-- Verifies deployment with health check
-
-#### Production (Manual)
-- Requires manual trigger via GitHub UI
-- Deploys to Kubernetes cluster
-- Updates image tags in deployments
-- Waits for rollout to complete
+#### Test VM (Automatic)
+- Connects the GitHub-hosted runner to NetBird
+- Deploys over SSH to `bifrost-docs-dev`
+- Uses the CI-published short-SHA GHCR image tags, not mutable `latest`
+- Uses an isolated checkout at `/home/thomas/deploy/bifrost-docs-main`
+- Preserves the VM's existing `.env` and Garage config from `/home/thomas/workspace/bifrost-docs`
+- Runs Docker Compose with `docker-compose.yml`, `docker-compose.test-vm.yml`, and `docker-compose.ssl.yml`
+- Verifies `https://dev.docs.midtowntg.com/health`
 
 ## Local CI Checks
 
@@ -136,36 +135,35 @@ docker pull ghcr.io/mtg-thomas/bifrost-docs-client:latest
 
 For CI/CD to work, add these secrets in GitHub repository settings:
 
-#### For Staging Deployment
-- `STAGING_SSH_HOST`: Staging server IP/hostname
-- `STAGING_SSH_USER`: SSH username
-- `STAGING_SSH_KEY`: SSH private key (pem format)
+#### For Test VM Deployment
+- `NETBIRD_SETUP_KEY`: Setup key that lets the GitHub runner join the NetBird network
+- `TEST_VM_SSH_KEY`: Private key authorized for `thomas@100.103.235.51`
 
-#### For Production Deployment
-- `KUBE_CONFIG`: Base64-encoded kubectl config
-- `SLACK_WEBHOOK_URL`: (Optional) Slack notifications
+The workflow uses the built-in `GITHUB_TOKEN` for temporary GHCR pulls during the deploy job.
 
 ### Docker Compose Override for GHCR
 
 To use the CI-built images in production:
 
 ```yaml
-# docker-compose.prod.yml
+# docker-compose.test-vm.yml
 services:
   api:
-    image: ghcr.io/mtg-thomas/bifrost-docs-api:latest
+    image: ${BIFROST_DOCS_API_IMAGE}
     
   client:
-    image: ghcr.io/mtg-thomas/bifrost-docs-client:latest
+    image: ${BIFROST_DOCS_CLIENT_IMAGE}
     
   worker:
-    image: ghcr.io/mtg-thomas/bifrost-docs-api:latest
+    image: ${BIFROST_DOCS_API_IMAGE}
 ```
 
 Deploy:
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+export BIFROST_DOCS_API_IMAGE=ghcr.io/mtg-thomas/bifrost-docs-api:<short-sha>
+export BIFROST_DOCS_CLIENT_IMAGE=ghcr.io/mtg-thomas/bifrost-docs-client:<short-sha>
+docker compose -f docker-compose.yml -f docker-compose.test-vm.yml -f docker-compose.ssl.yml pull
+docker compose -f docker-compose.yml -f docker-compose.test-vm.yml -f docker-compose.ssl.yml up -d
 ```
 
 ## Workflow Badges

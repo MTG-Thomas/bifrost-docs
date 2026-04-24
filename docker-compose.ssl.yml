@@ -1,5 +1,3 @@
-version: '3.8'
-
 # SSL/TLS Configuration for dev.docs.midtowntg.com
 # Adds nginx SSL reverse proxy in front of the client
 
