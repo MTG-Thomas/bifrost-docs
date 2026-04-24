@@ -88,7 +88,7 @@ jobs:
           install -d -m 700 ~/.ssh
           printf '%s\n' "${{ secrets.TEST_VM_SSH_KEY }}" > ~/.ssh/test_vm_key
           chmod 600 ~/.ssh/test_vm_key
-          ssh-keyscan -H "${TEST_VM_HOST}" >> ~/.ssh/known_hosts
+          touch ~/.ssh/known_hosts
 
       - name: Deploy pinned images on test VM
         env:
@@ -105,13 +105,13 @@ jobs:
             docker-compose.test-vm.yml \
             docker-compose.ssl.yml
 
-          scp -i ~/.ssh/test_vm_key /tmp/bifrost-docs-deploy.tgz \
+          scp -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new /tmp/bifrost-docs-deploy.tgz \
             "${TEST_VM_USER}@${TEST_VM_HOST}:/tmp/bifrost-docs-deploy.tgz"
 
-          ssh -i ~/.ssh/test_vm_key "${TEST_VM_USER}@${TEST_VM_HOST}" \
+          ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new "${TEST_VM_USER}@${TEST_VM_HOST}" \
             "mkdir -p /tmp/bifrost-docs-deploy && tar -xzf /tmp/bifrost-docs-deploy.tgz -C /tmp/bifrost-docs-deploy"
 
-          ssh -i ~/.ssh/test_vm_key "${TEST_VM_USER}@${TEST_VM_HOST}" \
+          ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new "${TEST_VM_USER}@${TEST_VM_HOST}" \
             "export DEPLOY_SHA='${DEPLOY_SHA}' DEPLOY_SHA_SHORT='${DEPLOY_SHA_SHORT}' BIFROST_DOCS_API_IMAGE='${BIFROST_DOCS_API_IMAGE}' BIFROST_DOCS_CLIENT_IMAGE='${BIFROST_DOCS_CLIENT_IMAGE}' GHCR_READ_USER='${GHCR_READ_USER}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' HEALTH_URL='${HEALTH_URL}'; bash /tmp/bifrost-docs-deploy/scripts/deploy-test-vm.sh"
 
       - name: Verify public health
