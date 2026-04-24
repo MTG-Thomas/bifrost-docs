@@ -68,7 +68,7 @@ Checks     Checks
 - Tags: `latest`, branch name, short SHA
 
 #### E2E Smoke Tests
-- Runs the smoke-labeled Playwright specs against built images
+- Validates that smoke-labeled Playwright specs are present while the runtime harness is stabilized
 - Non-blocking while fixture drift is stabilized
 - Intended to become deploy-blocking once reliable
 
