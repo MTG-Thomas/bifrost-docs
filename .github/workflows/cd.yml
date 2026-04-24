@@ -105,13 +105,24 @@ jobs:
             docker-compose.test-vm.yml \
             docker-compose.ssl.yml
 
-          scp -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new /tmp/bifrost-docs-deploy.tgz \
+          for attempt in $(seq 1 12); do
+            if ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 "${TEST_VM_USER}@${TEST_VM_HOST}" "true"; then
+              break
+            fi
+            if [ "$attempt" -eq 12 ]; then
+              echo "SSH did not become ready over NetBird" >&2
+              exit 1
+            fi
+            sleep 5
+          done
+
+          scp -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 /tmp/bifrost-docs-deploy.tgz \
             "${TEST_VM_USER}@${TEST_VM_HOST}:/tmp/bifrost-docs-deploy.tgz"
 
-          ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new "${TEST_VM_USER}@${TEST_VM_HOST}" \
+          ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 "${TEST_VM_USER}@${TEST_VM_HOST}" \
             "mkdir -p /tmp/bifrost-docs-deploy && tar -xzf /tmp/bifrost-docs-deploy.tgz -C /tmp/bifrost-docs-deploy"
 
-          ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new "${TEST_VM_USER}@${TEST_VM_HOST}" \
+          ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 "${TEST_VM_USER}@${TEST_VM_HOST}" \
             "export DEPLOY_SHA='${DEPLOY_SHA}' DEPLOY_SHA_SHORT='${DEPLOY_SHA_SHORT}' BIFROST_DOCS_API_IMAGE='${BIFROST_DOCS_API_IMAGE}' BIFROST_DOCS_CLIENT_IMAGE='${BIFROST_DOCS_CLIENT_IMAGE}' GHCR_READ_USER='${GHCR_READ_USER}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' HEALTH_URL='${HEALTH_URL}'; bash /tmp/bifrost-docs-deploy/scripts/deploy-test-vm.sh"
 
       - name: Verify public health
