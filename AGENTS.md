@@ -17,7 +17,7 @@ Managed services providers use it to document client environments (passwords, co
 
 ## Directory Layout
 
-```
+```text
 bifrost-docs/
 ├── api/
 │   ├── src/
