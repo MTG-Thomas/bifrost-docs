@@ -752,6 +752,30 @@ class TestSyncExecutorRowCreates:
         mock_client.create_relationship.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_execute_row_creates_dry_run_missing_target(
+        self, mock_client: MagicMock
+    ) -> None:
+        """Dry-run row relationship counts should reflect missing targets."""
+        plan = SyncPlan()
+        plan.passwords.row_creates = [
+            {
+                "id": "pwd-1",
+                "name": "Row Password",
+                "password": "secret-value",
+                "resource_type": "FlexibleAsset::StructuredData::Row",
+                "resource_id": "asset-123",
+            }
+        ]
+
+        executor = SyncExecutor(mock_client, org_id="org-uuid", dry_run=True, state=None)
+        result = await executor.execute(plan)
+
+        assert result.created.get("passwords", 0) == 1
+        assert result.created.get("relationships", 0) == 0
+        assert result.skipped.get("relationships", 0) == 1
+        assert result.relationship_summary["missing_target"] == 1
+
+    @pytest.mark.asyncio
     async def test_execute_row_creates_without_state(
         self, mock_client: MagicMock
     ) -> None:

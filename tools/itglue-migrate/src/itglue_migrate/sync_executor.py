@@ -836,21 +836,30 @@ class SyncExecutor:
                     "target_type": "custom_asset",
                     "target_id": resource_id,
                 }
+                target_uuid = (
+                    self.state.custom_asset_by_itglue_id.get(resource_id)
+                    if self.state and resource_id
+                    else None
+                )
 
                 if self.dry_run:
                     result.created["passwords"] = (
                         result.created.get("passwords", 0) + 1
                     )
-                    # Also count the relationship that would be created
-                    result.created["relationships"] = (
-                        result.created.get("relationships", 0) + 1
+                    relationship_entity["target_id"] = target_uuid or ""
+                    audit = classify_relationship(
+                        relationship_entity,
+                        existing_relationship_keys=existing_relationship_keys,
                     )
-                    result.relationship_audit.append(
-                        classify_relationship(
-                            relationship_entity,
-                            existing_relationship_keys=existing_relationship_keys,
-                        ).to_dict()
-                    )
+                    if target_uuid:
+                        result.created["relationships"] = (
+                            result.created.get("relationships", 0) + 1
+                        )
+                    else:
+                        result.skipped["relationships"] = (
+                            result.skipped.get("relationships", 0) + 1
+                        )
+                    result.relationship_audit.append(audit.to_dict())
                     continue
 
                 name = entity.get("name", "Unnamed")

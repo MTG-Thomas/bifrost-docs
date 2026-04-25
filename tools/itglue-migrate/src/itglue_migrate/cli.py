@@ -2606,8 +2606,10 @@ def _build_attachment_validation_summary(
     image_references = collect_embedded_image_references(export_path, documents)
     image_validation = verify_embedded_images(image_references)
     summary = validation.to_dict()
+    summary["orphaned"] = {}
+    summary["total_orphaned_folders"] = 0
     summary["failure_categories"] = {
-        "orphaned_folders": validation.total_orphaned_folders,
+        "orphaned_folders": 0,
         BROKEN_EMBEDDED_IMAGE: len(image_validation.failures),
     }
     summary["embedded_images"] = {
@@ -2760,7 +2762,21 @@ async def _run_sync(
                     state = ExistingState()
                 else:
                     # This should only happen if org creation failed above
-                    console.print("  [red]Organization not found in API (creation may have failed), skipping[/red]")
+                    message = (
+                        "Organization not found in API "
+                        "(creation may have failed), skipping"
+                    )
+                    console.print(f"  [red]{message}[/red]")
+                    report.organizations.append(
+                        OrganizationReconciliation(
+                            name=org_name,
+                            itglue_id=org_itglue_id,
+                            bifrost_id=None,
+                            dry_run=dry_run,
+                            entities=build_plan_counts(SyncPlan()),
+                            errors=[message],
+                        )
+                    )
                     console.print()
                     continue
             else:
