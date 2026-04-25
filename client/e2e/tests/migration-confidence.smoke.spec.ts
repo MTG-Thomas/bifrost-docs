@@ -48,6 +48,7 @@ async function installAuthenticatedSession(page: Page) {
             accessToken: token,
             refreshToken: token,
             isAuthenticated: true,
+            needsSetup: false,
           },
           version: 0,
         })
@@ -105,6 +106,32 @@ async function installSmokeApi(page: Page) {
       return fulfillJson(route, []);
     }
 
+    if (pathname === "/api/me/favorites") {
+      return fulfillJson(route, {
+        items: [],
+        total: 0,
+      });
+    }
+
+    if (pathname === "/api/me/favorites/check") {
+      return fulfillJson(route, {
+        is_favorite: false,
+      });
+    }
+
+    if (pathname === `/api/organizations/${TEST_ORG.id}/attachments`) {
+      return fulfillJson(route, {
+        items: [],
+        total: 0,
+      });
+    }
+
+    if (pathname === `/api/organizations/${TEST_ORG.id}/relationships/resolved`) {
+      return fulfillJson(route, {
+        relationships: [],
+      });
+    }
+
     if (pathname === `/api/organizations/${TEST_ORG.id}/documents`) {
       return fulfillJson(route, {
         items: [TEST_DOCUMENT],
@@ -143,7 +170,15 @@ async function installSmokeApi(page: Page) {
       });
     }
 
-    return fulfillJson(route, {});
+    return route.fulfill({
+      status: 501,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: "Unhandled smoke API route",
+        method: request.method(),
+        pathname,
+      }),
+    });
   });
 }
 
@@ -162,16 +197,16 @@ test.describe("Smoke: Midtown migration confidence", () => {
   });
 
   test("smoke: authenticated session renders the technician navigation shell", async ({ page }) => {
-    await page.goto(`/org/${TEST_ORG.id}`);
+    await page.goto(`/org/${TEST_ORG.id}`, { waitUntil: "domcontentloaded" });
 
-    await expect(page.getByText(TEST_ORG.name)).toBeVisible();
+    await expect(page.getByRole("heading", { name: TEST_ORG.name })).toBeVisible();
     await expect(page.getByRole("button", { name: /Search/i })).toBeVisible();
     await expect(page.getByRole("link", { name: "Passwords" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Documents" })).toBeVisible();
   });
 
   test("smoke: global search opens, returns document results, and closes cleanly", async ({ page }) => {
-    await page.goto(`/org/${TEST_ORG.id}`);
+    await page.goto(`/org/${TEST_ORG.id}`, { waitUntil: "domcontentloaded" });
 
     await page.getByRole("button", { name: /Search/i }).click();
     const searchInput = page.getByPlaceholder(`Search in ${TEST_ORG.name}...`);
@@ -190,7 +225,9 @@ test.describe("Smoke: Midtown migration confidence", () => {
 
   test("smoke: document detail remains reachable on mobile", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`/org/${TEST_ORG.id}/documents/${TEST_DOCUMENT.id}`);
+    await page.goto(`/org/${TEST_ORG.id}/documents/${TEST_DOCUMENT.id}`, {
+      waitUntil: "domcontentloaded",
+    });
 
     await expect(page.getByRole("heading", { name: "Cutover Checklist" })).toBeVisible();
   });

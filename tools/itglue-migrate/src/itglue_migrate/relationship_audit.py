@@ -143,12 +143,17 @@ def classify_relationship(
 
 
 def summarize_relationship_audit(
-    audit_results: Iterable[RelationshipAuditResult],
+    audit_results: Iterable[RelationshipAuditResult | Mapping[str, Any]],
 ) -> dict[str, int]:
     """Count classified relationship audit results for reconciliation JSON."""
     counts = dict.fromkeys(COUNT_KEYS, 0)
     for result in audit_results:
-        counts[result.count_key] += 1
+        if isinstance(result, RelationshipAuditResult):
+            count_key = result.count_key
+        else:
+            count_key = str(result.get("count_key") or "")
+        if count_key in counts:
+            counts[count_key] += 1
     return counts
 
 

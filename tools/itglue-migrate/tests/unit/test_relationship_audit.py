@@ -114,3 +114,14 @@ def test_summarize_relationship_audit_counts_mixed_statuses() -> None:
         "missing_target": 1,
         "transient_error": 1,
     }
+
+
+def test_summarize_relationship_audit_accepts_serialized_results() -> None:
+    audit = classify_relationship(
+        relationship(),
+        existing_relationship_keys=set(),
+    )
+
+    summary = summarize_relationship_audit([audit.to_dict()])
+
+    assert summary["created"] == 1

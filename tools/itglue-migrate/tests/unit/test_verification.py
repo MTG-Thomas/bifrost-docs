@@ -62,6 +62,49 @@ def test_verify_attachment_references_reports_missing_file_and_count_mismatch(
     ]
 
 
+def test_verify_attachment_references_counts_only_expected_entities(
+    tmp_path: Path,
+) -> None:
+    attachment_dir = tmp_path / "attachments" / "configurations" / "123"
+    unrelated_dir = tmp_path / "attachments" / "configurations" / "999"
+    attachment_dir.mkdir(parents=True)
+    unrelated_dir.mkdir(parents=True)
+    (attachment_dir / "manual.pdf").write_bytes(b"PDF")
+    (unrelated_dir / "other.pdf").write_bytes(b"PDF")
+
+    result = verify_attachment_references(
+        tmp_path,
+        [AttachmentReference("configurations", "123", "manual.pdf", api_id="att-1")],
+    )
+
+    assert result.ok is True
+    assert result.local_count == 1
+
+
+def test_verify_attachment_references_records_url_checker_exceptions(
+    tmp_path: Path,
+) -> None:
+    attachment_dir = tmp_path / "attachments" / "configurations" / "123"
+    attachment_dir.mkdir(parents=True)
+    (attachment_dir / "manual.pdf").write_bytes(b"PDF")
+
+    result = verify_attachment_references(
+        tmp_path,
+        [
+            AttachmentReference(
+                "configurations",
+                "123",
+                "manual.pdf",
+                api_url="https://docs.example.invalid/manual.pdf",
+            )
+        ],
+        url_checker=lambda _url: (_ for _ in ()).throw(TimeoutError("timeout")),
+    )
+
+    assert result.ok is False
+    assert result.failures[0].category == "inaccessible_url"
+
+
 def test_verify_embedded_images_reports_present_image(tmp_path: Path) -> None:
     doc_dir = tmp_path / "documents" / "DOC-1-200 HTML Document"
     doc_dir.mkdir(parents=True)
@@ -104,6 +147,28 @@ def test_verify_embedded_images_reports_broken_image(tmp_path: Path) -> None:
     assert result.failures[0].category == "broken_embedded_image"
 
 
+def test_verify_embedded_images_records_url_checker_exceptions(
+    tmp_path: Path,
+) -> None:
+    image = tmp_path / "diagram.png"
+    image.write_bytes(b"PNG")
+
+    result = verify_embedded_images(
+        [
+            EmbeddedImageReference(
+                document_id="200",
+                source="diagram.png",
+                resolved_path=image,
+                migrated_url="https://docs.example.invalid/image.png",
+            )
+        ],
+        url_checker=lambda _url: (_ for _ in ()).throw(TimeoutError("timeout")),
+    )
+
+    assert result.ok is False
+    assert result.failures[0].category == "inaccessible_url"
+
+
 def test_collect_embedded_image_references_from_export_html(tmp_path: Path) -> None:
     doc_dir = tmp_path / "documents" / "DOC-1-200 HTML Document"
     image_dir = doc_dir / "1" / "docs" / "200" / "images"
@@ -124,3 +189,12 @@ def test_collect_embedded_image_references_from_export_html(tmp_path: Path) -> N
     assert references[0].document_id == "200"
     assert references[0].source == "1/docs/200/images/img123"
     assert references[0].resolved_path == image.resolve()
+
+
+def test_collect_embedded_image_references_skips_missing_document_ids(
+    tmp_path: Path,
+) -> None:
+    assert collect_embedded_image_references(
+        tmp_path,
+        [{"id": None, "name": "Missing"}, {"name": "Also Missing"}],
+    ) == []

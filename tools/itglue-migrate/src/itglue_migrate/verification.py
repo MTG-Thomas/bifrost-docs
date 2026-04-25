@@ -145,7 +145,15 @@ def verify_attachment_references(
     scanner = scanner or AttachmentScanner()
     references = list(expected)
     all_attachments = scanner.get_all_attachments(export_path)
-    local_count = sum(len(files) for files in all_attachments.values())
+    local_count = sum(
+        1
+        for ref in references
+        if ref.filename
+        in {
+            path.name
+            for path in all_attachments.get((ref.entity_type, ref.entity_id), [])
+        }
+    )
     api_count = sum(1 for ref in references if ref.api_id or ref.api_url)
     failures: list[VerificationFailure] = []
 
@@ -175,17 +183,26 @@ def verify_attachment_references(
                 )
             )
 
-        if ref.api_url and url_checker is not None and not url_checker(ref.api_url):
-            failures.append(
-                VerificationFailure(
-                    category=INACCESSIBLE_URL,
-                    message="Migrated attachment URL was not accessible.",
-                    entity_type=ref.entity_type,
-                    entity_id=ref.entity_id,
-                    filename=ref.filename,
-                    url=ref.api_url,
+        if ref.api_url and url_checker is not None:
+            try:
+                url_ok = url_checker(ref.api_url)
+            except Exception as exc:
+                url_ok = False
+                message = f"Migrated attachment URL was not accessible: {exc}"
+            else:
+                message = "Migrated attachment URL was not accessible."
+
+            if not url_ok:
+                failures.append(
+                    VerificationFailure(
+                        category=INACCESSIBLE_URL,
+                        message=message,
+                        entity_type=ref.entity_type,
+                        entity_id=ref.entity_id,
+                        filename=ref.filename,
+                        url=ref.api_url,
+                    )
                 )
-            )
 
     if local_count != len(references) or api_count != len(references):
         failures.append(
@@ -228,20 +245,25 @@ def verify_embedded_images(
                 )
             )
 
-        if (
-            ref.migrated_url
-            and url_checker is not None
-            and not url_checker(ref.migrated_url)
-        ):
-            failures.append(
-                VerificationFailure(
-                    category=INACCESSIBLE_URL,
-                    message="Migrated embedded image URL was not accessible.",
-                    document_id=ref.document_id,
-                    source=ref.source,
-                    url=ref.migrated_url,
+        if ref.migrated_url and url_checker is not None:
+            try:
+                url_ok = url_checker(ref.migrated_url)
+            except Exception as exc:
+                url_ok = False
+                message = f"Migrated embedded image URL was not accessible: {exc}"
+            else:
+                message = "Migrated embedded image URL was not accessible."
+
+            if not url_ok:
+                failures.append(
+                    VerificationFailure(
+                        category=INACCESSIBLE_URL,
+                        message=message,
+                        document_id=ref.document_id,
+                        source=ref.source,
+                        url=ref.migrated_url,
+                    )
                 )
-            )
 
     return EmbeddedImageVerificationResult(
         expected_count=len(references),
@@ -259,9 +281,10 @@ def collect_embedded_image_references(
     references: list[EmbeddedImageReference] = []
 
     for document in documents:
-        document_id = str(document.get("id", ""))
-        if not document_id:
+        raw_id = document.get("id")
+        if not raw_id:
             continue
+        document_id = str(raw_id)
 
         html = processor._load_document_html(  # noqa: SLF001
             document_id,

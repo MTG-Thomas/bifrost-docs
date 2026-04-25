@@ -2607,7 +2607,7 @@ def _build_attachment_validation_summary(
     image_validation = verify_embedded_images(image_references)
     summary = validation.to_dict()
     summary["failure_categories"] = {
-        "count_mismatch": validation.total_orphaned_folders,
+        "orphaned_folders": validation.total_orphaned_folders,
         BROKEN_EMBEDDED_IMAGE: len(image_validation.failures),
     }
     summary["embedded_images"] = {

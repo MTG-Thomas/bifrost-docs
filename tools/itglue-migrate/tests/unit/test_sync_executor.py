@@ -714,6 +714,7 @@ class TestSyncExecutorRowCreates:
 
         assert result.created.get("passwords", 0) == 1
         assert result.created.get("relationships", 0) == 1
+        assert result.relationship_summary["created"] == 1
         mock_client.create_password.assert_called_once()
         mock_client.create_relationship.assert_called_once_with(
             org_id="org-uuid",
@@ -746,6 +747,7 @@ class TestSyncExecutorRowCreates:
 
         assert result.created.get("passwords", 0) == 1
         assert result.created.get("relationships", 0) == 1
+        assert result.relationship_summary["created"] == 1
         mock_client.create_password.assert_not_called()
         mock_client.create_relationship.assert_not_called()
 
@@ -775,6 +777,8 @@ class TestSyncExecutorRowCreates:
         assert result.created.get("passwords", 0) == 1
         # No relationship created without state
         assert result.created.get("relationships", 0) == 0
+        assert result.skipped.get("relationships", 0) == 1
+        assert result.relationship_summary["missing_target"] == 1
         mock_client.create_password.assert_called_once()
         mock_client.create_relationship.assert_not_called()
 
