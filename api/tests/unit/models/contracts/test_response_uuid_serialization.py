@@ -7,7 +7,11 @@ from src.models.contracts.configuration import (
     ConfigurationStatusPublic,
     ConfigurationTypePublic,
 )
-from src.models.contracts.custom_asset import CustomAssetTypePublic
+from src.models.contracts.custom_asset import (
+    CustomAssetPublic,
+    CustomAssetReveal,
+    CustomAssetTypePublic,
+)
 from src.models.contracts.relationship import RelationshipPublic
 
 
@@ -49,6 +53,26 @@ def test_custom_asset_type_response_accepts_uuid_id() -> None:
     )
 
     assert custom_asset_type.model_dump(mode="json")["id"] == str(type_id)
+
+
+def test_custom_asset_responses_accept_uuid_foreign_keys() -> None:
+    """Custom asset response models should accept ORM UUID foreign keys."""
+    asset_type_id = uuid4()
+    common = {
+        "id": uuid4(),
+        "organization_id": uuid4(),
+        "custom_asset_type_id": asset_type_id,
+        "values": {"name": "Example"},
+        "is_enabled": True,
+        "created_at": datetime.now(UTC),
+        "updated_at": datetime.now(UTC),
+    }
+
+    public = CustomAssetPublic(**common)
+    reveal = CustomAssetReveal(**common)
+
+    assert public.model_dump(mode="json")["custom_asset_type_id"] == str(asset_type_id)
+    assert reveal.model_dump(mode="json")["custom_asset_type_id"] == str(asset_type_id)
 
 
 def test_relationship_response_accepts_uuid_ids() -> None:
