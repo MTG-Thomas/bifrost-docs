@@ -17,6 +17,11 @@ from typing import TYPE_CHECKING, Any, Protocol
 from itglue_migrate.api_client import APIError
 from itglue_migrate.document_processor import DocumentProcessor
 from itglue_migrate.progress import Phase, ProgressReporter, SimpleProgressReporter
+from itglue_migrate.relationship_audit import (
+    RelationshipAuditResult,
+    classify_relationship,
+    summarize_relationship_audit,
+)
 
 if TYPE_CHECKING:
     from itglue_migrate.state_fetcher import ExistingState
@@ -180,6 +185,8 @@ class SyncResult:
     id_map: dict[str, str] = field(default_factory=dict)
     # Track type_id for newly created custom assets (ITGlue ID -> type_id)
     asset_type_map: dict[str, str] = field(default_factory=dict)
+    relationship_audit: list[dict[str, Any]] = field(default_factory=list)
+    relationship_summary: dict[str, int] = field(default_factory=dict)
 
 
 class SyncExecutor:
@@ -363,6 +370,11 @@ class SyncExecutor:
             await self._execute_location_updates(plan, result)
             await self._execute_document_updates(plan, result)
             await self._execute_password_updates(plan, result)
+
+        if result.relationship_audit:
+            result.relationship_summary = summarize_relationship_audit(
+                result.relationship_audit
+            )
 
         return result
 
@@ -813,19 +825,41 @@ class SyncExecutor:
                     self.reporter.error(f"Password '{name}': {e}")
 
         # Row passwords (::Row) - create password and relationship to custom asset
+        existing_relationship_keys = self.state.relationships if self.state else set()
         for entity in plan.passwords.row_creates:
             try:
                 itglue_id = str(entity.get("id", ""))
                 resource_id = str(entity.get("resource_id", ""))
+                relationship_entity = {
+                    "source_type": "password",
+                    "source_id": itglue_id,
+                    "target_type": "custom_asset",
+                    "target_id": resource_id,
+                }
+                target_uuid = (
+                    self.state.custom_asset_by_itglue_id.get(resource_id)
+                    if self.state and resource_id
+                    else None
+                )
 
                 if self.dry_run:
                     result.created["passwords"] = (
                         result.created.get("passwords", 0) + 1
                     )
-                    # Also count the relationship that would be created
-                    result.created["relationships"] = (
-                        result.created.get("relationships", 0) + 1
+                    relationship_entity["target_id"] = target_uuid or ""
+                    audit = classify_relationship(
+                        relationship_entity,
+                        existing_relationship_keys=existing_relationship_keys,
                     )
+                    if target_uuid:
+                        result.created["relationships"] = (
+                            result.created.get("relationships", 0) + 1
+                        )
+                    else:
+                        result.skipped["relationships"] = (
+                            result.skipped.get("relationships", 0) + 1
+                        )
+                    result.relationship_audit.append(audit.to_dict())
                     continue
 
                 name = entity.get("name", "Unnamed")
@@ -861,6 +895,12 @@ class SyncExecutor:
                     if not target_uuid and self.state:
                         target_uuid = self.state.custom_asset_by_itglue_id.get(resource_id)
                     if target_uuid:
+                        relationship_entity = {
+                            "source_type": "password",
+                            "source_id": password_uuid,
+                            "target_type": "custom_asset",
+                            "target_id": target_uuid,
+                        }
                         try:
                             await self.client.create_relationship(
                                 org_id=self.org_id,
@@ -872,11 +912,17 @@ class SyncExecutor:
                             result.created["relationships"] = (
                                 result.created.get("relationships", 0) + 1
                             )
+                            result.relationship_audit.append(
+                                classify_relationship(
+                                    relationship_entity,
+                                    existing_relationship_keys=existing_relationship_keys,
+                                ).to_dict()
+                            )
                         except APIError as rel_err:
                             # 409 means relationship already exists - that's fine
                             if rel_err.status_code == 409:
-                                result.created["relationships"] = (
-                                    result.created.get("relationships", 0) + 1
+                                result.skipped["relationships"] = (
+                                    result.skipped.get("relationships", 0) + 1
                                 )
                             else:
                                 result.failed["relationships"] = (
@@ -888,6 +934,13 @@ class SyncExecutor:
                                 logger.warning(
                                     f"Failed to create relationship for row password: {rel_err}"
                                 )
+                            result.relationship_audit.append(
+                                classify_relationship(
+                                    relationship_entity,
+                                    existing_relationship_keys=existing_relationship_keys,
+                                    error=rel_err,
+                                ).to_dict()
+                            )
                         except Exception as rel_err:
                             result.failed["relationships"] = (
                                 result.failed.get("relationships", 0) + 1
@@ -898,6 +951,29 @@ class SyncExecutor:
                             logger.warning(
                                 f"Failed to create relationship for row password: {rel_err}"
                             )
+                            result.relationship_audit.append(
+                                classify_relationship(
+                                    relationship_entity,
+                                    existing_relationship_keys=existing_relationship_keys,
+                                    error=rel_err,
+                                ).to_dict()
+                            )
+                    else:
+                        result.skipped["relationships"] = (
+                            result.skipped.get("relationships", 0) + 1
+                        )
+                        result.relationship_audit.append(
+                            classify_relationship(
+                                {
+                                    "source_type": "password",
+                                    "source_id": password_uuid,
+                                    "target_type": "custom_asset",
+                                    "target_id": "",
+                                    "target_itglue_id": resource_id,
+                                },
+                                existing_relationship_keys=existing_relationship_keys,
+                            ).to_dict()
+                        )
 
             except Exception as e:
                 result.failed["passwords"] = result.failed.get("passwords", 0) + 1
@@ -1361,16 +1437,14 @@ class SyncExecutor:
         1. result.id_map - entities created in this sync run
         2. self.state lookups - entities that already existed
         """
-        for entity in plan.relationships.to_create:
-            try:
-                if self.dry_run:
-                    result.created["relationships"] = (
-                        result.created.get("relationships", 0) + 1
-                    )
-                    continue
+        audit_results: list[RelationshipAuditResult] = []
+        existing_relationship_keys = self.state.relationships if self.state else set()
 
+        for entity in plan.relationships.to_create:
+            source_id = entity.get("source_id", "")
+            target_id = entity.get("target_id", "")
+            try:
                 # Resolve source_id - prefer id_map (newly created) over pre-filled
-                source_id = entity.get("source_id", "")
                 source_itglue_id = entity.get("source_itglue_id", "")
                 # Prefer id_map (newly created entities) over pre-filled source_id
                 if source_itglue_id and source_itglue_id in result.id_map:
@@ -1384,7 +1458,6 @@ class SyncExecutor:
                         )
 
                 # Resolve target_id - prefer id_map (newly created) over pre-filled
-                target_id = entity.get("target_id", "")
                 target_itglue_id = entity.get("target_itglue_id", "")
                 # Prefer id_map (newly created entities) over pre-filled target_id
                 if target_itglue_id and target_itglue_id in result.id_map:
@@ -1409,17 +1482,42 @@ class SyncExecutor:
                             target_itglue_id, ""
                         )
 
+                resolved_entity = {
+                    **entity,
+                    "source_id": source_id,
+                    "target_id": target_id,
+                }
+                preflight_audit = classify_relationship(
+                    resolved_entity,
+                    existing_relationship_keys=existing_relationship_keys,
+                )
+
+                if preflight_audit.status.value == "duplicate_existing":
+                    result.skipped["relationships"] = (
+                        result.skipped.get("relationships", 0) + 1
+                    )
+                    audit_results.append(preflight_audit)
+                    continue
+
                 # Skip if we couldn't resolve both IDs
                 if not source_id or not target_id:
                     result.skipped["relationships"] = (
                         result.skipped.get("relationships", 0) + 1
                     )
+                    audit_results.append(preflight_audit)
                     source_desc = source_id or f"itglue:{source_itglue_id}"
                     target_desc = target_id or f"itglue:{target_itglue_id}"
                     logger.warning(
                         f"Skipping relationship: could not resolve IDs "
                         f"(source={source_desc}, target={target_desc})"
                     )
+                    continue
+
+                if self.dry_run:
+                    result.created["relationships"] = (
+                        result.created.get("relationships", 0) + 1
+                    )
+                    audit_results.append(preflight_audit)
                     continue
 
                 await self.client.create_relationship(
@@ -1433,12 +1531,24 @@ class SyncExecutor:
                 result.created["relationships"] = (
                     result.created.get("relationships", 0) + 1
                 )
+                audit_results.append(preflight_audit)
 
             except APIError as e:
                 # 409 means relationship already exists - that's fine
+                resolved_entity = {
+                    **entity,
+                    "source_id": source_id,
+                    "target_id": target_id,
+                }
+                audit = classify_relationship(
+                    resolved_entity,
+                    existing_relationship_keys=existing_relationship_keys,
+                    error=e,
+                )
+                audit_results.append(audit)
                 if e.status_code == 409:
-                    result.created["relationships"] = (
-                        result.created.get("relationships", 0) + 1
+                    result.skipped["relationships"] = (
+                        result.skipped.get("relationships", 0) + 1
                     )
                 else:
                     result.failed["relationships"] = (
@@ -1449,6 +1559,18 @@ class SyncExecutor:
                     result.errors.append(f"Relationship '{source}' -> '{target}': {e}")
                     logger.warning(f"Failed to create relationship: {e}")
             except Exception as e:
+                resolved_entity = {
+                    **entity,
+                    "source_id": source_id,
+                    "target_id": target_id,
+                }
+                audit_results.append(
+                    classify_relationship(
+                        resolved_entity,
+                        existing_relationship_keys=existing_relationship_keys,
+                        error=e,
+                    )
+                )
                 result.failed["relationships"] = (
                     result.failed.get("relationships", 0) + 1
                 )
@@ -1456,6 +1578,11 @@ class SyncExecutor:
                 target = entity.get("target_id") or entity.get("target_itglue_id", "?")
                 result.errors.append(f"Relationship '{source}' -> '{target}': {e}")
                 logger.warning(f"Failed to create relationship: {e}")
+
+        result.relationship_audit.extend(audit.to_dict() for audit in audit_results)
+        result.relationship_summary = summarize_relationship_audit(
+            result.relationship_audit
+        )
 
     async def _execute_configuration_updates(
         self, plan: SyncPlan, result: SyncResult
