@@ -103,9 +103,9 @@ Before running a real customer migration, validate your setup:
 
 ### 4. Reconciliation Reports
 
-The `sync` command writes a JSON reconciliation artifact to
-`reconciliation-report.json` by default. Use `--reconciliation-output` to write
-the artifact somewhere explicit for a rehearsal or CI run.
+Use `--reconciliation-output` with the `sync` command to write a JSON
+reconciliation artifact somewhere explicit for a rehearsal or CI run, such as
+`/tmp/test-reconciliation-report.json`.
 
 The report includes:
 

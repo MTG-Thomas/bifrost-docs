@@ -2606,10 +2606,16 @@ def _build_attachment_validation_summary(
     image_references = collect_embedded_image_references(export_path, documents)
     image_validation = verify_embedded_images(image_references)
     summary = validation.to_dict()
-    summary["orphaned"] = {}
-    summary["total_orphaned_folders"] = 0
+    scoped_orphaned = {
+        entity_type: sorted(set(ids) & entities_to_migrate.get(entity_type, set()))
+        for entity_type, ids in validation.orphaned.items()
+    }
+    scoped_orphaned = {key: value for key, value in scoped_orphaned.items() if value}
+    total_orphaned = sum(len(ids) for ids in scoped_orphaned.values())
+    summary["orphaned"] = scoped_orphaned
+    summary["total_orphaned_folders"] = total_orphaned
     summary["failure_categories"] = {
-        "orphaned_folders": 0,
+        "orphaned_folders": total_orphaned,
         BROKEN_EMBEDDED_IMAGE: len(image_validation.failures),
     }
     summary["embedded_images"] = {
@@ -2688,10 +2694,14 @@ async def _run_sync(
     console.print()
 
     total_result = SyncResult()
-    report = ReconciliationReport.create(
-        export_path=export_path,
-        target=target_org or "all",
-        dry_run=dry_run,
+    report = (
+        ReconciliationReport.create(
+            export_path=export_path,
+            target=target_org or "all",
+            dry_run=dry_run,
+        )
+        if reconciliation_output
+        else None
     )
 
     async with BifrostDocsClient(base_url=api_url, api_key=token) as client:
@@ -2767,16 +2777,17 @@ async def _run_sync(
                         "(creation may have failed), skipping"
                     )
                     console.print(f"  [red]{message}[/red]")
-                    report.organizations.append(
-                        OrganizationReconciliation(
-                            name=org_name,
-                            itglue_id=org_itglue_id,
-                            bifrost_id=None,
-                            dry_run=dry_run,
-                            entities=build_plan_counts(SyncPlan()),
-                            errors=[message],
+                    if report:
+                        report.organizations.append(
+                            OrganizationReconciliation(
+                                name=org_name,
+                                itglue_id=org_itglue_id,
+                                bifrost_id=None,
+                                dry_run=dry_run,
+                                entities=build_plan_counts(SyncPlan()),
+                                errors=[message],
+                            )
                         )
-                    )
                     console.print()
                     continue
             else:
@@ -2841,13 +2852,17 @@ async def _run_sync(
                         asset["_type_slug"] = type_slug
                         org_custom_assets.append(asset)
 
-            attachment_summary = _build_attachment_validation_summary(
-                export_path,
-                configurations=org_configs,
-                locations=org_locations,
-                documents=org_documents,
-                passwords=org_passwords,
-                custom_assets=org_custom_assets,
+            attachment_summary = (
+                _build_attachment_validation_summary(
+                    export_path,
+                    configurations=org_configs,
+                    locations=org_locations,
+                    documents=org_documents,
+                    passwords=org_passwords,
+                    custom_assets=org_custom_assets,
+                )
+                if report
+                else None
             )
 
             # Create differ and generate plan
@@ -2910,6 +2925,21 @@ async def _run_sync(
             if dry_run:
                 console.print()
                 console.print("[yellow]DRY RUN - No changes made[/yellow]")
+                if report:
+                    executor = SyncExecutor(
+                        client,  # type: ignore[arg-type]
+                        org_id=org_uuid,
+                        dry_run=True,
+                        state=state,
+                        update_existing=update_existing,
+                    )
+                    result = await executor.execute(plan)
+                    org_counts = apply_result_counts(org_counts, result)
+                    relationship_summary = (
+                        result.relationship_summary
+                        if result.relationship_summary
+                        else None
+                    )
             else:
                 console.print()
                 console.print("Executing sync...")
@@ -2955,22 +2985,21 @@ async def _run_sync(
                 )
 
                 _display_sync_result(result)
-            if dry_run:
-                relationship_summary = None
 
-            report.organizations.append(
-                OrganizationReconciliation(
-                    name=org_name,
-                    itglue_id=org_itglue_id,
-                    bifrost_id=org_uuid,
-                    dry_run=dry_run,
-                    entities=org_counts,
-                    warnings=warnings,
-                    errors=org_errors,
-                    attachment_summary=attachment_summary,
-                    relationship_summary=relationship_summary,
+            if report:
+                report.organizations.append(
+                    OrganizationReconciliation(
+                        name=org_name,
+                        itglue_id=org_itglue_id,
+                        bifrost_id=org_uuid,
+                        dry_run=dry_run,
+                        entities=org_counts,
+                        warnings=warnings,
+                        errors=org_errors,
+                        attachment_summary=attachment_summary,
+                        relationship_summary=relationship_summary,
+                    )
                 )
-            )
             console.print()
 
     # Display total results if multiple orgs
@@ -2980,7 +3009,7 @@ async def _run_sync(
 
     # Determine exit code
     total_failed = sum(total_result.failed.values())
-    if reconciliation_output:
+    if reconciliation_output and report:
         report.errors.extend(total_result.errors)
         report.write_json(reconciliation_output)
         console.print(
@@ -3067,7 +3096,7 @@ def sync(
             dir_okay=False,
             resolve_path=True,
         ),
-    ] = Path("reconciliation-report.json"),
+    ] = None,
     itglue_api_key: Annotated[
         str | None,
         typer.Option(
