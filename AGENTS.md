@@ -93,17 +93,9 @@ If you see `error getting credentials - err: fork/exec /usr/bin/docker-credentia
 echo '{}' > ~/.docker/config.json
 ```
 
-Bind mount restarts also fail in WSL2 — always use full `down` + `up` rather than `restart` for containers with file mounts.
-
-### WSL2 gotcha
-
-If you see `error getting credentials - err: fork/exec /usr/bin/docker-credential-desktop.exe`, clear the credential store:
-
-```bash
-echo '{}' > ~/.docker/config.json
-```
-
 Then retry. Docker Desktop WSL2 integration sets `credsStore: desktop.exe` which doesn't work from inside WSL.
+
+Bind mount restarts also fail in WSL2 — always use full `down` + `up` rather than `restart` for containers with file mounts.
 
 ## Key Conventions
 
