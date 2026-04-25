@@ -24,7 +24,7 @@ def app_with_security_headers():
 
     @app.get("/error")
     def error_endpoint():
-        raise ValueError("Test error")
+        return JSONResponse({"detail": "Test error"}, status_code=500)
 
     return app
 
@@ -74,21 +74,18 @@ class TestSecurityHeadersMiddleware:
 
     def test_csp_header_in_development(self, client, monkeypatch):
         """Test CSP header is more permissive in development."""
-        # Mock development environment
-        from src import config
-        original_settings = config._settings
-        
-        class MockSettings:
-            environment = "development"
-            
-        monkeypatch.setattr(config, "_settings", MockSettings())
-        
+        from src.config import clear_settings_cache
+
+        monkeypatch.setenv("BIFROST_DOCS_ENVIRONMENT", "development")
+        clear_settings_cache()
+
         response = client.get("/test")
         assert response.status_code == 200
         csp = response.headers["Content-Security-Policy"]
         # Development CSP should allow unsafe-eval for Vite HMR
         assert "'unsafe-eval'" in csp
         assert "ws:" in csp or "wss:" in csp
+        clear_settings_cache()
 
     def test_security_headers_on_error_response(self, client):
         """Test security headers are present even on error responses."""
@@ -103,7 +100,7 @@ class TestSecurityHeadersMiddleware:
         """Test that all expected security headers are present."""
         response = client.get("/test")
         assert response.status_code == 200
-        
+
         required_headers = [
             "X-Content-Type-Options",
             "X-Frame-Options",
@@ -112,7 +109,7 @@ class TestSecurityHeadersMiddleware:
             "Permissions-Policy",
             "Content-Security-Policy",
         ]
-        
+
         for header in required_headers:
             assert header in response.headers, f"Missing security header: {header}"
 
@@ -123,17 +120,17 @@ class TestAddSecurityHeadersFunction:
     def test_add_security_headers_function(self):
         """Test that add_security_headers function works correctly."""
         app = FastAPI()
-        
+
         # Add the middleware using the helper function
         add_security_headers(app)
-        
+
         @app.get("/test")
         def test_endpoint():
             return {"message": "test"}
-        
+
         client = TestClient(app)
         response = client.get("/test")
-        
+
         assert response.status_code == 200
         assert response.headers["X-Content-Type-Options"] == "nosniff"
         assert response.headers["X-Frame-Options"] == "DENY"
@@ -144,52 +141,50 @@ class TestHSTSHeader:
 
     def test_hsts_header_in_production(self, monkeypatch):
         """Test HSTS header is set in production."""
-        from src import config
-        
-        class MockSettings:
-            environment = "production"
-            
-        monkeypatch.setattr(config, "_settings", MockSettings())
-        
+        from src.config import clear_settings_cache
+
+        monkeypatch.setenv("BIFROST_DOCS_ENVIRONMENT", "production")
+        clear_settings_cache()
+
         app = FastAPI()
         app.add_middleware(SecurityHeadersMiddleware)
-        
+
         @app.get("/test")
         def test_endpoint():
             return {"message": "test"}
-        
+
         client = TestClient(app)
         response = client.get("/test")
-        
+
         assert response.status_code == 200
         assert "Strict-Transport-Security" in response.headers
         hsts = response.headers["Strict-Transport-Security"]
         assert "max-age=31536000" in hsts
         assert "includeSubDomains" in hsts
+        clear_settings_cache()
 
     def test_hsts_header_not_in_development(self, client, monkeypatch):
         """Test HSTS header is NOT set in development (development is default in tests)."""
-        from src import config
-        
-        class MockSettings:
-            environment = "development"
-            
-        monkeypatch.setattr(config, "_settings", MockSettings())
-        
+        from src.config import clear_settings_cache
+
+        monkeypatch.setenv("BIFROST_DOCS_ENVIRONMENT", "development")
+        clear_settings_cache()
+
         # Create new client with development settings
         app = FastAPI()
         app.add_middleware(SecurityHeadersMiddleware)
-        
+
         @app.get("/test")
         def test_endpoint():
             return {"message": "test"}
-        
+
         client = TestClient(app)
         response = client.get("/test")
-        
+
         assert response.status_code == 200
         # HSTS should not be present in development
         assert "Strict-Transport-Security" not in response.headers
+        clear_settings_cache()
 
 
 class TestCSPDirectives:

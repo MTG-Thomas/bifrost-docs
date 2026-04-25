@@ -12,6 +12,7 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
 import createClient from "openapi-fetch";
 import createQueryClient from "openapi-react-query";
+import type { PublicKeyCredentialCreationOptionsJSON } from "@simplewebauthn/browser";
 import type { paths, components } from "./v1";
 import { parseApiError, ApiError, RateLimitError } from "./api-error";
 import { isTokenExpired } from "./jwt";
@@ -571,8 +572,25 @@ export interface MfaVerifyRequest {
 export interface Passkey {
   id: string;
   name: string;
+  device_type?: string;
+  backed_up?: boolean;
   created_at: string;
   last_used_at: string | null;
+}
+
+export interface PasskeyListResponse {
+  passkeys: Passkey[];
+  count: number;
+}
+
+export interface PasskeyRegistrationOptionsResponse {
+  options: PublicKeyCredentialCreationOptionsJSON;
+}
+
+export interface PasskeyRegistrationVerifyResponse {
+  verified: boolean;
+  passkey_id: string;
+  name: string;
 }
 
 // Settings/Security API (auth endpoints at root level)
@@ -596,13 +614,13 @@ export const settingsApi = {
     api.post<{ backup_codes: string[] }>("/auth/mfa/backup-codes"),
 
   // Passkey endpoints
-  listPasskeys: () => api.get<Passkey[]>("/auth/passkeys"),
+  listPasskeys: () => api.get<PasskeyListResponse>("/auth/passkeys"),
 
   registerPasskeyOptions: () =>
-    api.post<PublicKeyCredentialCreationOptions>("/auth/passkeys/register/options", {}),
+    api.post<PasskeyRegistrationOptionsResponse>("/auth/passkeys/register/options", {}),
 
-  registerPasskey: (data: { name: string; credential: unknown }) =>
-    api.post<Passkey>("/auth/passkeys/register", data),
+  registerPasskey: (data: { device_name?: string; credential: unknown }) =>
+    api.post<PasskeyRegistrationVerifyResponse>("/auth/passkeys/register/verify", data),
 
   deletePasskey: (id: string) => api.delete(`/auth/passkeys/${id}`),
 };

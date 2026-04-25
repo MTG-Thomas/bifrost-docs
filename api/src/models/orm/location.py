@@ -71,9 +71,7 @@ class Location(Base):
     patch_panels: Mapped[list["PatchPanel"]] = relationship(
         back_populates="location", passive_deletes=True
     )
-    racks: Mapped[list["Rack"]] = relationship(
-        back_populates="location", passive_deletes=True
-    )
+    racks: Mapped[list["Rack"]] = relationship(back_populates="location", passive_deletes=True)
     updated_by_user: Mapped["User | None"] = relationship()
 
     __table_args__ = (

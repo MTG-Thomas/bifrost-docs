@@ -1,149 +1,130 @@
-name: CD - Deploy
+name: CD - Deploy Test VM
 
 on:
   workflow_run:
     workflows: ["CI - Test & Build"]
     types: [completed]
     branches: [main]
-  workflow_dispatch: # Allow manual deployment
+  workflow_dispatch:
     inputs:
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        default: 'staging'
-        type: choice
-        options:
-          - staging
-          - production
+      ref:
+        description: Commit SHA or ref to deploy. Defaults to current main.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: bifrost-docs-test-vm
+  cancel-in-progress: false
 
 env:
-  REGISTRY: ghcr.io
-  API_IMAGE_NAME: ${{ github.repository }}-api
-  CLIENT_IMAGE_NAME: ${{ github.repository }}-client
+  TEST_VM_HOST: 100.103.235.51
+  TEST_VM_USER: thomas
+  HEALTH_URL: https://dev.docs.midtowntg.com/health
 
 jobs:
-  # =============================================================================
-  # Deploy to Staging
-  # =============================================================================
-  deploy-staging:
+  deploy-test-vm:
+    name: Deploy to bifrost-docs-dev
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging' || github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     environment:
-      name: staging
-      url: https://staging.bifrost-docs.example.com
+      name: bifrost-docs-dev
+      url: https://dev.docs.midtowntg.com
+    env:
+      NETBIRD_SETUP_KEY_PRESENT: ${{ secrets.NETBIRD_SETUP_KEY != '' }}
+      TEST_VM_SSH_KEY_PRESENT: ${{ secrets.TEST_VM_SSH_KEY != '' }}
 
     steps:
-      - name: Checkout code
+      - name: Validate deployment secrets
+        run: |
+          test "${NETBIRD_SETUP_KEY_PRESENT}" = "true" || {
+            echo "Missing required secret: NETBIRD_SETUP_KEY" >&2
+            exit 1
+          }
+          test "${TEST_VM_SSH_KEY_PRESENT}" = "true" || {
+            echo "Missing required secret: TEST_VM_SSH_KEY" >&2
+            exit 1
+          }
+
+      - name: Resolve deployment ref
+        id: ref
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            DEPLOY_REF="${{ github.event.workflow_run.head_sha }}"
+          elif [ -n "${{ inputs.ref }}" ]; then
+            DEPLOY_REF="${{ inputs.ref }}"
+          else
+            DEPLOY_REF="${{ github.sha }}"
+          fi
+          echo "deploy_ref=${DEPLOY_REF}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout deployment ref
         uses: actions/checkout@v4
-
-      - name: Deploy to staging server via SSH
-        uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.STAGING_SSH_HOST }}
-          username: ${{ secrets.STAGING_SSH_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          script: |
-            cd /opt/bifrost-docs
-            
-            # Pull latest images
-            docker pull ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:latest
-            docker pull ${{ env.REGISTRY }}/${{ env.CLIENT_IMAGE_NAME }}:latest
-            
-            # Update docker-compose to use GHCR images
-            export API_IMAGE=${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:latest
-            export CLIENT_IMAGE=${{ env.REGISTRY }}/${{ env.CLIENT_IMAGE_NAME }}:latest
-            
-            # Restart services
-            docker compose down
-            docker compose up -d
-            
-            # Run migrations
-            docker compose run --rm init
-            
-            # Cleanup old images
-            docker image prune -f
+          ref: ${{ steps.ref.outputs.deploy_ref }}
 
-      - name: Verify deployment
+      - name: Resolve image tag
+        id: image
         run: |
-          sleep 10
-          curl -sf https://staging.bifrost-docs.example.com/health || exit 1
+          DEPLOY_SHA="$(git rev-parse HEAD)"
+          DEPLOY_SHA_SHORT="$(git rev-parse --short=7 HEAD)"
+          echo "deploy_sha=${DEPLOY_SHA}" >> "$GITHUB_OUTPUT"
+          echo "deploy_sha_short=${DEPLOY_SHA_SHORT}" >> "$GITHUB_OUTPUT"
+          echo "api_image=ghcr.io/mtg-thomas/bifrost-docs-api:${DEPLOY_SHA_SHORT}" >> "$GITHUB_OUTPUT"
+          echo "client_image=ghcr.io/mtg-thomas/bifrost-docs-client:${DEPLOY_SHA_SHORT}" >> "$GITHUB_OUTPUT"
 
-  # =============================================================================
-  # Deploy to Production (Manual only)
-  # =============================================================================
-  deploy-production:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
-    environment:
-      name: production
-      url: https://docs.example.com
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to production Kubernetes cluster
-        uses: azure/setup-kubectl@v3
+      - name: Connect runner to NetBird
+        uses: Alemiz112/netbird-connect@v1
         with:
-          version: 'v1.28.0'
+          setup-key: ${{ secrets.NETBIRD_SETUP_KEY }}
 
-      - name: Configure kubectl
+      - name: Configure SSH key
         run: |
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > kubeconfig
-          export KUBECONFIG=kubeconfig
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "${{ secrets.TEST_VM_SSH_KEY }}" > ~/.ssh/test_vm_key
+          sed -i 's/\r$//' ~/.ssh/test_vm_key
+          chmod 600 ~/.ssh/test_vm_key
+          touch ~/.ssh/known_hosts
 
-      - name: Update Kubernetes deployments
-        run: |
-          export KUBECONFIG=kubeconfig
-          
-          # Update image tags in deployments
-          kubectl set image deployment/bifrost-docs-api \
-            api=${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:latest \
-            -n bifrost-docs
-          
-          kubectl set image deployment/bifrost-docs-client \
-            client=${{ env.REGISTRY }}/${{ env.CLIENT_IMAGE_NAME }}:latest \
-            -n bifrost-docs
-          
-          kubectl set image deployment/bifrost-docs-worker \
-            worker=${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:latest \
-            -n bifrost-docs
-          
-          # Wait for rollout to complete
-          kubectl rollout status deployment/bifrost-docs-api -n bifrost-docs --timeout=300s
-          kubectl rollout status deployment/bifrost-docs-client -n bifrost-docs --timeout=300s
-          kubectl rollout status deployment/bifrost-docs-worker -n bifrost-docs --timeout=300s
-
-      - name: Verify deployment
-        run: |
-          export KUBECONFIG=kubeconfig
-          kubectl get pods -n bifrost-docs
-
-  # =============================================================================
-  # Notify on Deployment
-  # =============================================================================
-  notify:
-    runs-on: ubuntu-latest
-    needs: [deploy-staging, deploy-production]
-    if: always()
-    
-    steps:
-      - name: Notify Slack on success
-        if: needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success'
-        uses: 8398a7/action-slack@v3
-        with:
-          status: success
-          channel: '#deployments'
-          text: '✅ Bifrost Docs deployed successfully'
+      - name: Deploy pinned images on test VM
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          DEPLOY_SHA: ${{ steps.image.outputs.deploy_sha }}
+          DEPLOY_SHA_SHORT: ${{ steps.image.outputs.deploy_sha_short }}
+          BIFROST_DOCS_API_IMAGE: ${{ steps.image.outputs.api_image }}
+          BIFROST_DOCS_CLIENT_IMAGE: ${{ steps.image.outputs.client_image }}
+          GHCR_READ_USER: ${{ github.actor }}
+          GHCR_READ_TOKEN: ${{ github.token }}
+        run: |
+          tar -czf /tmp/bifrost-docs-deploy.tgz \
+            scripts/deploy-test-vm.sh \
+            docker-compose.yml \
+            docker-compose.test-vm.yml \
+            docker-compose.ssl.yml
 
-      - name: Notify Slack on failure
-        if: needs.deploy-staging.result == 'failure' || needs.deploy-production.result == 'failure'
-        uses: 8398a7/action-slack@v3
-        with:
-          status: failure
-          channel: '#deployments'
-          text: '❌ Bifrost Docs deployment failed'
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          for attempt in $(seq 1 12); do
+            if ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 "${TEST_VM_USER}@${TEST_VM_HOST}" "true"; then
+              break
+            fi
+            if [ "$attempt" -eq 12 ]; then
+              echo "SSH did not become ready over NetBird" >&2
+              exit 1
+            fi
+            sleep 5
+          done
+
+          scp -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 /tmp/bifrost-docs-deploy.tgz \
+            "${TEST_VM_USER}@${TEST_VM_HOST}:/tmp/bifrost-docs-deploy.tgz"
+
+          ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 "${TEST_VM_USER}@${TEST_VM_HOST}" \
+            "mkdir -p /tmp/bifrost-docs-deploy && tar -xzf /tmp/bifrost-docs-deploy.tgz -C /tmp/bifrost-docs-deploy"
+
+          ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 "${TEST_VM_USER}@${TEST_VM_HOST}" \
+            "export DEPLOY_SHA='${DEPLOY_SHA}' DEPLOY_SHA_SHORT='${DEPLOY_SHA_SHORT}' BIFROST_DOCS_API_IMAGE='${BIFROST_DOCS_API_IMAGE}' BIFROST_DOCS_CLIENT_IMAGE='${BIFROST_DOCS_CLIENT_IMAGE}' GHCR_READ_USER='${GHCR_READ_USER}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' HEALTH_URL='${HEALTH_URL}'; bash /tmp/bifrost-docs-deploy/scripts/deploy-test-vm.sh"
+
+      - name: Verify public health
+        run: curl -fsS "${HEALTH_URL}"

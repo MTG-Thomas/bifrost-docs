@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { startRegistration } from "@simplewebauthn/browser";
 import {
   Loader2,
   Shield,
@@ -613,7 +614,7 @@ function PasskeysSection() {
 
   const { data: passkeys, isLoading } = useQuery({
     queryKey: ["passkeys"],
-    queryFn: () => settingsApi.listPasskeys().then((r) => r.data),
+    queryFn: () => settingsApi.listPasskeys().then((r) => r.data.passkeys),
   });
 
   const deletePasskeyMutation = useMutation({
@@ -637,11 +638,11 @@ function PasskeysSection() {
     try {
       // Get registration options from server
       const optionsResponse = await settingsApi.registerPasskeyOptions();
-      const options = optionsResponse.data;
+      const { options } = optionsResponse.data;
 
       // Create credential using WebAuthn API
-      const credential = await navigator.credentials.create({
-        publicKey: options,
+      const credential = await startRegistration({
+        optionsJSON: options,
       });
 
       if (!credential) {
@@ -651,7 +652,7 @@ function PasskeysSection() {
 
       // Send credential to server
       await settingsApi.registerPasskey({
-        name: newPasskeyName,
+        device_name: newPasskeyName,
         credential: credential,
       });
 

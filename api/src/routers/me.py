@@ -23,6 +23,7 @@ router = APIRouter(prefix="/api/me", tags=["me"])
 # Recent Activity
 # ============================================================================
 
+
 @router.get("/recent", response_model=list[RecentItem])
 async def get_recent(
     current_user: CurrentActiveUser,
@@ -41,6 +42,7 @@ async def get_recent(
 # ============================================================================
 # Favorites
 # ============================================================================
+
 
 class FavoriteCreate(BaseModel):
     """Request to add a favorite."""

@@ -4602,6 +4602,7 @@ export interface components {
             metadata?: {
                 [key: string]: unknown;
             } | null;
+            sync_metadata?: components["schemas"]["SyncMetadata"] | null;
             /** Interfaces */
             interfaces?: unknown[] | null;
             /** Is Enabled */
@@ -4654,6 +4655,7 @@ export interface components {
             metadata?: {
                 [key: string]: unknown;
             };
+            sync_metadata?: components["schemas"]["SyncMetadata"] | null;
             /** Interfaces */
             interfaces?: unknown[];
             /**
@@ -4769,6 +4771,7 @@ export interface components {
             metadata?: {
                 [key: string]: unknown;
             } | null;
+            sync_metadata?: components["schemas"]["SyncMetadata"] | null;
             /** Interfaces */
             interfaces?: unknown[] | null;
             /** Is Enabled */
@@ -4836,6 +4839,7 @@ export interface components {
             metadata?: {
                 [key: string]: unknown;
             } | null;
+            sync_metadata?: components["schemas"]["SyncMetadata"] | null;
             /** Is Enabled */
             is_enabled?: boolean | null;
         };
@@ -4874,6 +4878,7 @@ export interface components {
             metadata?: {
                 [key: string]: unknown;
             };
+            sync_metadata?: components["schemas"]["SyncMetadata"] | null;
             /**
              * Is Enabled
              * @default true
@@ -4915,6 +4920,7 @@ export interface components {
             metadata?: {
                 [key: string]: unknown;
             };
+            sync_metadata?: components["schemas"]["SyncMetadata"] | null;
             /**
              * Is Enabled
              * @default true
@@ -5016,6 +5022,7 @@ export interface components {
             metadata?: {
                 [key: string]: unknown;
             } | null;
+            sync_metadata?: components["schemas"]["SyncMetadata"] | null;
             /** Is Enabled */
             is_enabled?: boolean | null;
         };
@@ -6929,6 +6936,29 @@ export interface components {
              * @default true
              */
             is_enabled: boolean;
+        };
+        /**
+         * SyncMetadata
+         * @description Non-secret provenance and sync state for imported/synced records.
+         */
+        SyncMetadata: {
+            /** Source System */
+            source_system: string;
+            /** Source Tenant Id */
+            source_tenant_id: string;
+            /** External Id */
+            external_id: string;
+            /**
+             * Last Synced At
+             * Format: date-time
+             */
+            last_synced_at: string;
+            /** Sync Status */
+            sync_status: string;
+            /** Sync Hash */
+            sync_hash: string;
+            /** Source Url */
+            source_url?: string | null;
         };
         /**
          * SetupPasskeyOptionsRequest

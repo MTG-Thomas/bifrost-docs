@@ -5,7 +5,7 @@ import { Plus, Network, Server, FileText, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
-import { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useToast } from "@/hooks/use-toast";
 import { documentsApi } from "@/services/api";
 import { MermaidDiagram } from "@/components/diagrams/MermaidDiagram";
@@ -37,27 +37,34 @@ interface DiagramDocument {
   preview?: string;
 }
 
+type DocumentWithDiagramMetadata = DiagramDocument & {
+  metadata?: {
+    diagram_type?: string;
+  };
+};
+
 export function DiagramsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [selectedType, setSelectedType] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [previewDiagram, setPreviewDiagram] = useState<string | null>(null);
 
   const { data: diagrams, isLoading, refetch } = useQuery({
     queryKey: ["diagrams"],
     queryFn: async () => {
       // Query documents with diagram metadata
       const response = await documentsApi.list({
-        limit: 100,
-        sort_by: "updated_at",
-        sort_dir: "desc",
+        params: {
+          limit: 100,
+          sort_by: "updated_at",
+          sort_dir: "desc",
+        },
       });
       
       // Filter to only diagram documents
-      return response.data.items.filter(
-        (doc: any) => doc.metadata?.diagram_type
-      ) as DiagramDocument[];
+      return (response.data.items as DocumentWithDiagramMetadata[]).filter(
+        (doc) => doc.metadata?.diagram_type
+      );
     },
   });
 
@@ -158,7 +165,7 @@ export function DiagramsPage() {
         throw new Error("Failed to generate diagram");
       }
 
-      const result = await response.json();
+      await response.json();
       
       toast({
         title: "Diagram generated",

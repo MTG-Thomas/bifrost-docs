@@ -41,6 +41,15 @@ python -m itglue_migrate.cli run \
     --plan /tmp/test-migration-plan.json \
     --api-url $BIFROST_API_URL \
     --token $BIFROST_TOKEN
+
+# 4. For API-state reconciliation rehearsals, run sync with a report artifact
+python -m itglue_migrate.cli sync \
+    --export-path ../../tests/fixtures/minimal-export \
+    --api-url $BIFROST_API_URL \
+    --token $BIFROST_TOKEN \
+    --all \
+    --dry-run \
+    --reconciliation-output /tmp/test-reconciliation-report.json
 ```
 
 ## What the Fixture Contains
@@ -91,6 +100,23 @@ Before running a real customer migration, validate your setup:
 2. Run the fixture migration against it
 3. Verify entities appear correctly in the UI
 4. Check logs for any errors
+
+### 4. Reconciliation Reports
+
+Use `--reconciliation-output` with the `sync` command to write a JSON
+reconciliation artifact somewhere explicit for a rehearsal or CI run, such as
+`/tmp/test-reconciliation-report.json`.
+
+The report includes:
+
+- `schema_version` and generation metadata
+- aggregate `summary` counts for operator review
+- one `organizations[]` entry per synced organization
+- per-entity counts for planned creates, planned updates, existing, created,
+  updated, skipped, duplicate, failed, and errors
+- warnings and errors suitable for follow-up triage
+
+Password values are never included in reconciliation output.
 
 ## Extending the Fixture
 

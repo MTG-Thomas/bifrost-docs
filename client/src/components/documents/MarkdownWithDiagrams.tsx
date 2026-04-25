@@ -67,29 +67,11 @@ export function MarkdownWithDiagrams({
               <MermaidDiagram chart={segment.content} />
             </div>
           ) : (
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              className="prose prose-sm max-w-none dark:prose-invert"
-              components={{
-                // Override code blocks to not conflict with mermaid
-                code({ inline, className, children, ...props }: any) {
-                  if (inline) {
-                    return (
-                      <code className={className} {...props}>
-                        {children}
-                      </code>
-                    );
-                  }
-                  return (
-                    <pre className={className}>
-                      <code {...props}>{children}</code>
-                    </pre>
-                  );
-                },
-              }}
-            >
-              {segment.content}
-            </ReactMarkdown>
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {segment.content}
+              </ReactMarkdown>
+            </div>
           )}
         </div>
       ))}

@@ -19,6 +19,7 @@ from src.models.contracts.configuration import (
     ConfigurationPublic,
     ConfigurationUpdate,
 )
+from src.models.contracts.sync import sync_metadata_to_storage
 from src.models.enums import AuditAction
 from src.models.orm.configuration import Configuration
 from src.repositories.configuration import ConfigurationRepository
@@ -60,13 +61,20 @@ def _configuration_to_public(config: Configuration) -> ConfigurationPublic:
         "mac_address": config.mac_address,
         "notes": config.notes,
         "metadata": config.metadata_ if isinstance(config.metadata_, dict) else {},
+        "sync_metadata": config.sync_metadata
+        if isinstance(config.sync_metadata, dict) and config.sync_metadata
+        else None,
         "interfaces": config.interfaces if isinstance(config.interfaces, list) else [],
         "is_enabled": config.is_enabled,
         "created_at": config.created_at,
         "updated_at": config.updated_at,
         # Joined fields from relationships
-        "configuration_type_name": config.configuration_type.name if config.configuration_type else None,
-        "configuration_status_name": config.configuration_status.name if config.configuration_status else None,
+        "configuration_type_name": config.configuration_type.name
+        if config.configuration_type
+        else None,
+        "configuration_status_name": config.configuration_status.name
+        if config.configuration_status
+        else None,
         "updated_by_user_id": str(config.updated_by_user_id) if config.updated_by_user_id else None,
         "updated_by_user_name": config.updated_by_user.email if config.updated_by_user else None,
     }
@@ -167,6 +175,7 @@ async def create_configuration(
         mac_address=data.mac_address,
         notes=data.notes,
         metadata_=data.metadata,
+        sync_metadata=sync_metadata_to_storage(data.sync_metadata),
         interfaces=data.interfaces,
         is_enabled=data.is_enabled if data.is_enabled is not None else True,
     )
@@ -374,6 +383,8 @@ async def update_configuration(
         config.notes = data.notes
     if data.metadata is not None:
         config.metadata_ = data.metadata
+    if data.sync_metadata is not None:
+        config.sync_metadata = sync_metadata_to_storage(data.sync_metadata)
     if data.interfaces is not None:
         config.interfaces = data.interfaces
     if data.is_enabled is not None:

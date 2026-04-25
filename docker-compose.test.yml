@@ -17,7 +17,7 @@ name: bifrost-docs-test
 
 services:
   # PostgreSQL Database (Test) - with pgvector extension
-  # Uses tmpfs so data is NOT persisted between test runs - fresh database each time
+  # Uses an isolated test volume so the production/dev database volume is never reused.
   postgres:
     image: pgvector/pgvector:pg16
     container_name: bifrost-docs-test-postgres
@@ -26,8 +26,8 @@ services:
       POSTGRES_USER: bifrost_docs
       POSTGRES_PASSWORD: bifrost_docstest
     # No ports exposed - all access via Docker network
-    tmpfs:
-      - /var/lib/postgresql/data  # Ephemeral storage - fresh each run
+    volumes:
+      - bifrost_docstest_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bifrost_docs -d bifrost_docs_test"]
       interval: 2s
@@ -201,3 +201,6 @@ services:
       retries: 30
     profiles:
       - client  # Only start when --profile client is used
+
+volumes:
+  bifrost_docstest_postgres_data:

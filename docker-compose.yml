@@ -217,9 +217,9 @@ services:
     depends_on:
       api:
         condition: service_healthy
-    # Healthcheck: verifies nginx is accepting connections (using bash /dev/tcp)
+    # Healthcheck: verifies nginx is accepting connections.
     healthcheck:
-      test: ["CMD-SHELL", "bash -c 'cat < /dev/null > /dev/tcp/localhost/80'"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
       interval: 10s
       timeout: 5s
       retries: 3

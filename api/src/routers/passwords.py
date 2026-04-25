@@ -56,8 +56,12 @@ def _to_public(password: Password) -> PasswordPublic:
         "is_enabled": password.is_enabled,
         "created_at": password.created_at,
         "updated_at": password.updated_at,
-        "updated_by_user_id": str(password.updated_by_user_id) if password.updated_by_user_id else None,
-        "updated_by_user_name": password.updated_by_user.email if password.updated_by_user else None,
+        "updated_by_user_id": str(password.updated_by_user_id)
+        if password.updated_by_user_id
+        else None,
+        "updated_by_user_name": password.updated_by_user.email
+        if password.updated_by_user
+        else None,
     }
     return PasswordPublic.model_validate(data)
 
@@ -184,7 +188,6 @@ async def create_password(
     await index_entity_for_search(db, "password", password.id, org_id)
 
     return _to_public(password)
-
 
 
 @router.get("/{password_id}", response_model=PasswordPublic)
@@ -354,8 +357,12 @@ async def reveal_password(
         "is_enabled": password.is_enabled,
         "created_at": password.created_at,
         "updated_at": password.updated_at,
-        "updated_by_user_id": str(password.updated_by_user_id) if password.updated_by_user_id else None,
-        "updated_by_user_name": password.updated_by_user.email if password.updated_by_user else None,
+        "updated_by_user_id": str(password.updated_by_user_id)
+        if password.updated_by_user_id
+        else None,
+        "updated_by_user_name": password.updated_by_user.email
+        if password.updated_by_user
+        else None,
         # Decrypted sensitive fields
         "password": decrypted_password,
         "totp_secret": decrypted_totp,

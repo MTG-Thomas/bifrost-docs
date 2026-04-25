@@ -1,5 +1,3 @@
-version: '3.8'
-
 # SSL/TLS Configuration for dev.docs.midtowntg.com
 # Adds nginx SSL reverse proxy in front of the client
 
@@ -21,7 +19,7 @@ services:
       - client
       - api
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:80/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "--no-check-certificate", "--header", "Host: dev.docs.midtowntg.com", "https://127.0.0.1/health"]
       interval: 10s
       timeout: 5s
       retries: 3

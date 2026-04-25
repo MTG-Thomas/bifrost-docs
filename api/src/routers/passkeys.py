@@ -64,8 +64,8 @@ def _to_public(passkey: UserPasskey) -> PasskeyPublic:
 )
 @limiter.limit(RateLimits.PASSKEY)
 async def get_registration_options(
-    fastapi_request: Request,
-    request: PasskeyRegistrationOptionsRequest,
+    request: Request,
+    registration_request: PasskeyRegistrationOptionsRequest,
     user: CurrentActiveUser,
     db: DbSession,
 ) -> PasskeyRegistrationOptionsResponse:
@@ -97,8 +97,8 @@ async def get_registration_options(
 )
 @limiter.limit(RateLimits.PASSKEY)
 async def verify_registration(
-    fastapi_request: Request,
-    request: PasskeyRegistrationVerifyRequest,
+    request: Request,
+    registration_request: PasskeyRegistrationVerifyRequest,
     user: CurrentActiveUser,
     db: DbSession,
 ) -> PasskeyRegistrationVerifyResponse:
@@ -107,12 +107,12 @@ async def verify_registration(
 
     try:
         # Convert credential dict to JSON string for the service
-        credential_json = json.dumps(request.credential)
+        credential_json = json.dumps(registration_request.credential)
 
         passkey = await service.verify_registration(
             user_id=user.user_id,
             credential_json=credential_json,
-            device_name=request.device_name,
+            device_name=registration_request.device_name,
         )
 
         await db.commit()
@@ -153,8 +153,8 @@ async def verify_registration(
 )
 @limiter.limit(RateLimits.PASSKEY)
 async def get_authentication_options(
-    fastapi_request: Request,
-    request: PasskeyAuthOptionsRequest,
+    request: Request,
+    auth_request: PasskeyAuthOptionsRequest,
     db: DbSession,
 ) -> PasskeyAuthOptionsResponse:
     """Generate WebAuthn authentication options (public endpoint)."""
@@ -162,7 +162,7 @@ async def get_authentication_options(
 
     try:
         challenge_id, options = await service.generate_authentication_options(
-            email=request.email,
+            email=auth_request.email,
         )
 
         return PasskeyAuthOptionsResponse(
@@ -186,8 +186,8 @@ async def get_authentication_options(
 )
 @limiter.limit(RateLimits.PASSKEY)
 async def verify_authentication(
-    fastapi_request: Request,
-    request: PasskeyAuthVerifyRequest,
+    request: Request,
+    auth_request: PasskeyAuthVerifyRequest,
     response: Response,
     db: DbSession,
 ) -> LoginResponse:
@@ -196,10 +196,10 @@ async def verify_authentication(
 
     try:
         # Convert credential dict to JSON string for the service
-        credential_json = json.dumps(request.credential)
+        credential_json = json.dumps(auth_request.credential)
 
         user = await service.verify_authentication(
-            challenge_id=request.challenge_id,
+            challenge_id=auth_request.challenge_id,
             credential_json=credential_json,
         )
 

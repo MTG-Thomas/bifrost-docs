@@ -8,7 +8,7 @@ Note: If slowapi is not installed, rate limiting is disabled (development mode).
 """
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 # Try to import slowapi - if not available, use dummy implementations
 try:
@@ -63,7 +63,7 @@ if RATE_LIMITING_ENABLED:
     limiter = Limiter(
         key_func=get_remote_address,
         storage_uri=settings.redis_url,
-        storage_options={"socket_connect_timeout": 30},
+        storage_options=cast(Any, {"socket_connect_timeout": 30}),
         default_limits=["100/minute"],  # Default: 100 requests per minute
     )
 else:

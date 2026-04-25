@@ -9,12 +9,24 @@ import {
   FolderTree,
   Activity,
   TrendingUp,
-  Users,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { organizationsApi, configurationsApi, passwordsApi, documentsApi } from "@/services/api";
+import api from "@/lib/api-client";
+
+type ListResponse = {
+  total?: number;
+  items?: unknown[];
+};
+
+function getListTotal(data: ListResponse | unknown[]): number {
+  if (Array.isArray(data)) {
+    return data.length;
+  }
+
+  return data.total ?? data.items?.length ?? 0;
+}
 
 interface MigrationStats {
   organizations: number;
@@ -32,32 +44,40 @@ export function MigrationDashboard() {
   const { data: orgs } = useQuery({
     queryKey: ["dashboard-orgs"],
     queryFn: async () => {
-      const response = await organizationsApi.list({ limit: 1 });
-      return response.data.total;
+      const response = await api.get<ListResponse | unknown[]>("/api/organizations", {
+        params: { limit: 1 },
+      });
+      return getListTotal(response.data);
     },
   });
 
   const { data: configs } = useQuery({
     queryKey: ["dashboard-configs"],
     queryFn: async () => {
-      const response = await configurationsApi.list({ limit: 1 });
-      return response.data.total;
+      const response = await api.get<ListResponse>("/api/organizations/{org_id}/configurations", {
+        params: { limit: 1 },
+      });
+      return getListTotal(response.data);
     },
   });
 
   const { data: passwords } = useQuery({
     queryKey: ["dashboard-passwords"],
     queryFn: async () => {
-      const response = await passwordsApi.list({ limit: 1 });
-      return response.data.total;
+      const response = await api.get<ListResponse>("/api/organizations/{org_id}/passwords", {
+        params: { limit: 1 },
+      });
+      return getListTotal(response.data);
     },
   });
 
   const { data: documents } = useQuery({
     queryKey: ["dashboard-docs"],
     queryFn: async () => {
-      const response = await documentsApi.list({ limit: 1 });
-      return response.data.total;
+      const response = await api.get<ListResponse>("/api/organizations/{org_id}/documents", {
+        params: { limit: 1 },
+      });
+      return getListTotal(response.data);
     },
   });
 

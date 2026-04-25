@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api-client";
 import { toast } from "sonner";
 
@@ -169,14 +169,14 @@ export function useToggleFavorite() {
     favoriteId?: string;
     customLabel?: string | null;
   }) => {
-    if (isFavorite && favoriteId) {
+    if (!isFavorite) {
       await addFavorite.mutateAsync({
         organization_id,
         entity_type,
         entity_id,
         custom_label: customLabel,
       });
-    } else if (!isFavorite && favoriteId) {
+    } else if (favoriteId) {
       await unfavorite.mutateAsync({ organization_id, entity_type, entity_id });
     }
   };

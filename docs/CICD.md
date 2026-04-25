@@ -24,7 +24,7 @@ Checks     Checks
          │
     Push to GHCR
          │
-    E2E Tests
+    E2E Smoke / Full E2E
          │
     Security Scan
          │
@@ -67,33 +67,50 @@ Checks     Checks
 - Pushes to GitHub Container Registry (GHCR)
 - Tags: `latest`, branch name, short SHA
 
-#### E2E Tests
-- Runs Playwright tests against built images
-- Uses Docker Compose test configuration
+#### E2E Smoke Tests
+- Validates that smoke-labeled Playwright specs are present while the runtime harness is stabilized
+- Non-blocking while fixture drift is stabilized
+- Intended to become deploy-blocking once reliable
+
+#### Full E2E Tests
+- Runs the broader Playwright/Docker Compose test suite
+- Remains non-blocking while historical fixture drift is resolved
 
 #### Security Scanning
 - Trivy vulnerability scanner on images
 - Results uploaded to GitHub Security tab
+- Repository scan runs on PRs and `main`; image scans run after CI image build
+- Fixed HIGH/CRITICAL image vulnerabilities fail the security job
 
-### 2. CD - Deploy (`.github/workflows/cd.yml`)
+### 2. SonarQube (`.github/workflows/sonar.yml`)
+
+**Triggers:**
+- Push to `main` or `develop`
+- Pull requests to `main` or `develop`
+- Manual trigger (`workflow_dispatch`)
+
+The workflow uses `sonar-project.properties` and is ready for SonarCloud by default. It skips cleanly until `SONAR_TOKEN` is added as a repository secret. Set repository variable `SONAR_HOST_URL` only if using a non-default SonarQube server URL.
+
+### 3. CD - Deploy Test VM (`.github/workflows/cd.yml`)
 
 **Triggers:**
 - Successful CI completion on `main`
-- Manual trigger with environment selection
+- Manual trigger with optional commit SHA/ref
+
+Manual deploys expect that CI has already published the matching short-SHA images.
 
 **Environments:**
 
-#### Staging (Automatic)
-- Deploys via SSH to staging server
-- Pulls latest images from GHCR
-- Runs database migrations
-- Verifies deployment with health check
-
-#### Production (Manual)
-- Requires manual trigger via GitHub UI
-- Deploys to Kubernetes cluster
-- Updates image tags in deployments
-- Waits for rollout to complete
+#### Bifrost Docs Dev (Automatic)
+- Connects the GitHub-hosted runner to NetBird
+- Deploys over SSH to `bifrost-docs-dev`
+- Uses the CI-published short-SHA GHCR image tags, not mutable `latest`
+- Uses an isolated checkout at `/home/thomas/deploy/bifrost-docs-main`
+- Preserves the VM's existing `.env` and Garage config from `/home/thomas/workspace/bifrost-docs`
+- Runs Docker Compose with `docker-compose.yml`, `docker-compose.test-vm.yml`, and `docker-compose.ssl.yml`
+- Uses Compose project `bifrost-docs-dev` to upgrade the existing test VM stack and reuse its data volumes
+- Uses GitHub Environment `bifrost-docs-dev`
+- Verifies `https://dev.docs.midtowntg.com/health`
 
 ## Local CI Checks
 
@@ -136,36 +153,41 @@ docker pull ghcr.io/mtg-thomas/bifrost-docs-client:latest
 
 For CI/CD to work, add these secrets in GitHub repository settings:
 
-#### For Staging Deployment
-- `STAGING_SSH_HOST`: Staging server IP/hostname
-- `STAGING_SSH_USER`: SSH username
-- `STAGING_SSH_KEY`: SSH private key (pem format)
+#### For Test VM Deployment
+- `NETBIRD_SETUP_KEY`: Setup key that lets the GitHub runner join the NetBird network
+- `TEST_VM_SSH_KEY`: Private key authorized for `thomas@100.103.235.51`
 
-#### For Production Deployment
-- `KUBE_CONFIG`: Base64-encoded kubectl config
-- `SLACK_WEBHOOK_URL`: (Optional) Slack notifications
+Store deployment credentials as `bifrost-docs-dev` environment secrets when possible. Repository-level secrets remain compatible with the workflow during bootstrap. The workflow uses the built-in `GITHUB_TOKEN` for temporary GHCR pulls during the deploy job.
+
+#### For SonarQube
+- `SONAR_TOKEN`: SonarCloud/SonarQube token for project analysis
+
+Optional repository variable:
+- `SONAR_HOST_URL`: SonarQube server URL; defaults to `https://sonarcloud.io`
 
 ### Docker Compose Override for GHCR
 
 To use the CI-built images in production:
 
 ```yaml
-# docker-compose.prod.yml
+# docker-compose.test-vm.yml
 services:
   api:
-    image: ghcr.io/mtg-thomas/bifrost-docs-api:latest
+    image: ${BIFROST_DOCS_API_IMAGE}
     
   client:
-    image: ghcr.io/mtg-thomas/bifrost-docs-client:latest
+    image: ${BIFROST_DOCS_CLIENT_IMAGE}
     
   worker:
-    image: ghcr.io/mtg-thomas/bifrost-docs-api:latest
+    image: ${BIFROST_DOCS_API_IMAGE}
 ```
 
 Deploy:
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+export BIFROST_DOCS_API_IMAGE=ghcr.io/mtg-thomas/bifrost-docs-api:<short-sha>
+export BIFROST_DOCS_CLIENT_IMAGE=ghcr.io/mtg-thomas/bifrost-docs-client:<short-sha>
+docker compose -p bifrost-docs-dev -f docker-compose.yml -f docker-compose.test-vm.yml -f docker-compose.ssl.yml pull
+docker compose -p bifrost-docs-dev -f docker-compose.yml -f docker-compose.test-vm.yml -f docker-compose.ssl.yml up -d
 ```
 
 ## Workflow Badges
@@ -220,6 +242,7 @@ docker build -t test-client ./client
 - [ ] Add performance testing (k6/Locust)
 - [ ] Add mutation testing
 - [ ] Automated rollback on deployment failure
+- [x] Manual rollback runbook for redeploying a known-good image tag
 - [ ] Blue/green deployments
 - [ ] Automated database backup before migration
 - [ ] Integration with Sentry for error tracking
