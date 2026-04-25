@@ -2606,16 +2606,10 @@ def _build_attachment_validation_summary(
     image_references = collect_embedded_image_references(export_path, documents)
     image_validation = verify_embedded_images(image_references)
     summary = validation.to_dict()
-    scoped_orphaned = {
-        entity_type: sorted(set(ids) & entities_to_migrate.get(entity_type, set()))
-        for entity_type, ids in validation.orphaned.items()
-    }
-    scoped_orphaned = {key: value for key, value in scoped_orphaned.items() if value}
-    total_orphaned = sum(len(ids) for ids in scoped_orphaned.values())
-    summary["orphaned"] = scoped_orphaned
-    summary["total_orphaned_folders"] = total_orphaned
+    summary.pop("orphaned", None)
+    summary.pop("total_orphaned_folders", None)
+    summary["orphaned_scope"] = "not_reported_per_org"
     summary["failure_categories"] = {
-        "orphaned_folders": total_orphaned,
         BROKEN_EMBEDDED_IMAGE: len(image_validation.failures),
     }
     summary["embedded_images"] = {
@@ -2934,6 +2928,8 @@ async def _run_sync(
                         update_existing=update_existing,
                     )
                     result = await executor.execute(plan)
+                    total_result.errors.extend(result.errors)
+                    org_errors = list(result.errors)
                     org_counts = apply_result_counts(org_counts, result)
                     relationship_summary = (
                         result.relationship_summary
