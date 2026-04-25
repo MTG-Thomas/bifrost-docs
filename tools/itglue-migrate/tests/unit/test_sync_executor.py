@@ -179,6 +179,120 @@ class TestSyncExecutorDryRun:
         mock_client.create_document.assert_not_called()
         mock_client.create_password.assert_not_called()
 
+    @pytest.mark.asyncio
+    async def test_dry_run_counts_document_loaded_from_export_html(
+        self, mock_client: MagicMock
+    ) -> None:
+        """Dry run should use DocumentProcessor content before empty checks."""
+        plan = SyncPlan()
+        plan.documents.to_create = [{"id": "doc-3", "name": "Exported Document"}]
+        doc_processor = MagicMock()
+        doc_processor.load_document_content.return_value = "<p>Exported content</p>"
+
+        executor = SyncExecutor(
+            mock_client,
+            org_id="org-uuid",
+            dry_run=True,
+            doc_processor=doc_processor,
+        )
+        result = await executor.execute(plan)
+
+        assert result.created.get("documents", 0) == 1
+        assert result.skipped.get("documents", 0) == 0
+        doc_processor.load_document_content.assert_called_once_with("doc-3")
+        mock_client.create_document.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_dry_run_counts_empty_document_with_attachments(
+        self, mock_client: MagicMock, tmp_path
+    ) -> None:
+        """Attachment-only exported documents should not be skipped."""
+        plan = SyncPlan()
+        plan.documents.to_create = [{"id": "doc-4", "name": "Attached PDF"}]
+        attachment = tmp_path / "attached.pdf"
+        attachment.write_bytes(b"%PDF-1.4")
+        doc_processor = MagicMock()
+        doc_processor.load_document_content.return_value = ""
+        doc_processor.scanner.get_entity_attachments.return_value = [attachment]
+
+        executor = SyncExecutor(
+            mock_client,
+            org_id="org-uuid",
+            dry_run=True,
+            doc_processor=doc_processor,
+            export_path=tmp_path,
+        )
+        result = await executor.execute(plan)
+
+        assert result.created.get("documents", 0) == 1
+        assert result.skipped.get("documents", 0) == 0
+        doc_processor.scanner.get_entity_attachments.assert_called_once_with(
+            tmp_path,
+            "documents",
+            "doc-4",
+        )
+        mock_client.create_document.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_dry_run_skips_when_attachment_scan_fails(
+        self, mock_client: MagicMock, tmp_path
+    ) -> None:
+        """Attachment scan errors should not abort document sync."""
+        plan = SyncPlan()
+        plan.documents.to_create = [{"id": "doc-5", "name": "Broken Attachment Scan"}]
+        doc_processor = MagicMock()
+        doc_processor.load_document_content.return_value = ""
+        doc_processor.scanner.get_entity_attachments.side_effect = OSError("scan failed")
+
+        executor = SyncExecutor(
+            mock_client,
+            org_id="org-uuid",
+            dry_run=True,
+            doc_processor=doc_processor,
+            export_path=tmp_path,
+        )
+        result = await executor.execute(plan)
+
+        assert result.created.get("documents", 0) == 0
+        assert result.skipped.get("documents", 0) == 1
+        mock_client.create_document.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_execute_creates_attachment_only_document(
+        self, mock_client: MagicMock, tmp_path
+    ) -> None:
+        """Live sync should create attachment-only documents before uploads."""
+        plan = SyncPlan()
+        plan.documents.to_create = [{"id": "doc-6", "name": "Attached Runbook"}]
+        attachment = tmp_path / "runbook.pdf"
+        attachment.write_bytes(b"%PDF-1.4")
+        doc_processor = MagicMock()
+        doc_processor.load_document_content.return_value = ""
+        doc_processor.document_folder_map = {}
+        doc_processor.process_document = AsyncMock(return_value=("", []))
+        doc_processor.scanner.get_entity_attachments.return_value = [attachment]
+        doc_processor.upload_entity_attachments = AsyncMock(return_value=1)
+
+        executor = SyncExecutor(
+            mock_client,
+            org_id="org-uuid",
+            dry_run=False,
+            doc_processor=doc_processor,
+            export_path=tmp_path,
+        )
+        result = await executor.execute(plan)
+
+        assert result.created.get("documents", 0) == 1
+        assert result.skipped.get("documents", 0) == 0
+        mock_client.create_document.assert_called_once()
+        assert "Attachment-only document" in mock_client.create_document.call_args.kwargs["content"]
+        doc_processor.upload_entity_attachments.assert_awaited_once_with(
+            entity_type="documents",
+            entity_id="doc-6",
+            org_uuid="org-uuid",
+            our_entity_id="new-doc-uuid",
+        )
+
 
 class TestSyncExecutorExecuteLocations:
     """Tests for executing location sync."""

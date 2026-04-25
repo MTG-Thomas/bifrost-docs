@@ -656,6 +656,35 @@ class SyncExecutor:
 
             # SECOND: Check for empty content (after attempting to load from file)
             if _is_content_empty(raw_content):
+                attachment_files = []
+                if self.doc_processor and self.export_path:
+                    try:
+                        attachment_files = self.doc_processor.scanner.get_entity_attachments(
+                            self.export_path,
+                            "documents",
+                            itglue_id,
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            "Failed to inspect attachments for document %s in %s: %s",
+                            itglue_id,
+                            self.export_path,
+                            e,
+                        )
+                if attachment_files:
+                    raw_content = (
+                        "_Attachment-only document imported from IT Glue. "
+                        "The export did not include an HTML body; see attachments._"
+                    )
+                else:
+                    result.skipped["documents"] = result.skipped.get("documents", 0) + 1
+                    logger.debug(f"Skipping document '{doc_name}': empty content")
+                    if self.reporter:
+                        self.reporter.update_progress(skipped=1)
+                        self.reporter.warning(f"Document '{doc_name}' has empty content")
+                    continue
+
+            if _is_content_empty(raw_content):
                 result.skipped["documents"] = result.skipped.get("documents", 0) + 1
                 logger.debug(f"Skipping document '{doc_name}': empty content")
                 if self.reporter:
