@@ -3,8 +3,9 @@ Relationship contracts (API request/response schemas).
 """
 
 from datetime import datetime
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 class RelationshipCreate(BaseModel):
@@ -27,13 +28,17 @@ class RelationshipPublic(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
-    organization_id: str
+    id: UUID
+    organization_id: UUID
     source_type: str
-    source_id: str
+    source_id: UUID
     target_type: str
-    target_id: str
+    target_id: UUID
     created_at: datetime
+
+    @field_serializer("id", "organization_id", "source_id", "target_id")
+    def serialize_uuid(self, v: UUID) -> str:
+        return str(v)
 
 
 class RelatedEntity(BaseModel):

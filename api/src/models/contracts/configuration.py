@@ -28,7 +28,7 @@ class ConfigurationTypeCreate(BaseModel):
 class ConfigurationTypePublic(BaseModel):
     """Configuration type public response model (global, not org-scoped)."""
 
-    id: str
+    id: UUID
     name: str
     is_active: bool
     created_at: datetime
@@ -53,7 +53,7 @@ class ConfigurationStatusCreate(BaseModel):
 class ConfigurationStatusPublic(BaseModel):
     """Configuration status public response model (global, not org-scoped)."""
 
-    id: str
+    id: UUID
     name: str
     is_active: bool
     created_at: datetime

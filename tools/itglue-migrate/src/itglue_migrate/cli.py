@@ -2920,12 +2920,18 @@ async def _run_sync(
                 console.print()
                 console.print("[yellow]DRY RUN - No changes made[/yellow]")
                 if report:
+                    doc_processor: DocumentProcessor | None = None
+                    if export_path:
+                        doc_processor = DocumentProcessor(client, export_path)
                     executor = SyncExecutor(
                         client,  # type: ignore[arg-type]
                         org_id=org_uuid,
                         dry_run=True,
                         state=state,
                         update_existing=update_existing,
+                        doc_processor=doc_processor,
+                        export_path=export_path,
+                        skip_attachments=True,
                     )
                     result = await executor.execute(plan)
                     total_result.errors.extend(result.errors)

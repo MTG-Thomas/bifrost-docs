@@ -109,7 +109,7 @@ class CustomAssetTypePublic(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
+    id: UUID
     name: str
     fields: list[FieldDefinition]
     sort_order: int = 0
