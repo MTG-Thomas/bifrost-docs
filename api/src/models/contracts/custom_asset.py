@@ -158,7 +158,7 @@ class CustomAssetPublic(PublicEntityBase):
     Password fields are excluded from values.
     """
 
-    custom_asset_type_id: str
+    custom_asset_type_id: UUID
     values: dict[str, Any]  # password fields excluded
     sync_metadata: SyncMetadata | None = None
     updated_by_user_id: str | None = None
@@ -177,7 +177,7 @@ class CustomAssetReveal(PublicEntityBase):
     Includes decrypted password field values.
     """
 
-    custom_asset_type_id: str
+    custom_asset_type_id: UUID
     values: dict[str, Any]  # includes decrypted password fields
     sync_metadata: SyncMetadata | None = None
     updated_by_user_id: str | None = None
