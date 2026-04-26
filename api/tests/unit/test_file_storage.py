@@ -33,6 +33,15 @@ def mock_settings():
     settings.s3_bucket = "test-bucket"
     settings.s3_presigned_url_expiry = 600
     settings.s3_download_url_expiry = 3600
+    settings.storage_backend = "s3"
+    settings.storage_configured = True
+    settings.azure_blob_configured = False
+    settings.azure_storage_connection_string = None
+    settings.azure_storage_account_url = None
+    settings.azure_storage_account_key = None
+    settings.azure_blob_container = "test-container"
+    settings.azure_blob_sas_expiry = 600
+    settings.azure_blob_download_sas_expiry = 3600
     return settings
 
 
@@ -294,3 +303,145 @@ class TestFileStorageServiceNotConfigured:
         with pytest.raises(RuntimeError, match="S3 storage not configured"):
             async with service.get_client():
                 pass
+
+
+@pytest.fixture
+def mock_azure_settings():
+    """Create mock Azure Blob settings for testing."""
+    settings = MagicMock()
+    settings.storage_backend = "azure_blob"
+    settings.storage_configured = True
+    settings.s3_configured = False
+    settings.azure_blob_configured = True
+    settings.azure_storage_connection_string = (
+        "DefaultEndpointsProtocol=https;"
+        "AccountName=testaccount;"
+        "AccountKey=testkey;"
+        "EndpointSuffix=core.windows.net"
+    )
+    settings.azure_storage_account_url = None
+    settings.azure_storage_account_key = None
+    settings.azure_blob_container = "test-container"
+    settings.azure_blob_sas_expiry = 600
+    settings.azure_blob_download_sas_expiry = 3600
+    return settings
+
+
+@pytest.fixture
+def azure_storage_service(mock_azure_settings):
+    """Create Azure Blob file storage service with mock settings."""
+    return FileStorageService(settings=mock_azure_settings)
+
+
+class TestAzureBlobFileStorageService:
+    """Tests for Azure Blob storage backend."""
+
+    def test_azure_account_name_and_key_from_connection_string(self, azure_storage_service):
+        """Test Azure account credentials are parsed from connection string."""
+        account_name, account_key = azure_storage_service._get_azure_account_name_and_key()
+
+        assert account_name == "testaccount"
+        assert account_key == "testkey"
+
+    def test_azure_account_name_and_key_from_account_url(self, mock_azure_settings):
+        """Test Azure account credentials are parsed from account URL and key."""
+        mock_azure_settings.azure_storage_connection_string = None
+        mock_azure_settings.azure_storage_account_url = "https://docsproof.blob.core.windows.net"
+        mock_azure_settings.azure_storage_account_key = "account-key"
+        service = FileStorageService(settings=mock_azure_settings)
+
+        account_name, account_key = service._get_azure_account_name_and_key()
+
+        assert account_name == "docsproof"
+        assert account_key == "account-key"
+
+    @pytest.mark.asyncio
+    async def test_generate_azure_upload_url(self, azure_storage_service):
+        """Test Azure Blob upload SAS URL generation."""
+        mock_blob = MagicMock()
+        mock_blob.url = "https://testaccount.blob.core.windows.net/test-container/test/key.pdf"
+        mock_service = MagicMock()
+        mock_service.get_blob_client.return_value = mock_blob
+
+        with (
+            patch.object(
+                azure_storage_service, "_get_blob_service_client", return_value=mock_service
+            ),
+            patch("azure.storage.blob.generate_blob_sas", return_value="sig=token") as mock_sas,
+        ):
+            url = await azure_storage_service.generate_upload_url(
+                s3_key="test/key.pdf",
+                content_type="application/pdf",
+            )
+
+        assert (
+            url == "https://testaccount.blob.core.windows.net/test-container/test/key.pdf?sig=token"
+        )
+        mock_service.get_blob_client.assert_called_once_with(
+            container="test-container",
+            blob="test/key.pdf",
+        )
+        sas_kwargs = mock_sas.call_args.kwargs
+        assert sas_kwargs["account_name"] == "testaccount"
+        assert sas_kwargs["container_name"] == "test-container"
+        assert sas_kwargs["blob_name"] == "test/key.pdf"
+        assert sas_kwargs["account_key"] == "testkey"
+        assert sas_kwargs["content_type"] == "application/pdf"
+        assert sas_kwargs["permission"].write is True
+        assert sas_kwargs["permission"].create is True
+
+    @pytest.mark.asyncio
+    async def test_generate_azure_download_url_with_filename(self, azure_storage_service):
+        """Test Azure Blob download SAS URL generation."""
+        mock_blob = MagicMock()
+        mock_blob.url = "https://testaccount.blob.core.windows.net/test-container/test/key.pdf"
+        mock_service = MagicMock()
+        mock_service.get_blob_client.return_value = mock_blob
+
+        with (
+            patch.object(
+                azure_storage_service, "_get_blob_service_client", return_value=mock_service
+            ),
+            patch("azure.storage.blob.generate_blob_sas", return_value="sig=token") as mock_sas,
+        ):
+            url = await azure_storage_service.generate_download_url(
+                s3_key="test/key.pdf",
+                filename="document.pdf",
+            )
+
+        assert (
+            url == "https://testaccount.blob.core.windows.net/test-container/test/key.pdf?sig=token"
+        )
+        sas_kwargs = mock_sas.call_args.kwargs
+        assert sas_kwargs["permission"].read is True
+        assert sas_kwargs["content_disposition"] == 'attachment; filename="document.pdf"'
+
+    @pytest.mark.asyncio
+    async def test_azure_delete_file(self, azure_storage_service):
+        """Test Azure Blob deletion."""
+        mock_blob = MagicMock()
+        mock_service = MagicMock()
+        mock_service.get_blob_client.return_value = mock_blob
+
+        with patch.object(
+            azure_storage_service, "_get_blob_service_client", return_value=mock_service
+        ):
+            result = await azure_storage_service.delete_file("test/key.pdf")
+
+        assert result is True
+        mock_blob.delete_blob.assert_called_once_with(delete_snapshots="include")
+
+    @pytest.mark.asyncio
+    async def test_azure_file_exists(self, azure_storage_service):
+        """Test Azure Blob existence check."""
+        mock_blob = MagicMock()
+        mock_blob.exists.return_value = True
+        mock_service = MagicMock()
+        mock_service.get_blob_client.return_value = mock_blob
+
+        with patch.object(
+            azure_storage_service, "_get_blob_service_client", return_value=mock_service
+        ):
+            result = await azure_storage_service.file_exists("test/key.pdf")
+
+        assert result is True

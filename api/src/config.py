@@ -171,6 +171,11 @@ class Settings(BaseSettings):
         default="/tmp/bifrost_docs", description="Path to temporary storage directory"
     )
 
+    storage_backend: Literal["s3", "azure_blob"] = Field(
+        default="s3",
+        description="Attachment/export storage backend. Use 'azure_blob' for Azure Storage.",
+    )
+
     # ==========================================================================
     # S3/MinIO Storage
     # ==========================================================================
@@ -210,6 +215,56 @@ class Settings(BaseSettings):
     def s3_configured(self) -> bool:
         """Check if S3 storage is properly configured."""
         return self.s3_access_key is not None and self.s3_secret_key is not None
+
+    # ==========================================================================
+    # Azure Blob Storage
+    # ==========================================================================
+    azure_storage_account_url: str | None = Field(
+        default=None,
+        description="Azure Blob service URL, e.g. https://account.blob.core.windows.net",
+    )
+
+    azure_storage_connection_string: str | None = Field(
+        default=None,
+        description="Azure Storage connection string. Prefer managed identity for production.",
+    )
+
+    azure_storage_account_key: str | None = Field(
+        default=None,
+        description="Azure Storage account key for SAS generation when not using a connection string.",
+    )
+
+    azure_blob_container: str = Field(
+        default="bifrost-docs",
+        description="Azure Blob container name for file storage.",
+    )
+
+    azure_blob_sas_expiry: int = Field(
+        default=600,
+        description="Azure Blob upload SAS expiry in seconds.",
+    )
+
+    azure_blob_download_sas_expiry: int = Field(
+        default=3600,
+        description="Azure Blob download SAS expiry in seconds.",
+    )
+
+    @computed_field
+    @property
+    def azure_blob_configured(self) -> bool:
+        """Check if Azure Blob storage is configured."""
+        return self.azure_storage_connection_string is not None or (
+            self.azure_storage_account_url is not None
+            and self.azure_storage_account_key is not None
+        )
+
+    @computed_field
+    @property
+    def storage_configured(self) -> bool:
+        """Check if the selected storage backend is configured."""
+        if self.storage_backend == "azure_blob":
+            return self.azure_blob_configured
+        return self.s3_configured
 
     # ==========================================================================
     # OpenAI (for embeddings)
