@@ -1,0 +1,32 @@
+title = "bifrost-gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known fake test/dev values only"
+condition = "AND"
+paths = [
+  '''api/tests/.*''',
+  '''client/e2e/setup/.*''',
+  '''client/playwright-report/.*''',
+  '''client/test-results/.*''',
+  '''\.github/workflows/ci\.yml''',
+  '''\.migration-runs/.*''',
+  '''api/src/routers/attachments\.py''',
+  '''api/docs/api-documentation\.md''',
+  '''kubernetes/cronjobs/backup-cronjob\.yaml''',
+  '''kubernetes/secret\.yaml''',
+  '''tools/quick_demo\.sh''',
+  '''\.env\.test\.example''',
+]
+regexes = [
+  '''^dev-secret-key-change-in-production-must-be-32-chars$''',
+  '''^bifrost_dev$''',
+  '''^bifrost123$''',
+  '''^s3_key$''',
+  '''^REPLACE_WITH_32_CHAR_SECRET_KEY$''',
+  '''^test-secret-key-must-be-at-least-32-characters-long$''',
+  '''^testsecret[0-9]{20,}$''',
+  '''^testadmintoken[0-9]{20,}$''',
+]

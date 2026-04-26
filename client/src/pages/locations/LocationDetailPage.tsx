@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import DOMPurify from "dompurify";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -441,7 +442,7 @@ export function LocationDetailPage() {
             ) : location.notes ? (
               <div
                 className="prose prose-sm max-w-none dark:prose-invert"
-                dangerouslySetInnerHTML={{ __html: location.notes }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(location.notes) }}
               />
             ) : (
               <p className="text-sm text-muted-foreground italic">No notes</p>
