@@ -27,7 +27,7 @@ class PublicEntityBase(BaseModel):
             username: str | None = None
     """
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: UUID
     organization_id: UUID
@@ -49,7 +49,7 @@ class PublicOrganizationBase(BaseModel):
     Organization IS the organization, so it doesn't have an organization_id field.
     """
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: UUID
     name: str

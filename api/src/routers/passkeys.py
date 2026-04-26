@@ -38,7 +38,7 @@ from src.models.contracts.passkeys import (
 from src.models.enums import AuditAction
 from src.routers.auth import set_auth_cookies
 from src.services.audit_service import get_audit_service
-from src.services.passkey_service import PasskeyService, UserPasskey
+from src.services.passkey_service import PasskeyService, PasskeyValidationError, UserPasskey
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,15 @@ router = APIRouter(prefix="/auth/passkeys", tags=["passkeys"])
 def _to_public(passkey: UserPasskey) -> PasskeyPublic:
     """Convert UserPasskey ORM model to public response."""
     return PasskeyPublic.model_validate(passkey)
+
+
+def _reject_api_key_passkey_enrollment(user: UserPrincipal) -> None:
+    """Passkey enrollment is an interactive browser-user flow."""
+    if user.api_key_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Passkey enrollment requires interactive user authentication",
+        )
 
 
 # =============================================================================
@@ -70,6 +79,7 @@ async def get_registration_options(
     db: DbSession,
 ) -> PasskeyRegistrationOptionsResponse:
     """Generate WebAuthn registration options for the current user."""
+    _reject_api_key_passkey_enrollment(user)
     service = PasskeyService(db)
 
     try:
@@ -103,6 +113,7 @@ async def verify_registration(
     db: DbSession,
 ) -> PasskeyRegistrationVerifyResponse:
     """Verify and complete passkey registration."""
+    _reject_api_key_passkey_enrollment(user)
     service = PasskeyService(db)
 
     try:
@@ -124,6 +135,16 @@ async def verify_registration(
             passkey_id=passkey.id,
             name=passkey.name,
         )
+    except PasskeyValidationError as e:
+        logger.warning(
+            "Invalid passkey registration response for user %s",
+            user.user_id,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid passkey registration response",
+        ) from e
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -225,6 +246,13 @@ async def verify_authentication(
         # Generate login tokens (same as password login)
         return await _generate_login_tokens(user, db, response)
 
+    except PasskeyValidationError as e:
+        logger.warning("Invalid passkey authentication response", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid passkey authentication response",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from e
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

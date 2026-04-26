@@ -267,6 +267,16 @@ async def oauth_callback(
     oauth_service = OAuthService(db)
     user_repo = UserRepository(db)
 
+    if callback_data.provider not in PROVIDER_INFO:
+        logger.warning(
+            "OAuth callback with invalid provider",
+            extra={"provider": callback_data.provider},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid OAuth provider",
+        )
+
     # Validate state and retrieve PKCE verifier + redirect_uri from Redis
     r = await get_redis()
     state_key = _oauth_state_key(callback_data.state)
@@ -282,9 +292,6 @@ async def oauth_callback(
             detail="Invalid or expired OAuth state",
         )
 
-    # Delete state immediately (single-use)
-    await r.delete(state_key)
-
     # Parse state data (contains code_verifier and redirect_uri)
     if isinstance(state_data_raw, bytes):
         state_data_raw = state_data_raw.decode("utf-8")
@@ -299,6 +306,9 @@ async def oauth_callback(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid OAuth state data",
         ) from e
+
+    # Delete state before provider token exchange so parsed state remains single-use.
+    await r.delete(state_key)
 
     try:
         # Exchange code for tokens using server-side verifier
@@ -325,7 +335,7 @@ async def oauth_callback(
         logger.error(f"OAuth callback error: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="OAuth callback failed",
         ) from e
 
     # Check if user already has an OAuth account linked

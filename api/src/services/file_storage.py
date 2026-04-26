@@ -1,13 +1,13 @@
 """
-S3 storage service for file attachments.
+File storage service for attachments and exports.
 
-Handles S3 operations including:
-- Presigned upload URLs
-- Presigned download URLs
+Handles object storage operations including:
+- Presigned/SAS upload URLs
+- Presigned/SAS download URLs
 - File deletion
 - MIME type detection
 
-Supports MinIO in development and any S3-compatible storage in production.
+Supports S3-compatible storage and Azure Blob Storage.
 """
 
 import hashlib
@@ -15,6 +15,7 @@ import logging
 import mimetypes
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
+from urllib.parse import parse_qsl
 from uuid import UUID
 
 from src.config import Settings, get_settings
@@ -26,17 +27,18 @@ logger = logging.getLogger(__name__)
 
 
 class FileStorageService:
-    """Service for S3-compatible file storage operations."""
+    """Service for object storage operations."""
 
     def __init__(self, settings: Settings | None = None):
         """
         Initialize file storage service.
 
         Args:
-            settings: Application settings with S3 configuration.
+            settings: Application settings with storage configuration.
                      Uses get_settings() if not provided.
         """
         self.settings = settings or get_settings()
+        self.backend = getattr(self.settings, "storage_backend", "s3")
 
     @asynccontextmanager
     async def get_client(self) -> "AsyncGenerator[Any, None]":
@@ -66,6 +68,91 @@ class FileStorageService:
             region_name=self.settings.s3_region,
         ) as client:
             yield client
+
+    def _require_azure_blob_configured(self) -> None:
+        if not self.settings.azure_blob_configured:
+            raise RuntimeError(
+                "Azure Blob storage not configured. Set BIFROST_DOCS_AZURE_STORAGE_CONNECTION_STRING "
+                "or BIFROST_DOCS_AZURE_STORAGE_ACCOUNT_URL and BIFROST_DOCS_AZURE_STORAGE_ACCOUNT_KEY."
+            )
+
+    def _get_blob_service_client(self) -> Any:
+        """Create an Azure Blob service client from configured credentials."""
+        self._require_azure_blob_configured()
+
+        from azure.storage.blob import BlobServiceClient
+
+        if self.settings.azure_storage_connection_string:
+            return BlobServiceClient.from_connection_string(
+                self.settings.azure_storage_connection_string
+            )
+
+        if not self.settings.azure_storage_account_url:
+            raise RuntimeError("Azure Blob storage account URL is required")
+
+        return BlobServiceClient(
+            account_url=self.settings.azure_storage_account_url,
+            credential=self.settings.azure_storage_account_key,
+        )
+
+    def _get_azure_account_name_and_key(self) -> tuple[str, str]:
+        """Get the Azure Storage account name and key for SAS generation."""
+        if self.settings.azure_storage_connection_string:
+            parts = dict(parse_qsl(self.settings.azure_storage_connection_string.replace(";", "&")))
+            account_name = parts.get("AccountName")
+            account_key = parts.get("AccountKey")
+            if account_name and account_key:
+                return account_name, account_key
+
+        if self.settings.azure_storage_account_url and self.settings.azure_storage_account_key:
+            account_name = self.settings.azure_storage_account_url.removeprefix("https://").split(
+                ".", 1
+            )[0]
+            return account_name, self.settings.azure_storage_account_key
+
+        raise RuntimeError("Azure Blob SAS generation requires a storage account key")
+
+    def _generate_blob_sas_url(
+        self,
+        blob_name: str,
+        expires_in: int,
+        permission: str,
+        content_type: str | None = None,
+        filename: str | None = None,
+    ) -> str:
+        """Generate an Azure Blob SAS URL for direct browser access."""
+        self._require_azure_blob_configured()
+
+        from datetime import UTC, datetime, timedelta
+
+        from azure.storage.blob import BlobSasPermissions, generate_blob_sas
+
+        service = self._get_blob_service_client()
+        account_name, account_key = self._get_azure_account_name_and_key()
+        container_name = self.settings.azure_blob_container
+        blob_client = service.get_blob_client(container=container_name, blob=blob_name)
+
+        permissions = BlobSasPermissions(
+            read="r" in permission,
+            write="w" in permission,
+            create="w" in permission,
+        )
+        kwargs: dict[str, Any] = {
+            "account_name": account_name,
+            "container_name": container_name,
+            "blob_name": blob_name,
+            "permission": permissions,
+            "expiry": datetime.now(UTC) + timedelta(seconds=expires_in),
+            "account_key": account_key,
+        }
+
+        if content_type:
+            kwargs["content_type"] = content_type
+        if filename:
+            kwargs["content_disposition"] = f'attachment; filename="{filename}"'
+
+        sas_token = generate_blob_sas(**kwargs)
+        return f"{blob_client.url}?{sas_token}"
 
     @staticmethod
     def compute_hash(content: bytes) -> str:
@@ -155,6 +242,16 @@ class FileStorageService:
         Returns:
             Presigned PUT URL for direct browser upload
         """
+        if self.backend == "azure_blob":
+            if expires_in is None:
+                expires_in = self.settings.azure_blob_sas_expiry
+            return self._generate_blob_sas_url(
+                s3_key,
+                expires_in=expires_in,
+                permission="w",
+                content_type=content_type,
+            )
+
         if expires_in is None:
             expires_in = self.settings.s3_presigned_url_expiry
 
@@ -187,6 +284,16 @@ class FileStorageService:
         Returns:
             Presigned GET URL for download
         """
+        if self.backend == "azure_blob":
+            if expires_in is None:
+                expires_in = self.settings.azure_blob_download_sas_expiry
+            return self._generate_blob_sas_url(
+                s3_key,
+                expires_in=expires_in,
+                permission="r",
+                filename=filename,
+            )
+
         if expires_in is None:
             expires_in = self.settings.s3_download_url_expiry
 
@@ -218,6 +325,16 @@ class FileStorageService:
             True if deletion was successful
         """
         try:
+            if self.backend == "azure_blob":
+                service = self._get_blob_service_client()
+                blob = service.get_blob_client(
+                    container=self.settings.azure_blob_container,
+                    blob=s3_key,
+                )
+                blob.delete_blob(delete_snapshots="include")
+                logger.info(f"Deleted file from Azure Blob: {s3_key}")
+                return True
+
             async with self.get_client() as s3:
                 await s3.delete_object(
                     Bucket=self.settings.s3_bucket,
@@ -247,6 +364,22 @@ class FileStorageService:
             True if upload was successful
         """
         try:
+            if self.backend == "azure_blob":
+                service = self._get_blob_service_client()
+                blob = service.get_blob_client(
+                    container=self.settings.azure_blob_container,
+                    blob=s3_key,
+                )
+                from azure.storage.blob import ContentSettings
+
+                blob.upload_blob(
+                    content,
+                    overwrite=True,
+                    content_settings=ContentSettings(content_type=content_type),
+                )
+                logger.info(f"Uploaded file to Azure Blob: {s3_key} ({len(content)} bytes)")
+                return True
+
             async with self.get_client() as s3:
                 await s3.put_object(
                     Bucket=self.settings.s3_bucket,
@@ -271,6 +404,14 @@ class FileStorageService:
             True if file exists
         """
         try:
+            if self.backend == "azure_blob":
+                service = self._get_blob_service_client()
+                blob = service.get_blob_client(
+                    container=self.settings.azure_blob_container,
+                    blob=s3_key,
+                )
+                return blob.exists()
+
             async with self.get_client() as s3:
                 await s3.head_object(
                     Bucket=self.settings.s3_bucket,
@@ -290,6 +431,16 @@ class FileStorageService:
             True if bucket exists or was created successfully
         """
         try:
+            if self.backend == "azure_blob":
+                service = self._get_blob_service_client()
+                container = service.get_container_client(self.settings.azure_blob_container)
+                if not container.exists():
+                    container.create_container()
+                    logger.info(
+                        f"Created Azure Blob container: {self.settings.azure_blob_container}"
+                    )
+                return True
+
             async with self.get_client() as s3:
                 try:
                     await s3.head_bucket(Bucket=self.settings.s3_bucket)

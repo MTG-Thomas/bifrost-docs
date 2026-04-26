@@ -46,6 +46,10 @@ PASSKEY_SETUP_TOKEN_PREFIX = "passkey_setup:"
 CHALLENGE_TTL_SECONDS = 300  # 5 minutes
 
 
+class PasskeyValidationError(ValueError):
+    """Raised when a browser-provided WebAuthn credential cannot be validated."""
+
+
 class PasskeyService:
     """Service for WebAuthn passkey operations."""
 
@@ -157,11 +161,8 @@ class PasskeyService:
 
         expected_challenge = base64url_to_bytes(challenge_b64)
 
-        # Parse the credential JSON
-        credential = parse_registration_credential_json(credential_json)
-
-        # Verify the registration response
         try:
+            credential = parse_registration_credential_json(credential_json)
             verification = verify_registration_response(
                 credential=credential,
                 expected_challenge=expected_challenge,
@@ -169,7 +170,7 @@ class PasskeyService:
                 expected_rp_id=self.settings.webauthn_rp_id,
             )
         except Exception as e:
-            raise ValueError(f"Registration verification failed: {e}") from e
+            raise PasskeyValidationError("Invalid passkey registration response") from e
 
         # Extract transports from credential response if available
         transports = []
@@ -263,6 +264,11 @@ class PasskeyService:
         Raises:
             ValueError: If verification fails
         """
+        try:
+            credential = parse_authentication_credential_json(credential_json)
+        except Exception as e:
+            raise PasskeyValidationError("Invalid passkey authentication response") from e
+
         # Get and delete challenge from Redis (single-use)
         redis = await get_redis()
         challenge_key = f"{PASSKEY_AUTH_CHALLENGE_PREFIX}{challenge_id}"
@@ -273,13 +279,10 @@ class PasskeyService:
 
         expected_challenge = base64url_to_bytes(challenge_b64)
 
-        # Parse the credential JSON
-        credential = parse_authentication_credential_json(credential_json)
-
         # Find the passkey by credential ID
         passkey = await self._get_passkey_by_credential_id(credential.raw_id)
         if not passkey:
-            raise ValueError("Unknown credential")
+            raise PasskeyValidationError("Invalid passkey authentication response")
 
         # Verify the authentication response
         try:
@@ -292,7 +295,7 @@ class PasskeyService:
                 credential_current_sign_count=passkey.sign_count,
             )
         except Exception as e:
-            raise ValueError(f"Authentication verification failed: {e}") from e
+            raise PasskeyValidationError("Invalid passkey authentication response") from e
 
         # Update sign count and last used (prevents replay attacks)
         passkey.sign_count = verification.new_sign_count
@@ -448,6 +451,11 @@ class PasskeyService:
         """
         from src.repositories.user import UserRepository
 
+        try:
+            credential = parse_registration_credential_json(credential_json)
+        except Exception as e:
+            raise PasskeyValidationError("Invalid passkey setup response") from e
+
         # Get and delete setup data from Redis (single-use)
         redis = await get_redis()
         setup_key = f"{PASSKEY_SETUP_TOKEN_PREFIX}{registration_token}"
@@ -456,14 +464,9 @@ class PasskeyService:
             raise ValueError("Registration token not found or expired")
         await redis.delete(setup_key)
 
-        setup_data = json.loads(setup_data_json)
-        expected_challenge = base64url_to_bytes(setup_data["challenge"])
-
-        # Parse the credential JSON
-        credential = parse_registration_credential_json(credential_json)
-
-        # Verify the registration response
         try:
+            setup_data = json.loads(setup_data_json)
+            expected_challenge = base64url_to_bytes(setup_data["challenge"])
             verification = verify_registration_response(
                 credential=credential,
                 expected_challenge=expected_challenge,
@@ -471,7 +474,7 @@ class PasskeyService:
                 expected_rp_id=self.settings.webauthn_rp_id,
             )
         except Exception as e:
-            raise ValueError(f"Registration verification failed: {e}") from e
+            raise PasskeyValidationError("Invalid passkey setup response") from e
 
         # Double-check first-user scenario (race condition protection)
         user_repo = UserRepository(self.db)
