@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     # Redis
     # ==========================================================================
     redis_url: str = Field(default="redis://localhost:6380/0", description="Redis connection URL")
+    rate_limiting_enabled: bool = Field(
+        default=True,
+        description="Enable Redis-backed API rate limiting. Disable for deployments without Redis.",
+    )
 
     # ==========================================================================
     # Security

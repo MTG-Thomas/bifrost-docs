@@ -122,7 +122,6 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
       name: 'standard'
     }
     enableRbacAuthorization: true
-    enablePurgeProtection: false
     enabledForTemplateDeployment: true
     publicNetworkAccess: 'Enabled'
   }
@@ -244,6 +243,10 @@ resource api 'Microsoft.App/containerApps@2024-03-01' = {
             }
             {
               name: 'BIFROST_DOCS_DEBUG'
+              value: 'false'
+            }
+            {
+              name: 'BIFROST_DOCS_RATE_LIMITING_ENABLED'
               value: 'false'
             }
             {
