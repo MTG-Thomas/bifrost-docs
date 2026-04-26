@@ -267,6 +267,16 @@ async def oauth_callback(
     oauth_service = OAuthService(db)
     user_repo = UserRepository(db)
 
+    if callback_data.provider not in PROVIDER_INFO:
+        logger.warning(
+            "OAuth callback with invalid provider",
+            extra={"provider": callback_data.provider},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid OAuth provider",
+        )
+
     # Validate state and retrieve PKCE verifier + redirect_uri from Redis
     r = await get_redis()
     state_key = _oauth_state_key(callback_data.state)

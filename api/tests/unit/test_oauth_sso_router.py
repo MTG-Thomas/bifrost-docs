@@ -56,6 +56,22 @@ async def test_oauth_callback_invalid_state_returns_400(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_oauth_callback_invalid_provider_returns_400_before_state_lookup(monkeypatch):
+    redis = FakeRedis("should-not-be-read")
+    monkeypatch.setattr("src.routers.oauth_sso.get_redis", _redis_factory(redis))
+
+    async with AsyncClient(transport=ASGITransport(app=_app()), base_url="http://test") as client:
+        response = await client.post(
+            "/auth/oauth/callback",
+            json={"provider": "provider", "code": "code", "state": "state"},
+        )
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Invalid OAuth provider"}
+    assert redis.deleted == []
+
+
+@pytest.mark.asyncio
 async def test_oauth_callback_malformed_cached_state_returns_400_without_consuming_state(
     monkeypatch,
 ):

@@ -264,6 +264,11 @@ class PasskeyService:
         Raises:
             ValueError: If verification fails
         """
+        try:
+            credential = parse_authentication_credential_json(credential_json)
+        except Exception as e:
+            raise PasskeyValidationError("Invalid passkey authentication response") from e
+
         # Get and delete challenge from Redis (single-use)
         redis = await get_redis()
         challenge_key = f"{PASSKEY_AUTH_CHALLENGE_PREFIX}{challenge_id}"
@@ -273,11 +278,6 @@ class PasskeyService:
         await redis.delete(challenge_key)
 
         expected_challenge = base64url_to_bytes(challenge_b64)
-
-        try:
-            credential = parse_authentication_credential_json(credential_json)
-        except Exception as e:
-            raise PasskeyValidationError("Invalid passkey authentication response") from e
 
         # Find the passkey by credential ID
         passkey = await self._get_passkey_by_credential_id(credential.raw_id)
@@ -451,6 +451,11 @@ class PasskeyService:
         """
         from src.repositories.user import UserRepository
 
+        try:
+            credential = parse_registration_credential_json(credential_json)
+        except Exception as e:
+            raise PasskeyValidationError("Invalid passkey setup response") from e
+
         # Get and delete setup data from Redis (single-use)
         redis = await get_redis()
         setup_key = f"{PASSKEY_SETUP_TOKEN_PREFIX}{registration_token}"
@@ -462,7 +467,6 @@ class PasskeyService:
         try:
             setup_data = json.loads(setup_data_json)
             expected_challenge = base64url_to_bytes(setup_data["challenge"])
-            credential = parse_registration_credential_json(credential_json)
             verification = verify_registration_response(
                 credential=credential,
                 expected_challenge=expected_challenge,

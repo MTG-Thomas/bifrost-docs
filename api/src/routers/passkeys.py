@@ -50,6 +50,15 @@ def _to_public(passkey: UserPasskey) -> PasskeyPublic:
     return PasskeyPublic.model_validate(passkey)
 
 
+def _reject_api_key_passkey_enrollment(user: UserPrincipal) -> None:
+    """Passkey enrollment is an interactive browser-user flow."""
+    if user.api_key_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Passkey enrollment requires interactive user authentication",
+        )
+
+
 # =============================================================================
 # Registration Endpoints (Authenticated users adding passkeys)
 # =============================================================================
@@ -70,6 +79,7 @@ async def get_registration_options(
     db: DbSession,
 ) -> PasskeyRegistrationOptionsResponse:
     """Generate WebAuthn registration options for the current user."""
+    _reject_api_key_passkey_enrollment(user)
     service = PasskeyService(db)
 
     try:
@@ -103,6 +113,7 @@ async def verify_registration(
     db: DbSession,
 ) -> PasskeyRegistrationVerifyResponse:
     """Verify and complete passkey registration."""
+    _reject_api_key_passkey_enrollment(user)
     service = PasskeyService(db)
 
     try:
