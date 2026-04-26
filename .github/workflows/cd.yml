@@ -64,7 +64,7 @@ jobs:
           echo "deploy_ref=${DEPLOY_REF}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout deployment ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ steps.ref.outputs.deploy_ref }}
 
