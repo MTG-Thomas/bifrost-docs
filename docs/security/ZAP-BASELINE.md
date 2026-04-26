@@ -22,7 +22,9 @@ Current settings:
 - passive baseline only;
 - no GitHub issue auto-writing;
 - reports uploaded as workflow artifacts;
-- `fail_action: false` while the first findings are triaged.
+- workflow failure for unaccepted findings after the baseline rules file is applied.
+
+Accepted findings live in `.zap/baseline-rules.tsv`. Each accepted rule must include a short reason in code review.
 
 ## Operating Notes
 
@@ -38,4 +40,8 @@ Current settings:
 2. Add a small ZAP rules file only after triage, keeping each ignore documented.
 3. Add authenticated coverage with a disposable user and seeded proof data.
 4. Consider a separate active-scan workflow gated by an environment approval and pointed only at resettable test data.
+
+## Authenticated API Coverage
+
+Authenticated API coverage is handled separately by `.github/workflows/zap-authenticated-api.yml`. That workflow scans the proof API OpenAPI document with a low-privilege API token from the `azure-neon-proof` GitHub environment.
 
