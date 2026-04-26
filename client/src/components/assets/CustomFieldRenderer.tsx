@@ -1,4 +1,5 @@
 import { useState } from "react";
+import DOMPurify from "dompurify";
 import { Check, X, Eye, EyeOff, Copy, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TOTPDisplay } from "@/components/ui/totp-display";
@@ -73,7 +74,7 @@ export function CustomFieldRenderer({
         return (
           <div
             className="prose prose-sm dark:prose-invert max-w-none break-words"
-            dangerouslySetInnerHTML={{ __html: String(value) }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(String(value)) }}
           />
         );
 

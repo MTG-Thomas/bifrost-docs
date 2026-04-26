@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import DOMPurify from "dompurify";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -522,7 +523,7 @@ export function ConfigDetailPage() {
               ) : config.notes ? (
                 <div
                   className="prose prose-sm max-w-none dark:prose-invert"
-                  dangerouslySetInnerHTML={{ __html: config.notes }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(config.notes) }}
                 />
               ) : (
                 <p className="text-sm text-muted-foreground italic">No notes</p>

@@ -9,7 +9,7 @@ tooling that may handle customer documentation exports and vendor API tokens.
 Run the fast local checks before security-sensitive changes:
 
 ```bash
-python -m pip install semgrep pip-audit
+python -m pip install semgrep==1.161.0 pip-audit
 semgrep scan --config .semgrep/bifrost-docs.yml --exclude client/src/lib/v1.d.ts --exclude client/playwright-report --exclude client/test-results --severity ERROR --error
 python -m pip install ./api
 pip-audit --strict

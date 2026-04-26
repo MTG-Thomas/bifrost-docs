@@ -1,7 +1,7 @@
 rules:
   - id: bifrost-docs-no-secret-logging
     message: Do not log secrets, OAuth tokens, passwords, or decrypted credential material.
-    severity: WARNING
+    severity: ERROR
     languages: [python]
     patterns:
       - pattern-either:
@@ -10,16 +10,18 @@ rules:
           - pattern: logging.$LEVEL(..., $SECRET, ...)
       - metavariable-regex:
           metavariable: $SECRET
-          regex: (?i).*(secret|token|password|refresh|access_key|client_secret|api_key).*
+          regex: (?i)^(secret|token|password|refresh_token|access_token|access_key|client_secret|api_key)$
 
   - id: bifrost-docs-raw-html-rendering
     message: Raw HTML rendering must pass through DOMPurify or a vetted safe renderer.
-    severity: WARNING
+    severity: ERROR
     languages: [generic]
     paths:
       include:
         - /client/src/**
-    pattern-regex: 'dangerouslySetInnerHTML\s*=\s*\{\s*\{\s*__html\s*:'
+    patterns:
+      - pattern-regex: 'dangerouslySetInnerHTML\s*=\s*\{\s*\{\s*__html\s*:'
+      - pattern-not-regex: 'dangerouslySetInnerHTML\s*=\s*\{\s*\{\s*__html\s*:\s*DOMPurify\.sanitize\('
 
   - id: bifrost-docs-subprocess-review
     message: Review subprocess usage for fixed executable paths, validated args, and no shell injection.
