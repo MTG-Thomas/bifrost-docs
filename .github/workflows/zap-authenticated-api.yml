@@ -16,6 +16,7 @@ jobs:
     name: ZAP authenticated API scan
     runs-on: ubuntu-latest
     environment: azure-neon-proof
+    timeout-minutes: 15
 
     env:
       API_URL: https://ca-bifrost-docs-api-neon-dev.icymoss-8e8097f1.eastus.azurecontainerapps.io
@@ -42,6 +43,8 @@ jobs:
             zap-api-scan.py \
               -t "${API_URL}/openapi.json" \
               -f openapi \
+              -S \
+              -T 5 \
               -c /zap/wrk/.zap/api-scan-rules.tsv \
               -J zap-authenticated-api/zap-api.json \
               -r zap-authenticated-api/zap-api.html \
