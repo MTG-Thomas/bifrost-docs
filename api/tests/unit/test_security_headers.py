@@ -204,6 +204,31 @@ class TestHSTSHeader:
         assert "Strict-Transport-Security" not in response.headers
         clear_settings_cache()
 
+    def test_exception_response_has_production_security_headers(self, monkeypatch):
+        """Test production exception responses keep security headers."""
+        from src.config import clear_settings_cache
+        from src.main import create_app
+
+        monkeypatch.setenv("BIFROST_DOCS_ENVIRONMENT", "production")
+        clear_settings_cache()
+
+        app = create_app()
+
+        @app.get("/boom")
+        def boom():
+            raise RuntimeError("test failure")
+
+        client = TestClient(app, raise_server_exceptions=False)
+        response = client.get("/boom")
+
+        assert response.status_code == 500
+        assert "Strict-Transport-Security" in response.headers
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+        assert "Content-Security-Policy" in response.headers
+        assert response.headers["Cache-Control"] == "no-cache, no-store, must-revalidate"
+        assert response.json()["message"] == "An unexpected error occurred"
+        clear_settings_cache()
+
 
 class TestCSPDirectives:
     """Tests for Content-Security-Policy directives."""
