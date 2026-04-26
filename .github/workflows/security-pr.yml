@@ -42,8 +42,10 @@ jobs:
       - name: Install Gitleaks
         id: install-gitleaks
         run: |
+          set -euo pipefail
           tmpdir="$(mktemp -d)"
-          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/scripts/install.sh | sh -s -- -b "$tmpdir"
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz -o "$RUNNER_TEMP/gitleaks.tar.gz"
+          tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$tmpdir" gitleaks
           echo "bin=$tmpdir/gitleaks" >> "$GITHUB_OUTPUT"
 
       - name: Run Gitleaks
