@@ -11,6 +11,9 @@ paths = [
   '''client/playwright-report/.*''',
   '''client/test-results/.*''',
   '''\.migration-runs/.*''',
+  '''api/docs/api-documentation\.md''',
+  '''kubernetes/cronjobs/backup-cronjob\.yaml''',
+  '''tools/quick_demo\.sh''',
   '''\.env\.test\.example''',
 ]
 regexes = [
@@ -19,4 +22,7 @@ regexes = [
   '''bifrost123''',
   '''s3_key''',
   '''REPLACE_WITH_32_CHAR_SECRET_KEY''',
+  '''test-secret-key-must-be-at-least-32-characters-long''',
+  '''testsecret[0-9]{20,}''',
+  '''testadmintoken[0-9]{20,}''',
 ]
