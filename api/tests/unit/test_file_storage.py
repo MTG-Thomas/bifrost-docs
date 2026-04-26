@@ -445,3 +445,68 @@ class TestAzureBlobFileStorageService:
             result = await azure_storage_service.file_exists("test/key.pdf")
 
         assert result is True
+
+    @pytest.mark.asyncio
+    async def test_azure_upload_file(self, azure_storage_service):
+        """Test Azure Blob upload."""
+        mock_blob = MagicMock()
+        mock_service = MagicMock()
+        mock_service.get_blob_client.return_value = mock_blob
+
+        with (
+            patch.object(
+                azure_storage_service, "_get_blob_service_client", return_value=mock_service
+            ),
+            patch("azure.storage.blob.ContentSettings") as mock_content_settings,
+        ):
+            result = await azure_storage_service.upload_file(
+                s3_key="test/key.pdf",
+                content=b"file-content",
+                content_type="application/pdf",
+            )
+
+        assert result is True
+        mock_content_settings.assert_called_once_with(content_type="application/pdf")
+        mock_blob.upload_blob.assert_called_once_with(
+            b"file-content",
+            overwrite=True,
+            content_settings=mock_content_settings.return_value,
+        )
+
+    @pytest.mark.asyncio
+    async def test_azure_ensure_container_exists_creates_missing_container(
+        self,
+        azure_storage_service,
+    ):
+        """Test Azure Blob container creation."""
+        mock_container = MagicMock()
+        mock_container.exists.return_value = False
+        mock_service = MagicMock()
+        mock_service.get_container_client.return_value = mock_container
+
+        with patch.object(
+            azure_storage_service, "_get_blob_service_client", return_value=mock_service
+        ):
+            result = await azure_storage_service.ensure_bucket_exists()
+
+        assert result is True
+        mock_service.get_container_client.assert_called_once_with("test-container")
+        mock_container.create_container.assert_called_once()
+
+    def test_azure_blob_configuration_required(self, mock_azure_settings):
+        """Test Azure Blob operations require complete configuration."""
+        mock_azure_settings.azure_blob_configured = False
+        service = FileStorageService(settings=mock_azure_settings)
+
+        with pytest.raises(RuntimeError, match="Azure Blob storage not configured"):
+            service._require_azure_blob_configured()
+
+    def test_azure_sas_generation_requires_account_key(self, mock_azure_settings):
+        """Test SAS generation requires account key material."""
+        mock_azure_settings.azure_storage_connection_string = None
+        mock_azure_settings.azure_storage_account_url = None
+        mock_azure_settings.azure_storage_account_key = None
+        service = FileStorageService(settings=mock_azure_settings)
+
+        with pytest.raises(RuntimeError, match="Azure Blob SAS generation requires"):
+            service._get_azure_account_name_and_key()
