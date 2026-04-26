@@ -100,6 +100,26 @@ The API uses:
 
 The attachment table and API contracts still use the existing `s3_key` field name. Treat it as an object key, not as proof the backing store is S3.
 
+## GitHub Actions Proof Deploy
+
+Manual `CI - Test & Build` workflow runs build and push the GHCR images, deploy the proof Static Web Apps frontend, and update the Azure Container Apps API to the same short-SHA image tag.
+
+The API deploy uses GitHub Actions OIDC instead of a stored Azure client secret. The Entra app registration must have a federated credential with:
+
+```json
+{
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:MTG-Thomas/bifrost-docs:environment:azure-neon-proof",
+  "audiences": ["api://AzureADTokenExchange"]
+}
+```
+
+The app also needs permission to update:
+
+```text
+/subscriptions/a1d63b24-1202-4bfa-9086-cf32d1d352fc/resourceGroups/rg-bifrost-docs-neon-dev/providers/Microsoft.App/containerApps/ca-bifrost-docs-api-neon-dev
+```
+
 ## Validation
 
 Check API health:
