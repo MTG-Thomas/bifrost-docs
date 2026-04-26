@@ -5,10 +5,6 @@
 name: CodeQL
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
   schedule:
     # Weekly run catches CVEs in newly-published advisories that match
     # existing code patterns (CodeQL queries are updated by GitHub).

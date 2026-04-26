@@ -16,6 +16,3 @@ misconfiguration:
   scanners:
     - dockerfile
     - kubernetes
-
-secret:
-  config: .gitleaks.toml

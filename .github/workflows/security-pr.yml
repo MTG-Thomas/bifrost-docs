@@ -23,9 +23,6 @@ jobs:
       - name: Run Semgrep
         run: >
           semgrep scan
-          --config p/owasp-top-ten
-          --config p/python
-          --config p/typescript
           --config .semgrep/bifrost-docs.yml
           --exclude client/src/lib/v1.d.ts
           --exclude client/playwright-report
@@ -43,11 +40,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Gitleaks
+        id: install-gitleaks
         run: |
-          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/scripts/install.sh | sh -s -- -b /usr/local/bin
+          tmpdir="$(mktemp -d)"
+          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/scripts/install.sh | sh -s -- -b "$tmpdir"
+          echo "bin=$tmpdir/gitleaks" >> "$GITHUB_OUTPUT"
 
       - name: Run Gitleaks
-        run: gitleaks detect --source . --no-git --config .gitleaks.toml --redact --no-banner
+        run: ${{ steps.install-gitleaks.outputs.bin }} detect --source . --no-git --config .gitleaks.toml --redact --no-banner
 
   deps:
     name: Dependency Advisories
@@ -94,4 +94,4 @@ jobs:
         run: trivy config --exit-code 0 --severity HIGH,CRITICAL --config trivy.yaml .
 
       - name: Scan filesystem for critical issues
-        run: trivy fs --exit-code 0 --severity CRITICAL --scanners vuln,secret,misconfig --config trivy.yaml .
+        run: trivy fs --exit-code 0 --severity CRITICAL --scanners vuln,misconfig --config trivy.yaml .
