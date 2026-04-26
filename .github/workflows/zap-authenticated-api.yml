@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   zap-authenticated-api:
     name: ZAP authenticated API scan
@@ -20,7 +23,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Verify scan token is configured
         run: |
@@ -53,7 +56,7 @@ jobs:
 
       - name: Upload authenticated ZAP artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: zap-authenticated-api
           path: zap-authenticated-api/
