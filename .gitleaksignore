@@ -1,0 +1,12 @@
+.github/workflows/sonar.yml:generic-api-key:79
+api/src/routers/attachments.py:generic-api-key:354
+.github/workflows/ci.yml:generic-api-key:91
+.github/workflows/ci.yml:generic-api-key:347
+.github/workflows/ci.yml:generic-api-key:350
+kubernetes/cronjobs/backup-cronjob.yaml:generic-api-key:111
+kubernetes/cronjobs/backup-cronjob.yaml:generic-api-key:247
+api/docs/api-documentation.md:curl-auth-header:240
+api/tests/integration/test_custom_assets.py:generic-api-key:375
+api/tests/integration/test_custom_assets.py:generic-api-key:376
+kubernetes/secret.yaml:generic-api-key:32
+tools/quick_demo.sh:generic-api-key:193

@@ -1,0 +1,68 @@
+name: OWASP ZAP Authenticated API
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 7 * * 2"
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  zap-authenticated-api:
+    name: ZAP authenticated API scan
+    runs-on: ubuntu-latest
+    environment: azure-neon-proof
+    timeout-minutes: 15
+
+    env:
+      API_URL: https://ca-bifrost-docs-api-neon-dev.icymoss-8e8097f1.eastus.azurecontainerapps.io
+      ZAP_AUTH_HEADER_VALUE: Bearer ${{ secrets.BIFROST_DOCS_ZAP_API_TOKEN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Verify scan token is configured
+        run: |
+          if [ -z "${ZAP_AUTH_HEADER_VALUE#Bearer }" ]; then
+            echo "BIFROST_DOCS_ZAP_API_TOKEN is not configured for the azure-neon-proof environment." >&2
+            exit 1
+          fi
+
+      - name: Run authenticated passive OpenAPI scan
+        run: |
+          set -o pipefail
+          mkdir -p zap-authenticated-api
+          chmod 777 zap-authenticated-api
+          docker run --rm \
+            -v "${PWD}:/zap/wrk/:rw" \
+            -e ZAP_AUTH_HEADER_VALUE \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-api-scan.py \
+              -t "${API_URL}/openapi.json" \
+              -f openapi \
+              -S \
+              -T 5 \
+              -c /zap/wrk/.zap/api-scan-rules.tsv \
+              -J zap-authenticated-api/zap-api.json \
+              -r zap-authenticated-api/zap-api.html \
+              -w zap-authenticated-api/zap-api.md \
+              -z "-config replacer.full_list(0).description=auth-header \
+                  -config replacer.full_list(0).enabled=true \
+                  -config replacer.full_list(0).matchtype=REQ_HEADER \
+                  -config replacer.full_list(0).matchstr=Authorization \
+                  -config replacer.full_list(0).replacement=\"${ZAP_AUTH_HEADER_VALUE}\" \
+                  -config view.locale=en_GB" \
+            2>&1 | tee zap-authenticated-api/zap-console.log
+
+      - name: Upload authenticated ZAP artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: zap-authenticated-api
+          path: zap-authenticated-api/
+          retention-days: 30

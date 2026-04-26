@@ -10,12 +10,32 @@ Note: If slowapi is not installed, rate limiting is disabled (development mode).
 from collections.abc import Callable
 from typing import Any, cast
 
+from src.config import get_settings
+
+
+class _NoOpLimiter:
+    """Limiter-compatible no-op used when rate limiting is disabled."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def limit(self, limits: Any) -> Callable[[Any], Any]:
+        """Return a decorator that leaves the route handler unchanged."""
+
+        def decorator(f: Any) -> Any:
+            return f
+
+        return decorator
+
+    middleware_class: Any = None
+
+
 # Try to import slowapi - if not available, use dummy implementations
 try:
     from slowapi import Limiter as _Limiter  # noqa: F811
     from slowapi.util import get_remote_address as _get_remote_address  # noqa: F811
 
-    RATE_LIMITING_ENABLED = True
+    SLOWAPI_AVAILABLE = True
 
     # Use the real implementations
     class Limiter(_Limiter):  # type: ignore[misc, no-redef]
@@ -28,37 +48,21 @@ try:
         return _get_remote_address(request)  # type: ignore[no-any-return]
 
 except ImportError:
-    RATE_LIMITING_ENABLED = False
+    SLOWAPI_AVAILABLE = False
 
     # Create dummy limiter class and decorator for when slowapi is not installed
-    class Limiter:  # type: ignore[no-redef]
+    class Limiter(_NoOpLimiter):  # type: ignore[no-redef]
         """Dummy Limiter class when slowapi is not installed."""
-
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
-            pass
-
-        def limit(self, limits: Any) -> Callable[[Any], Any]:
-            """Dummy decorator that does nothing when slowapi not installed."""
-
-            def decorator(f: Any) -> Any:
-                return f
-
-            return decorator
-
-        # Dummy middleware_class attribute for type checking
-        middleware_class: Any = None
 
     def get_remote_address(request: Any) -> str:  # type: ignore[misc, no-redef]
         """Dummy get_remote_address when slowapi is not installed."""
         return "127.0.0.1"
 
 
-from src.config import get_settings
-
-# Get Redis URL from settings
 settings = get_settings()
+RATE_LIMITING_ENABLED = SLOWAPI_AVAILABLE and settings.rate_limiting_enabled
 
-# Create limiter with Redis storage (or dummy if slowapi not installed)
+# Create limiter with Redis storage, or a no-op limiter if disabled/unavailable.
 if RATE_LIMITING_ENABLED:
     limiter = Limiter(
         key_func=get_remote_address,
@@ -67,7 +71,7 @@ if RATE_LIMITING_ENABLED:
         default_limits=["100/minute"],  # Default: 100 requests per minute
     )
 else:
-    limiter = Limiter(key_func=get_remote_address)  # Dummy limiter
+    limiter = _NoOpLimiter(key_func=get_remote_address)
 
 
 # Rate limit configurations by endpoint type

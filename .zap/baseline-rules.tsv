@@ -1,0 +1,3 @@
+10049	IGNORE	Non-Storable Content is expected for authenticated/API responses that deliberately send no-store cache controls.
+10054	IGNORE	Azure Static Web Apps / Entra auth redirects set SameSite=None cookies for cross-site sign-in flow.
+10112	IGNORE	Azure Static Web Apps / Entra auth redirects are expected session-management responses at the frontend gate.

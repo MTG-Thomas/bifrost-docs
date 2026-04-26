@@ -110,8 +110,8 @@ class ConfigurationUpdate(BaseModel):
 class ConfigurationPublic(PublicEntityBase):
     """Configuration public response model."""
 
-    configuration_type_id: str | None = None
-    configuration_status_id: str | None = None
+    configuration_type_id: UUID | str | None = None
+    configuration_status_id: UUID | str | None = None
     name: str
     serial_number: str | None = None
     asset_tag: str | None = None

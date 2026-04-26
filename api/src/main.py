@@ -187,7 +187,10 @@ def create_app() -> FastAPI:
     # ==========================================================================
     # Security Headers Middleware
     # ==========================================================================
-    from src.core.security_headers import SecurityHeadersMiddleware
+    from src.core.security_headers import (
+        SecurityHeadersMiddleware,
+        add_security_headers_to_response,
+    )
 
     app.add_middleware(SecurityHeadersMiddleware)
     logger.info("Security headers middleware enabled")
@@ -196,6 +199,14 @@ def create_app() -> FastAPI:
     # Global Exception Handlers
     # ==========================================================================
 
+    def _json_error_response(status_code: int, error: ErrorResponse) -> JSONResponse:
+        response = JSONResponse(
+            status_code=status_code,
+            content=error.model_dump(),
+        )
+        add_security_headers_to_response(response)
+        return response
+
     @app.exception_handler(PydanticValidationError)
     async def pydantic_validation_handler(
         request: Request, exc: PydanticValidationError
@@ -203,13 +214,13 @@ def create_app() -> FastAPI:
         """Pydantic model validation errors -> 422."""
         errors = exc.errors()
         field_errors = {".".join(str(loc) for loc in e["loc"]): e["msg"] for e in errors}
-        return JSONResponse(
-            status_code=422,
-            content=ErrorResponse(
+        return _json_error_response(
+            422,
+            ErrorResponse(
                 error="validation_error",
                 message="Validation failed",
                 details={"fields": field_errors},
-            ).model_dump(),
+            ),
         )
 
     @app.exception_handler(IntegrityError)
@@ -225,46 +236,46 @@ def create_app() -> FastAPI:
             message = "Database constraint violation"
 
         logger.warning(f"IntegrityError: {detail}")
-        return JSONResponse(
-            status_code=409,
-            content=ErrorResponse(
+        return _json_error_response(
+            409,
+            ErrorResponse(
                 error="conflict",
                 message=message,
-            ).model_dump(),
+            ),
         )
 
     @app.exception_handler(NoResultFound)
     async def no_result_handler(request: Request, exc: NoResultFound) -> JSONResponse:
         """Query returned no results -> 404."""
-        return JSONResponse(
-            status_code=404,
-            content=ErrorResponse(
+        return _json_error_response(
+            404,
+            ErrorResponse(
                 error="not_found",
                 message="Resource not found",
-            ).model_dump(),
+            ),
         )
 
     @app.exception_handler(ValueError)
     async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
         """ValueError from validation -> 422."""
-        return JSONResponse(
-            status_code=422,
-            content=ErrorResponse(
+        return _json_error_response(
+            422,
+            ErrorResponse(
                 error="validation_error",
                 message=str(exc),
-            ).model_dump(),
+            ),
         )
 
     @app.exception_handler(OperationalError)
     async def operational_error_handler(request: Request, exc: OperationalError) -> JSONResponse:
         """Database connection issues -> 503."""
         logger.error(f"Database operational error: {exc}", exc_info=True)
-        return JSONResponse(
-            status_code=503,
-            content=ErrorResponse(
+        return _json_error_response(
+            503,
+            ErrorResponse(
                 error="service_unavailable",
                 message="Service temporarily unavailable",
-            ).model_dump(),
+            ),
         )
 
     @app.exception_handler(Exception)
@@ -274,12 +285,12 @@ def create_app() -> FastAPI:
             f"Unhandled exception on {request.method} {request.url.path}: {exc}",
             exc_info=True,
         )
-        return JSONResponse(
-            status_code=500,
-            content=ErrorResponse(
+        return _json_error_response(
+            500,
+            ErrorResponse(
                 error="internal_error",
                 message="An unexpected error occurred",
-            ).model_dump(),
+            ),
         )
 
     # ==========================================================================

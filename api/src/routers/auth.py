@@ -591,7 +591,7 @@ async def setup_passkey_verify(
     """
     import json
 
-    from src.services.passkey_service import PasskeyService
+    from src.services.passkey_service import PasskeyService, PasskeyValidationError
 
     passkey_service = PasskeyService(db)
 
@@ -602,6 +602,12 @@ async def setup_passkey_verify(
             device_name=verify_request.device_name,
         )
         await db.commit()
+    except PasskeyValidationError as e:
+        logger.warning("Invalid setup passkey response", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid passkey setup response",
+        ) from e
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
