@@ -11,9 +11,12 @@ paths = [
   '''client/e2e/setup/.*''',
   '''client/playwright-report/.*''',
   '''client/test-results/.*''',
+  '''\.github/workflows/ci\.yml''',
   '''\.migration-runs/.*''',
+  '''api/src/routers/attachments\.py''',
   '''api/docs/api-documentation\.md''',
   '''kubernetes/cronjobs/backup-cronjob\.yaml''',
+  '''kubernetes/secret\.yaml''',
   '''tools/quick_demo\.sh''',
   '''\.env\.test\.example''',
 ]
