@@ -1,0 +1,55 @@
+rules:
+  - id: bifrost-docs-no-secret-logging
+    message: Do not log secrets, OAuth tokens, passwords, or decrypted credential material.
+    severity: WARNING
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: logger.$LEVEL(..., $SECRET, ...)
+          - pattern: logger.$LEVEL(f"...{$SECRET}...")
+          - pattern: logging.$LEVEL(..., $SECRET, ...)
+      - metavariable-regex:
+          metavariable: $SECRET
+          regex: (?i).*(secret|token|password|refresh|access_key|client_secret|api_key).*
+
+  - id: bifrost-docs-raw-html-rendering
+    message: Raw HTML rendering must pass through DOMPurify or a vetted safe renderer.
+    severity: WARNING
+    languages: [generic]
+    paths:
+      include:
+        - /client/src/**
+    pattern-regex: 'dangerouslySetInnerHTML\s*=\s*\{\s*\{\s*__html\s*:'
+
+  - id: bifrost-docs-subprocess-review
+    message: Review subprocess usage for fixed executable paths, validated args, and no shell injection.
+    severity: WARNING
+    languages: [python]
+    pattern-either:
+      - pattern: subprocess.$FUNC(...)
+      - pattern: asyncio.create_subprocess_exec(...)
+      - pattern: asyncio.create_subprocess_shell(...)
+
+  - id: bifrost-docs-org-scope-review
+    message: Tenant or organization scoped queries should use the repo's scope helper or explicit authorization checks.
+    severity: WARNING
+    languages: [python]
+    pattern-either:
+      - pattern: $MODEL.organization_id == $ORG
+      - pattern: $MODEL.tenant_id == $TENANT
+      - pattern: $MODEL.org_id == $ORG
+
+  - id: bifrost-docs-migration-secret-material
+    message: Migration tooling should not print or serialize live API keys, passwords, or tokens.
+    severity: WARNING
+    languages: [python]
+    paths:
+      include:
+        - tools/**
+        - scripts/**
+    pattern-either:
+      - pattern: print(..., $SECRET, ...)
+      - pattern: json.dump($SECRET, ...)
+    metavariable-regex:
+      metavariable: $SECRET
+      regex: (?i).*(secret|token|password|api_key|client_secret).*

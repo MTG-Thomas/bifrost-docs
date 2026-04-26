@@ -1,0 +1,21 @@
+severity:
+  - HIGH
+  - CRITICAL
+
+ignore-unfixed: true
+
+scan:
+  skip-dirs:
+    - client/playwright-report
+    - client/test-results
+    - client/dist
+    - client/node_modules
+    - .migration-runs
+
+misconfiguration:
+  scanners:
+    - dockerfile
+    - kubernetes
+
+secret:
+  config: .gitleaks.toml
