@@ -1434,12 +1434,15 @@ class BifrostDocsClient:
         """
         # Rewrite Docker-internal URLs for local development
         upload_url = _rewrite_docker_url(upload_url)
+        headers = {"Content-Type": content_type}
+        if ".blob.core.windows.net/" in upload_url:
+            headers["x-ms-blob-type"] = "BlockBlob"
 
         async with httpx.AsyncClient(timeout=httpx.Timeout(300.0)) as client:
             response = await client.put(
                 upload_url,
                 content=file_content,
-                headers={"Content-Type": content_type},
+                headers=headers,
             )
             if response.status_code >= 400:
                 raise APIError(
