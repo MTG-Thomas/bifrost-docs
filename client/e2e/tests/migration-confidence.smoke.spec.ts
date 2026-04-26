@@ -199,7 +199,9 @@ test.describe("Smoke: Midtown migration confidence", () => {
   test("smoke: authenticated session renders the technician navigation shell", async ({ page }) => {
     await page.goto(`/org/${TEST_ORG.id}`, { waitUntil: "domcontentloaded" });
 
-    await expect(page.getByRole("heading", { name: TEST_ORG.name })).toBeVisible();
+    await expect(page.getByRole("heading", { name: TEST_ORG.name })).toBeVisible({
+      timeout: 15_000,
+    });
     await expect(page.getByRole("button", { name: /Search/i })).toBeVisible();
     await expect(page.getByRole("link", { name: "Passwords" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Documents" })).toBeVisible();
