@@ -25,10 +25,10 @@ class AttachmentPublic(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
-    organization_id: str
+    id: UUID | str
+    organization_id: UUID | str
     entity_type: EntityType
-    entity_id: str
+    entity_id: UUID | str
     filename: str
     s3_key: str
     content_type: str

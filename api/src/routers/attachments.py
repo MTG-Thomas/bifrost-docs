@@ -135,7 +135,7 @@ async def create_attachment(
         Attachment ID and presigned upload URL
     """
     settings = get_settings()
-    if not settings.s3_configured:
+    if not settings.storage_configured:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="File storage is not configured",
@@ -249,7 +249,7 @@ async def download_attachment(
         Presigned download URL and file metadata
     """
     settings = get_settings()
-    if not settings.s3_configured:
+    if not settings.storage_configured:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="File storage is not configured",
@@ -302,7 +302,7 @@ async def view_attachment(
         302 redirect to presigned download URL
     """
     settings = get_settings()
-    if not settings.s3_configured:
+    if not settings.storage_configured:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="File storage is not configured",
@@ -358,7 +358,7 @@ async def delete_attachment(
 
     # Then delete from S3 (best effort)
     settings = get_settings()
-    if settings.s3_configured:
+    if settings.storage_configured:
         file_storage = get_file_storage_service()
         await file_storage.delete_file(s3_key)
 
@@ -399,7 +399,7 @@ async def upload_document_image(
         Upload URL and image URL for markdown
     """
     settings = get_settings()
-    if not settings.s3_configured:
+    if not settings.storage_configured:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="File storage is not configured",
