@@ -53,6 +53,34 @@ async def test_registration_options_route_accepts_rate_limited_request(monkeypat
 
 
 @pytest.mark.asyncio
+async def test_registration_options_rejects_api_key_principal(monkeypatch):
+    monkeypatch.setattr(limiter, "enabled", False)
+
+    app = FastAPI()
+    app.include_router(router)
+
+    user = UserPrincipal(
+        user_id=uuid4(),
+        email="scanner@example.com",
+        role=UserRole.READER,
+        is_active=True,
+        is_verified=True,
+        api_key_id=uuid4(),
+    )
+
+    app.dependency_overrides[get_current_active_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: object()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/auth/passkeys/register/options", json={})
+
+    assert response.status_code == 403
+    assert response.json() == {
+        "detail": "Passkey enrollment requires interactive user authentication"
+    }
+
+
+@pytest.mark.asyncio
 async def test_registration_verify_malformed_credential_returns_400(monkeypatch):
     monkeypatch.setattr(limiter, "enabled", False)
 
@@ -87,6 +115,37 @@ async def test_registration_verify_malformed_credential_returns_400(monkeypatch)
 
     assert response.status_code == 400
     assert response.json() == {"detail": "Invalid passkey registration response"}
+
+
+@pytest.mark.asyncio
+async def test_registration_verify_rejects_api_key_principal(monkeypatch):
+    monkeypatch.setattr(limiter, "enabled", False)
+
+    app = FastAPI()
+    app.include_router(router)
+
+    user = UserPrincipal(
+        user_id=uuid4(),
+        email="scanner@example.com",
+        role=UserRole.READER,
+        is_active=True,
+        is_verified=True,
+        api_key_id=uuid4(),
+    )
+
+    app.dependency_overrides[get_current_active_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: FakeDb()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/auth/passkeys/register/verify",
+            json={"credential": {}},
+        )
+
+    assert response.status_code == 403
+    assert response.json() == {
+        "detail": "Passkey enrollment requires interactive user authentication"
+    }
 
 
 @pytest.mark.asyncio
