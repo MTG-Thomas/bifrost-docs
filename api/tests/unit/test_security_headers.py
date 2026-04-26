@@ -62,6 +62,20 @@ class TestSecurityHeadersMiddleware:
         assert response.status_code == 200
         assert response.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
 
+    def test_cross_origin_resource_policy_header(self, client):
+        """Test Cross-Origin-Resource-Policy is set for the API boundary."""
+        response = client.get("/test")
+        assert response.status_code == 200
+        assert response.headers["Cross-Origin-Resource-Policy"] == "cross-origin"
+
+    def test_cache_headers_prevent_storing_api_responses(self, client):
+        """Test API responses are not stored by shared or browser caches."""
+        response = client.get("/test")
+        assert response.status_code == 200
+        assert response.headers["Cache-Control"] == "no-cache, no-store, must-revalidate"
+        assert response.headers["Pragma"] == "no-cache"
+        assert response.headers["Expires"] == "0"
+
     def test_permissions_policy_header(self, client):
         """Test Permissions-Policy header is set with safe defaults."""
         response = client.get("/test")
@@ -106,6 +120,10 @@ class TestSecurityHeadersMiddleware:
             "X-Frame-Options",
             "X-XSS-Protection",
             "Referrer-Policy",
+            "Cross-Origin-Resource-Policy",
+            "Cache-Control",
+            "Pragma",
+            "Expires",
             "Permissions-Policy",
             "Content-Security-Policy",
         ]

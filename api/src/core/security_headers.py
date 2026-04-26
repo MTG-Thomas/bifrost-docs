@@ -23,6 +23,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     - Content-Security-Policy
     - Referrer-Policy
     - Permissions-Policy
+    - Cross-Origin-Resource-Policy
+    - Cache-Control/Pragma/Expires
     """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
@@ -40,6 +42,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Referrer policy
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+        # The API is called cross-origin by the Azure Static Web Apps frontend.
+        # Use an explicit CORP value so browsers and scanners do not have to
+        # infer policy from a missing header.
+        response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+
+        # API responses can contain documentation, passwords metadata, auth
+        # state, presigned URLs, or other sensitive tenant data. Prefer no-store
+        # by default; static frontend assets are served outside this API.
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
 
         # Permissions policy (formerly Feature-Policy)
         response.headers["Permissions-Policy"] = (
