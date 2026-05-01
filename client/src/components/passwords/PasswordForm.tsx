@@ -55,6 +55,7 @@ interface PasswordFormProps {
   mode: "create" | "edit";
   initialData?: Password;
   orgId: string;
+  contextSlot?: React.ReactNode;
 }
 
 export function PasswordForm({
@@ -65,6 +66,7 @@ export function PasswordForm({
   mode,
   initialData,
   orgId,
+  contextSlot,
 }: PasswordFormProps) {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -97,7 +99,7 @@ export function PasswordForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {mode === "create" ? "Create Password" : "Edit Password"}
@@ -108,6 +110,7 @@ export function PasswordForm({
               : "Update the password entry details."}
           </DialogDescription>
         </DialogHeader>
+        {contextSlot}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
