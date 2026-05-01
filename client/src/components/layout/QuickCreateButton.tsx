@@ -145,8 +145,13 @@ export function QuickCreateButton() {
   const createConfiguration = useCreateConfiguration(activeOrgId);
   const createDocument = useCreateDocument(activeOrgId);
   const createLocation = useCreateLocation(activeOrgId);
-  const { data: configurationTypes = [] } = useConfigurationTypes();
-  const { data: configurationStatuses = [] } = useConfigurationStatuses();
+  const loadConfigurationMetadata = activeType === "configuration";
+  const { data: configurationTypes = [] } = useConfigurationTypes({
+    enabled: loadConfigurationMetadata,
+  });
+  const { data: configurationStatuses = [] } = useConfigurationStatuses({
+    enabled: loadConfigurationMetadata,
+  });
 
   const closeActiveForm = () => {
     setActiveType(null);

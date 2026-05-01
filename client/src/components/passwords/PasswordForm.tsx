@@ -155,6 +155,11 @@ export function PasswordForm({
                     <div className="relative">
                       <Input
                         type={showPassword ? "text" : "password"}
+                        aria-label={
+                          mode === "create"
+                            ? "Password *"
+                            : "Password (leave blank to keep current)"
+                        }
                         placeholder={
                           mode === "edit"
                             ? "Leave blank to keep current"

@@ -41,7 +41,10 @@ export interface PaginationParams {
 // Configuration Types Hooks (Global - not org-scoped)
 // =============================================================================
 
-export function useConfigurationTypes(options?: { includeInactive?: boolean }) {
+export function useConfigurationTypes(options?: {
+  includeInactive?: boolean;
+  enabled?: boolean;
+}) {
   return useQuery({
     queryKey: ["configuration-types", options?.includeInactive],
     queryFn: async () => {
@@ -54,6 +57,7 @@ export function useConfigurationTypes(options?: { includeInactive?: boolean }) {
       );
       return response.data;
     },
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -145,7 +149,10 @@ export function useActivateConfigurationType() {
 // Configuration Statuses Hooks (Global - not org-scoped)
 // =============================================================================
 
-export function useConfigurationStatuses(options?: { includeInactive?: boolean }) {
+export function useConfigurationStatuses(options?: {
+  includeInactive?: boolean;
+  enabled?: boolean;
+}) {
   return useQuery({
     queryKey: ["configuration-statuses", options?.includeInactive],
     queryFn: async () => {
@@ -158,6 +165,7 @@ export function useConfigurationStatuses(options?: { includeInactive?: boolean }
       );
       return response.data;
     },
+    enabled: options?.enabled ?? true,
   });
 }
 
