@@ -3,6 +3,18 @@ import { NodeViewWrapper } from "@tiptap/react";
 import type { NodeViewProps } from "@tiptap/react";
 import { cn } from "@/lib/utils";
 
+function resolveAuthenticatedImageUrl(src: string): URL | null {
+  try {
+    const url = new URL(src, window.location.origin);
+    if (url.origin !== window.location.origin) {
+      return null;
+    }
+    return url;
+  } catch {
+    return null;
+  }
+}
+
 export function ImageWithSkeleton({ node }: NodeViewProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -23,13 +35,18 @@ export function ImageWithSkeleton({ node }: NodeViewProps) {
 
     const fetchImage = async () => {
       try {
+        const imageUrl = resolveAuthenticatedImageUrl(src);
+        if (!imageUrl) {
+          throw new Error("Refusing to fetch cross-origin document image");
+        }
+
         const token = localStorage.getItem("access_token");
         const headers: HeadersInit = {};
         if (token) {
           headers.Authorization = `Bearer ${token}`;
         }
 
-        const response = await fetch(src, { headers });
+        const response = await fetch(imageUrl.toString(), { headers });
 
         if (!response.ok) {
           throw new Error(`Failed to load image: ${response.status}`);
