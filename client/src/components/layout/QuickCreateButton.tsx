@@ -127,13 +127,8 @@ export function QuickCreateButton() {
   useEffect(() => {
     if (!preferredOrgId) return;
 
-    setSelectedOrgId((current) => {
-      const currentStillEnabled = enabledOrganizations.some(
-        (organization) => organization.id === current
-      );
-      return currentStillEnabled ? current : preferredOrgId;
-    });
-  }, [enabledOrganizations, preferredOrgId]);
+    setSelectedOrgId(preferredOrgId);
+  }, [preferredOrgId]);
 
   const selectedOrganization = enabledOrganizations.find(
     (organization) => organization.id === selectedOrgId
