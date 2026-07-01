@@ -38,6 +38,7 @@ jobs:
     env:
       NETBIRD_SETUP_KEY_PRESENT: ${{ secrets.NETBIRD_SETUP_KEY != '' }}
       TEST_VM_SSH_KEY_PRESENT: ${{ secrets.TEST_VM_SSH_KEY != '' }}
+      TEST_VM_SSH_HOST_KEY_PRESENT: ${{ secrets.TEST_VM_SSH_HOST_KEY != '' }}
 
     steps:
       - name: Validate deployment secrets
@@ -48,6 +49,10 @@ jobs:
           }
           test "${TEST_VM_SSH_KEY_PRESENT}" = "true" || {
             echo "Missing required secret: TEST_VM_SSH_KEY" >&2
+            exit 1
+          }
+          test "${TEST_VM_SSH_HOST_KEY_PRESENT}" = "true" || {
+            echo "Missing required secret: TEST_VM_SSH_HOST_KEY" >&2
             exit 1
           }
 
@@ -61,10 +66,12 @@ jobs:
           else
             DEPLOY_REF="${{ github.sha }}"
           fi
-          echo "deploy_ref=${DEPLOY_REF}" >> "$GITHUB_OUTPUT"
+          {
+            echo "deploy_ref=${DEPLOY_REF}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Checkout deployment ref
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ steps.ref.outputs.deploy_ref }}
 
@@ -73,15 +80,22 @@ jobs:
         run: |
           DEPLOY_SHA="$(git rev-parse HEAD)"
           DEPLOY_SHA_SHORT="$(git rev-parse --short=7 HEAD)"
-          echo "deploy_sha=${DEPLOY_SHA}" >> "$GITHUB_OUTPUT"
-          echo "deploy_sha_short=${DEPLOY_SHA_SHORT}" >> "$GITHUB_OUTPUT"
-          echo "api_image=ghcr.io/mtg-thomas/bifrost-docs-api:${DEPLOY_SHA_SHORT}" >> "$GITHUB_OUTPUT"
-          echo "client_image=ghcr.io/mtg-thomas/bifrost-docs-client:${DEPLOY_SHA_SHORT}" >> "$GITHUB_OUTPUT"
+          {
+            echo "deploy_sha=${DEPLOY_SHA}"
+            echo "deploy_sha_short=${DEPLOY_SHA_SHORT}"
+            echo "api_image=ghcr.io/mtg-thomas/bifrost-docs-api:${DEPLOY_SHA_SHORT}"
+            echo "client_image=ghcr.io/mtg-thomas/bifrost-docs-client:${DEPLOY_SHA_SHORT}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Connect runner to NetBird
-        uses: Alemiz112/netbird-connect@v1
-        with:
-          setup-key: ${{ secrets.NETBIRD_SETUP_KEY }}
+        env:
+          NETBIRD_SETUP_KEY: ${{ secrets.NETBIRD_SETUP_KEY }}
+        run: |
+          curl -fsSL https://pkgs.netbird.io/install.sh | sh
+          sudo netbird service install || true
+          sudo netbird service start || true
+          sudo netbird up --setup-key "${NETBIRD_SETUP_KEY}"
+          netbird status
 
       - name: Configure SSH key
         run: |
@@ -89,7 +103,9 @@ jobs:
           printf '%s\n' "${{ secrets.TEST_VM_SSH_KEY }}" > ~/.ssh/test_vm_key
           sed -i 's/\r$//' ~/.ssh/test_vm_key
           chmod 600 ~/.ssh/test_vm_key
-          touch ~/.ssh/known_hosts
+          printf '%s\n' "${{ secrets.TEST_VM_SSH_HOST_KEY }}" > ~/.ssh/known_hosts
+          sed -i 's/\r$//' ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
       - name: Deploy pinned images on test VM
         env:
@@ -105,9 +121,18 @@ jobs:
             docker-compose.yml \
             docker-compose.test-vm.yml \
             docker-compose.ssl.yml
+          {
+            printf 'DEPLOY_SHA=%q\n' "${DEPLOY_SHA}"
+            printf 'DEPLOY_SHA_SHORT=%q\n' "${DEPLOY_SHA_SHORT}"
+            printf 'BIFROST_DOCS_API_IMAGE=%q\n' "${BIFROST_DOCS_API_IMAGE}"
+            printf 'BIFROST_DOCS_CLIENT_IMAGE=%q\n' "${BIFROST_DOCS_CLIENT_IMAGE}"
+            printf 'GHCR_READ_USER=%q\n' "${GHCR_READ_USER}"
+            printf 'GHCR_READ_TOKEN=%q\n' "${GHCR_READ_TOKEN}"
+            printf 'HEALTH_URL=%q\n' "${HEALTH_URL}"
+          } > /tmp/bifrost-docs-deploy.env
 
           for attempt in $(seq 1 12); do
-            if ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 "${TEST_VM_USER}@${TEST_VM_HOST}" "true"; then
+            if ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "${TEST_VM_USER}@${TEST_VM_HOST}" "true"; then
               break
             fi
             if [ "$attempt" -eq 12 ]; then
@@ -117,14 +142,17 @@ jobs:
             sleep 5
           done
 
-          scp -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 /tmp/bifrost-docs-deploy.tgz \
+          scp -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=yes -o ConnectTimeout=10 /tmp/bifrost-docs-deploy.tgz \
             "${TEST_VM_USER}@${TEST_VM_HOST}:/tmp/bifrost-docs-deploy.tgz"
 
-          ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 "${TEST_VM_USER}@${TEST_VM_HOST}" \
+          scp -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=yes -o ConnectTimeout=10 /tmp/bifrost-docs-deploy.env \
+            "${TEST_VM_USER}@${TEST_VM_HOST}:/tmp/bifrost-docs-deploy.env"
+
+          ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "${TEST_VM_USER}@${TEST_VM_HOST}" \
             "mkdir -p /tmp/bifrost-docs-deploy && tar -xzf /tmp/bifrost-docs-deploy.tgz -C /tmp/bifrost-docs-deploy"
 
-          ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 "${TEST_VM_USER}@${TEST_VM_HOST}" \
-            "export DEPLOY_SHA='${DEPLOY_SHA}' DEPLOY_SHA_SHORT='${DEPLOY_SHA_SHORT}' BIFROST_DOCS_API_IMAGE='${BIFROST_DOCS_API_IMAGE}' BIFROST_DOCS_CLIENT_IMAGE='${BIFROST_DOCS_CLIENT_IMAGE}' GHCR_READ_USER='${GHCR_READ_USER}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' HEALTH_URL='${HEALTH_URL}'; bash /tmp/bifrost-docs-deploy/scripts/deploy-test-vm.sh"
+          ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "${TEST_VM_USER}@${TEST_VM_HOST}" \
+            "set -a; . /tmp/bifrost-docs-deploy.env; set +a; bash /tmp/bifrost-docs-deploy/scripts/deploy-test-vm.sh; rm -f /tmp/bifrost-docs-deploy.env"
 
       - name: Verify public health
         run: curl -fsS "${HEALTH_URL}"
