@@ -61,6 +61,7 @@ interface ConfigFormProps {
   types: ConfigurationType[];
   statuses: ConfigurationStatus[];
   orgId: string;
+  contextSlot?: React.ReactNode;
 }
 
 export function ConfigForm({
@@ -73,6 +74,7 @@ export function ConfigForm({
   types,
   statuses,
   orgId,
+  contextSlot,
 }: ConfigFormProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -121,6 +123,7 @@ export function ConfigForm({
               : "Update the configuration details."}
           </DialogDescription>
         </DialogHeader>
+        {contextSlot}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
