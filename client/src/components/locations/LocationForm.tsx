@@ -45,6 +45,7 @@ interface LocationFormProps {
   mode: "create" | "edit";
   initialData?: Location;
   orgId: string;
+  contextSlot?: React.ReactNode;
 }
 
 export function LocationForm({
@@ -55,6 +56,7 @@ export function LocationForm({
   mode,
   initialData,
   orgId,
+  contextSlot,
 }: LocationFormProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -101,6 +103,7 @@ export function LocationForm({
               : "Update the location details."}
           </DialogDescription>
         </DialogHeader>
+        {contextSlot}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
