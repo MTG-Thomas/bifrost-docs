@@ -41,6 +41,7 @@ interface DocumentFormProps {
   initialData?: Document;
   defaultPath?: string;
   orgId: string;
+  contextSlot?: React.ReactNode;
 }
 
 export function DocumentForm({
@@ -52,6 +53,7 @@ export function DocumentForm({
   initialData,
   defaultPath = "/",
   orgId,
+  contextSlot,
 }: DocumentFormProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -79,6 +81,7 @@ export function DocumentForm({
               : "Update the document details and content."}
           </DialogDescription>
         </DialogHeader>
+        {contextSlot}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
