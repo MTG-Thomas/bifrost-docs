@@ -23,6 +23,22 @@ const TEST_DOCUMENT = {
   metadata: {},
 };
 
+const TEST_PASSWORD = {
+  id: "password-quick-create",
+  organization_id: TEST_ORG.id,
+  name: "VPN Credential",
+  username: "svc-vpn",
+  url: null,
+  notes: null,
+  has_totp: false,
+  is_enabled: true,
+  created_at: "2026-04-24T12:00:00Z",
+  updated_at: "2026-04-24T12:30:00Z",
+  updated_by_user_id: "user-technician",
+  updated_by_user_name: "Taylor Technician",
+  metadata: {},
+};
+
 const SMOKE_TOKEN = `eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.${Buffer.from(
   JSON.stringify({ exp: 4102444800, sub: "user-technician" })
 ).toString("base64url")}.`;
@@ -119,6 +135,32 @@ async function installSmokeApi(page: Page) {
       });
     }
 
+    if (pathname === "/api/configuration-types") {
+      return fulfillJson(route, []);
+    }
+
+    if (pathname === "/api/configuration-statuses") {
+      return fulfillJson(route, []);
+    }
+
+    if (
+      pathname === `/api/organizations/${TEST_ORG.id}/passwords` &&
+      request.method() === "POST"
+    ) {
+      const payload = request.postDataJSON();
+      return fulfillJson(route, {
+        ...TEST_PASSWORD,
+        name: payload.name,
+        username: payload.username ?? null,
+        url: payload.url ?? null,
+        notes: payload.notes ?? null,
+      });
+    }
+
+    if (pathname === `/api/organizations/${TEST_ORG.id}/passwords/${TEST_PASSWORD.id}`) {
+      return fulfillJson(route, TEST_PASSWORD);
+    }
+
     if (pathname === `/api/organizations/${TEST_ORG.id}/attachments`) {
       return fulfillJson(route, {
         items: [],
@@ -205,6 +247,34 @@ test.describe("Smoke: Midtown migration confidence", () => {
     await expect(page.getByRole("button", { name: /Search/i })).toBeVisible();
     await expect(page.getByRole("link", { name: "Passwords" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Documents" })).toBeVisible();
+  });
+
+  test("smoke: quick create opens from nav, creates a password, and offers next action", async ({ page }) => {
+    await page.goto(`/org/${TEST_ORG.id}`, { waitUntil: "domcontentloaded" });
+
+    await page.getByRole("button", { name: "Quick create" }).click();
+    const menu = page.getByRole("menu");
+    await expect(menu.getByRole("menuitem", { name: "Organization" })).toBeVisible();
+    await expect(menu.getByRole("menuitem", { name: "Password" })).toBeVisible();
+    await expect(menu.getByRole("menuitem", { name: "Configuration" })).toBeVisible();
+    await expect(menu.getByRole("menuitem", { name: "Document" })).toBeVisible();
+    await expect(menu.getByRole("menuitem", { name: "Location" })).toBeVisible();
+
+    await menu.getByRole("menuitem", { name: "Password" }).click();
+
+    const createDialog = page.getByRole("dialog", { name: "Create Password" });
+    await expect(createDialog).toBeVisible();
+    await createDialog.getByLabel("Name *").fill(TEST_PASSWORD.name);
+    await createDialog.getByLabel("Password *").fill("correct horse battery staple");
+    await createDialog.getByRole("button", { name: "Create" }).click();
+
+    const successDialog = page.getByRole("dialog", { name: "Password created" });
+    await expect(successDialog).toBeVisible();
+    await expect(successDialog.getByText(`Created in ${TEST_ORG.name}.`)).toBeVisible();
+    await expect(successDialog.getByRole("button", { name: "Stay here" })).toBeVisible();
+    await successDialog.getByRole("button", { name: "Open password" }).click();
+
+    await expect(page).toHaveURL(`/org/${TEST_ORG.id}/passwords/${TEST_PASSWORD.id}`);
   });
 
   test("smoke: global search opens, returns document results, and closes cleanly", async ({ page }) => {

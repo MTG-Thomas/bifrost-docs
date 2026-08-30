@@ -19,10 +19,6 @@ COMPOSE_FILES=(
 API_IMAGE="${BIFROST_DOCS_API_IMAGE:-ghcr.io/mtg-thomas/bifrost-docs-api:${DEPLOY_SHA_SHORT}}"
 CLIENT_IMAGE="${BIFROST_DOCS_CLIENT_IMAGE:-ghcr.io/mtg-thomas/bifrost-docs-client:${DEPLOY_SHA_SHORT}}"
 
-if [ -n "${GHCR_READ_TOKEN:-}" ]; then
-  echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u "${GHCR_READ_USER:-MTG-Thomas}" --password-stdin
-fi
-
 mkdir -p "$(dirname "${DEPLOY_ROOT}")"
 
 if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
@@ -52,7 +48,7 @@ docker compose "${COMPOSE_FILES[@]}" up -d --remove-orphans
 docker image prune -f
 
 for attempt in {1..30}; do
-  if curl -fsSk "${HEALTH_URL}" >/dev/null; then
+  if curl -fsS "${HEALTH_URL}" >/dev/null; then
     docker compose "${COMPOSE_FILES[@]}" ps
     echo "Deployment healthy: ${HEALTH_URL}"
     exit 0

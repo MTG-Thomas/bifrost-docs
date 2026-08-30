@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { OrgSelector } from "./OrgSelector";
 import { UserMenu } from "./UserMenu";
 import { RecentDropdown } from "./RecentDropdown";
+import { QuickCreateButton } from "./QuickCreateButton";
 import { useAuthStore } from "@/stores/auth.store";
 
 interface HeaderProps {
@@ -71,6 +72,7 @@ export function Header({
       </div>
 
       <div className="flex items-center gap-2">
+        <QuickCreateButton />
         <Button
           variant="outline"
           size="sm"

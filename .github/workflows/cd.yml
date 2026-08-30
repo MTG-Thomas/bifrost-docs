@@ -127,9 +127,9 @@ jobs:
             printf 'BIFROST_DOCS_API_IMAGE=%q\n' "${BIFROST_DOCS_API_IMAGE}"
             printf 'BIFROST_DOCS_CLIENT_IMAGE=%q\n' "${BIFROST_DOCS_CLIENT_IMAGE}"
             printf 'GHCR_READ_USER=%q\n' "${GHCR_READ_USER}"
-            printf 'GHCR_READ_TOKEN=%q\n' "${GHCR_READ_TOKEN}"
             printf 'HEALTH_URL=%q\n' "${HEALTH_URL}"
           } > /tmp/bifrost-docs-deploy.env
+          chmod 600 /tmp/bifrost-docs-deploy.env
 
           for attempt in $(seq 1 12); do
             if ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "${TEST_VM_USER}@${TEST_VM_HOST}" "true"; then
@@ -151,8 +151,18 @@ jobs:
           ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "${TEST_VM_USER}@${TEST_VM_HOST}" \
             "mkdir -p /tmp/bifrost-docs-deploy && tar -xzf /tmp/bifrost-docs-deploy.tgz -C /tmp/bifrost-docs-deploy"
 
-          ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "${TEST_VM_USER}@${TEST_VM_HOST}" \
-            "set -a; . /tmp/bifrost-docs-deploy.env; set +a; bash /tmp/bifrost-docs-deploy/scripts/deploy-test-vm.sh; rm -f /tmp/bifrost-docs-deploy.env"
+          printf '%s' "${GHCR_READ_TOKEN}" | \
+            ssh -i ~/.ssh/test_vm_key -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "${TEST_VM_USER}@${TEST_VM_HOST}" \
+              'set -euo pipefail
+              chmod 600 /tmp/bifrost-docs-deploy.env
+              trap "rm -f /tmp/bifrost-docs-deploy.env; docker logout ghcr.io >/dev/null 2>&1 || true" EXIT
+              set -a
+              . /tmp/bifrost-docs-deploy.env
+              set +a
+              ghcr_token="$(cat)"
+              printf "%s" "${ghcr_token}" | docker login ghcr.io -u "${GHCR_READ_USER:-MTG-Thomas}" --password-stdin
+              unset ghcr_token
+              bash /tmp/bifrost-docs-deploy/scripts/deploy-test-vm.sh'
 
       - name: Verify public health
         run: curl -fsS "${HEALTH_URL}"
